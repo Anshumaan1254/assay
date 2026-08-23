@@ -332,49 +332,76 @@ callback — standard behavior, not a bug. Accepted rather than forcing a
 named subcommand for a CLI that doesn't need one yet; if a second
 command is ever added, Typer requires names automatically again.
 
-**Incidents:** none shipped broken — all four caught and fixed before
-commit, three during test-first development and one via a failing
-property test:
+**Incidents:** nothing shipped broken. Two things actually broke and were
+diagnosed from an observed failure — full entries immediately below.
+Two more were latent bugs caught by design/code review before they ever
+produced a wrong number, so they're not incidents by this log's own
+definition (nothing was observed to fix a symptom of):
 - `datagen/inject.py`'s D09 injector corrupts `BankCredit.utr`. The
-  first draft of `_recompute_batch_and_credit` re-matched a batch to its
-  bank credit by `utr` after the fact, which would have silently broken
-  (or crashed) for any later injector recomputing a batch D09 had
-  already touched, given D09 runs before D10-D12 in the fixed D01..D12
-  order. Found during design, before any code was written — fixed by
-  resolving the batch-to-credit pairing once, up front, from the
-  unmutated world, and added a regression test
-  (`test_d09_does_not_break_later_injectors_batch_lookup`) exercising a
-  dense multi-class profile.
-- The whole-world conservation property test
-  (`test_whole_world_credit_delta_reconciles_against_ground_truth`)
-  failed by exactly 69,526 paise. Root cause (found with an Opus
-  subagent, given the required debugging effort): D04 ("refund deducted
-  twice") has no backing source record by design — the ledger's `Refund`
-  list is deliberately never duplicated, so its double-deduction is
-  written directly onto the batch total. Every other injector recomputes
-  its batch from records via `compute_batch_net_paise`, which silently
-  erased D04's delta whenever a later injector (D05/D06/D07/D08/D10/
-  D11/D12) recomputed a batch D04 had already adjusted — 3 of 3 D04
-  instances lost at the failing seed. Fixed with a small `_CreditBook`
-  that banks these "unbacked" deltas per batch and re-applies them on
-  every recompute, regardless of injection order — order-independent by
-  construction, so a future D13 recomputing a batch can't reintroduce
-  the same bug.
-- Same debugging pass surfaced a second, latent bug: `_inject_d02`'s
-  eligible-fee-line list is a snapshot taken before its loop runs, so a
-  payment with two eligible fee lines (NETBANKING/WALLET carry both MDR
-  and FIXED) could receive two separate D02 entries — hadn't triggered
-  in any test yet, found by inspection while reviewing the D04 fix.
-  Fixed by re-checking `touch.payments` inside the loop; added a
-  regression test at a high enough count (400) to reliably exercise it.
-- The same property test's own expectation logic had a sign bug, found
-  while diagnosing the above: `ROUND_HALF_EVEN` only ever differs from
-  `ROUND_HALF_UP` at an even N.5 tie, where half-even always rounds
-  *down* — so D07 (rounding drift) always *reduces* reported tax,
-  *increasing* reported net, the opposite direction from every other
-  always-one-direction class. `ROUNDING_DRIFT`, unlike
-  `FEE_OVERCHARGE`/`FEE_UNDERCHARGE`, isn't directionally named, so a
-  blanket "not-FEE_UNDERCHARGE means -1" sign heuristic was wrong for it
-  specifically. Fixed in the test's expectation logic, not the
-  generator — the generator's numbers were correct throughout.
-**Guard added:** the three regression tests named above, all committed.
+  first draft of the batch<->bank-credit lookup re-matched by `utr`
+  after the fact, which would have broken for any later injector
+  recomputing a batch D09 had already touched. Found while designing
+  the injector, before any code was written — fixed by resolving the
+  pairing once, up front, from the unmutated world. Guard: `test_
+  d09_does_not_break_later_injectors_batch_lookup`.
+- `_inject_d02`'s eligible-fee-line list is a snapshot taken before its
+  loop runs, so a payment with two eligible fee lines (NETBANKING/
+  WALLET carry both MDR and FIXED) could receive two separate D02
+  entries. Found by inspection while reviewing the D04 fix below, not
+  by any failing test. Fixed by re-checking `touch.payments` inside the
+  loop. Guard: `test_d02_never_touches_the_same_payment_twice_even_
+  with_two_fee_lines`.
+
+## 2026-08-23 22:15 — whole-world conservation test off by 69,526 paise
+**Symptom:** `test_whole_world_credit_delta_reconciles_against_ground_truth`
+failed: `assert (617398744 - 617837050) == -507842` (actual delta
+-438306, expected -507842 at first, then -507832 after an unrelated sign
+fix — gap stayed ~69,526 either way).
+**Diagnosis:** D04 ("refund deducted twice") has no backing source
+record by design — the ledger's `Refund` list is deliberately never
+duplicated, so the double deduction is written directly onto the batch's
+`expected_credit`/`BankCredit.amount` via `_adjust_batch_and_credit`.
+Every other injector instead recomputes its batch from records via
+`compute_batch_net_paise`. D04 runs 4th; whenever D05-D08 or D10-D12
+later recomputed a batch D04 had already adjusted, the from-scratch
+recompute silently overwrote D04's delta. All 3 D04 instances were lost
+at the failing seed (23250 + 25833 + 20443 = 69526 — exactly the gap).
+Found with an Opus subagent, given the debugging effort required to
+isolate which of 12 injectors and ~50 batches was responsible.
+**First fix:** none attempted before diagnosis — the subagent located
+the root cause before proposing a fix.
+**Whether it worked:** n/a.
+**Final fix:** added `_CreditBook`, threaded through every injector in
+place of the bare batch-to-credit dict. It carries
+`unbacked_delta_by_batch`, which `_adjust_batch_and_credit` (D04) banks
+into and `_recompute_batch_and_credit` (everything else) re-applies on
+top of its from-scratch recompute. Order-independent by construction —
+does not depend on which injector runs before which.
+**Guard added:** `test_whole_world_credit_delta_reconciles_against_ground_truth`
+itself (already existed; this incident is that test doing its job) plus
+per-batch reconciliation checks in the individual D01/D04/D06/D08 tests.
+
+## 2026-08-23 22:15 — same test's own sign table was wrong for D07
+**Symptom:** after fixing the D04 bug above, the same test still failed:
+`assert (617398744 - 617837050) == -507832`, gap reduced from 69,526 to
+0 only after this second fix.
+**Diagnosis:** the test computed each entry's whole-world sign as `1 if
+discrepancy_class == FEE_UNDERCHARGE else -1`. `ROUND_HALF_EVEN` only
+ever differs from `ROUND_HALF_UP` at an even N.5 tie (an odd-N.5 tie
+already rounds to the same even N+1 under both modes, so it never
+registers as a candidate) — at an even N.5, half-even always rounds
+*down* to N. A lower reported tax means a *higher* reported net, the
+opposite direction from every other always-one-direction class in the
+sign table. `ROUNDING_DRIFT`, unlike `FEE_OVERCHARGE`/`FEE_UNDERCHARGE`,
+isn't directionally named, so the blanket "not-FEE_UNDERCHARGE means -1"
+heuristic silently mis-signed every D07 entry.
+**First fix:** none — found and understood in the same pass as the D04
+diagnosis above.
+**Whether it worked:** n/a.
+**Final fix:** replaced the blanket heuristic with a fixed per-code sign
+table (`D02/D03/D04/D05/D08/D11/D12: -1, D07: +1`), keeping only D01 and
+D10 (genuinely bidirectional per instance) reading their sign from
+`discrepancy_class`.
+**Guard added:** none new — the existing property test now asserts the
+correct thing; no separate regression test needed since this was a bug
+in the test's own logic, not in shipped generator code.
