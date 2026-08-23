@@ -1,17 +1,23 @@
-# Dense counts, deliberately bounded by the natural eligible population a
-# 5,200-payment / 0.15%-chargeback month actually produces -- inject.py
-# raises InjectionProfileError rather than silently under-delivering if a
-# count here exceeds what's available. D03 (cap-not-applied, debit-only,
-# >Rs.10,000 gross) and D05 (won-chargeback reversal) have the thinnest
-# natural pools (roughly 5-6 and ~4 at this scale respectively), so they
-# stay conservative here rather than "dense" like the rest. Provisional --
-# see the execution-phase note about verifying real per-class populations
-# from an actual clean-profile run before treating these as final.
+# Dense counts, bounded by the natural eligible population a 5,200-
+# payment / 0.15%-chargeback month actually produces -- inject.py raises
+# InjectionProfileError rather than silently under-delivering if a count
+# here exceeds what's available. D03 (cap-not-applied, debit-only,
+# gross above ~Rs.11,400 where the Rs.70 cap actually binds) and D05
+# (won-chargeback reversal) have genuinely thin, seed-variable natural
+# pools -- empirically as low as 2 and 1 respectively across seeds 1-20
+# (see DECISIONS.md) -- so they stay at the same safe floor as
+# realistic.yaml rather than "dense" like every other class here; pushing
+# them higher would make this profile fail on a meaningful fraction of
+# seeds instead of just being sparse. Even at this floor, D05 can still
+# occasionally hit a seed with zero won chargebacks (~2% of seeds tested)
+# -- a real property of a ~0.15% chargeback rate over one month, surfaced
+# as an explicit InjectionProfileError, not silently under-delivered.
+# Seed 42 is confirmed clean for both classes.
 D01: 20
 D02: 15
-D03: 4
+D03: 2
 D04: 15
-D05: 3
+D05: 1
 D06: 15
 D07: 8
 D08: 15

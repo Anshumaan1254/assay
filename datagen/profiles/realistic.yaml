@@ -1,10 +1,19 @@
 # Sparse, plausible counts for one 5,200-payment month. Every class gets
 # at least one instance, including D09 (zero rupee impact by design).
+# D03 (debit, >~Rs.11,400 gross, cap binding) and D05 (won chargeback) are
+# set to their empirically observed worst-case population across seeds
+# 1-20 (min 2 and min 1 respectively) -- verified in DECISIONS.md. Even at
+# this floor, D05 specifically can still land on a seed with zero won
+# chargebacks (~2% of seeds tested, e.g. seed=47) -- this is a real
+# property of a ~0.15% chargeback rate over one month, not a generator
+# bug, and inject.py surfaces it as a clear InjectionProfileError rather
+# than silently planting fewer than requested. Seed 42 is confirmed clean
+# for both classes and is what the committed demo run uses.
 D01: 8
 D02: 4
-D03: 3
+D03: 2
 D04: 3
-D05: 2
+D05: 1
 D06: 4
 D07: 5
 D08: 3
