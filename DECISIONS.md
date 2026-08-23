@@ -209,3 +209,172 @@ the intended procedure.
 **Final fix:** the user corrected the file directly; this entry follows
 its real procedure.
 **Guard added:** none — no automated check for skill-file content drift.
+
+## 2026-08-23 22:15 — Build datagen/: synthetic settlement month + D01-D12 injector
+
+**Built:** `datagen/ratecard.py` (tiered card MDR, flat UPI/netbanking/
+wallet fees, a per-tier cap, an international surcharge, GST-on-fee, a
+dormant TDS clause, an effective-dated mid-month revision, and a
+markdown renderer); `datagen/timeline.py` and `datagen/sampling.py`
+(calendar/weekly-pattern helpers, seeded log-normal amounts, weighted
+method/card-type/network choice); `datagen/world.py` (the true-world
+generator: payments, refunds, chargebacks, reserve/manual adjustments,
+T+2 batching, narration corruption, and `compute_batch_net_paise` — the
+one netting-formula implementation both the true-world assembly and the
+injector's post-mutation recompute call into); `datagen/ground_truth.py`
+and `InjectionProfile` in `datagen/config.py`; `datagen/inject.py` (all
+12 D01-D12 injectors plus silent-corruption mode);
+`datagen/{writer,summary,cli}.py`; three YAML profiles. Extended
+`tests/test_architecture.py` to dynamically enumerate every top-level
+package except `eval/`/`datagen/` (closing a gap where `chaos/` and any
+future package went unchecked). Created `truth/` as an empty sibling
+directory ahead of any generator code. 247 tests passing, all written
+test-first for the money-critical modules (ratecard, world, inject,
+silent-corruption) and shown failing before implementation existed.
+Committed the canonical `realistic`-profile run at seed 42
+(`runs/realistic-seed42/` + `truth/ground_truth.json`).
+
+**D01-D12 reuse the existing `DiscrepancyClass` taxonomy; no new enum
+member added.** Alternative rejected: run the `new-discrepancy-class`
+skill's 5-step process to add D-code-named members — rejected after
+close reading of all 11 existing members' docstrings showed every D-code
+maps cleanly onto one already (several near-verbatim: D08's wording
+almost identical to `MISSING_TRANSACTION`'s, D02 literally says "wrong
+base", D05's `CHARGEBACK_AMOUNT_MISMATCH` docstring names "reversal on a
+won dispute" outright). Adding members now would also be premature per
+the skill's own instructions — it requires a coordinated
+`core/verify.py` detection rule, and `verify.py` is still a stub. D09
+(corrupted UTR) is the one class with no home in the taxonomy — every
+existing member is money-impact by design — so it's a separate
+`DataQualityFlag`, not a `Finding`-shaped entry.
+
+**Two-track generation: a "true" world, then a "reported" world
+`inject.py` deep-copies and mutates.** The merchant's ledger facts
+(amounts, timestamps) are always true; only `settlement_id` linkage and
+fee/tax/batch/bank-credit figures can diverge once a discrepancy is
+planted. `datagen` computes its own rate-card arithmetic independently
+of `core/contract.py` (still a stub) — depends on `core.models`/
+`core.money` only, never the reverse.
+
+**A won chargeback's reversal is a `MANUAL_CREDIT` `Adjustment`, not a
+dedicated entity.** `core/models.py` has no "Reversal" record type, and
+the conservation identity's `+ reversals` term needs something concrete
+to back it. This is the only schema-compatible choice, and it's what
+D05 omits to plant that class. Flagged here for whoever builds
+`core/conserve.py` for real: it needs to either adopt this convention or
+reconcile against it.
+
+**The adjustment sign convention (`RESERVE_HOLD`/`MANUAL_DEBIT` subtract,
+`RESERVE_RELEASE`/`MANUAL_CREDIT`/`FEE_WAIVER` add back) is
+datagen-internal only.** `core/conserve.py` is still a stub and doesn't
+have to agree with it yet — but it will need to, once built for real.
+
+**EMI excluded from generation (0% weight); international payments are
+CARD-only, 10% of card volume (~3% of total).** Neither was specified.
+The method-mix spec (UPI 55/card 30/netbanking 10/wallet 5) already sums
+to 100% without EMI. UPI/netbanking/wallet are domestic-only in practice
+in India, so "3% international" only has somewhere to land on cards.
+
+**Debit top-tier MDR cap lowered from Rs.150 to Rs.70 in
+`datagen/ratecard.py`.** Found empirically: at Rs.150, the cap only
+binds above ~Rs.21,400 gross — a population of 2 out of 5,200 payments
+at seed 42, too thin for D03 (cap not applied) to plant into reliably.
+Rs.70, close to the tier's own rate at its lower boundary, binds across
+most of the tier instead of only rare outliers.
+
+**`realistic.yaml`/`stress.yaml` D03 and D05 counts calibrated to the
+empirically observed worst case across seeds 1-50, not the original
+estimate.** D03 (debit, cap-binding) ranged 2-9 eligible; D05
+(won-chargeback) ranged 0-7. Both profiles now request D03: 2, D05: 1 —
+the observed floor. Even there, D05 can still hit a seed with zero won
+chargebacks (~2% of seeds tested, e.g. seed 47) — a real property of a
+~0.15% chargeback rate over one month, not a generator bug.
+`InjectionProfileError` surfaces this explicitly rather than silently
+under-delivering, which is the correct behavior; the fix was calibrating
+the requested counts, not changing that behavior. Seed 42, used for the
+committed demo run, is confirmed clean for both classes.
+
+**Refund/chargeback event days are clamped to the generated month's last
+day, not left to spill into a fictitious next month.** Mirrors the
+reserve-release precedent already planned. Found necessary only after
+running the generator at scale: an unclamped spillover day has zero
+underlying payment gross to offset a refund/chargeback deduction,
+producing settlement batches with a negative `expected_credit` — 12 of
+45 batches, before the fix. After clamping: 31 batches (exactly the
+month's day count), zero negative, and the cross-cycle refund rate
+actually rose (98.6% vs the unclamped ~86% estimate), since late-month
+refunds now reliably land on a different (earlier, in-month) day instead
+of trailing off past month-end.
+
+**Added `pyyaml` as a declared dependency.** Already present in the
+project's conda env but not in `pyproject.toml`. Asked first between
+this and hand-rolling a minimal parser for the profiles' flat `D01: 8`
+shape; confirmed pyyaml.
+
+**Committed the canonical `realistic`-profile run instead of gitignoring
+all generated output.** Asked first between commit-and-mirror-
+`.llm_cache/`'s precedent versus gitignore-and-regenerate-on-demand;
+confirmed committing. `runs/` is gitignored in general so ad-hoc
+dev/test runs aren't accidentally committed; `runs/realistic-seed42/`
+alone is force-added past that ignore.
+
+**`tests/test_architecture.py`'s datagen-quarantine check now enumerates
+top-level packages dynamically instead of a hardcoded
+`(CORE_DIR, LLM_DIR, CLI_DIR)` tuple.** The hardcoded version had already
+let `chaos/` go unchecked; a future new package would have silently done
+the same. Verified the mechanism itself, not just today's package list,
+with a regression test that builds a throwaway package tree.
+
+**The CLI has one command and is invoked without a subcommand name
+(`python -m datagen.cli --profile ... --seed ...`), not `... generate
+--profile ...`.** Typer/Click collapses a single-command app to its own
+callback — standard behavior, not a bug. Accepted rather than forcing a
+named subcommand for a CLI that doesn't need one yet; if a second
+command is ever added, Typer requires names automatically again.
+
+**Incidents:** none shipped broken — all four caught and fixed before
+commit, three during test-first development and one via a failing
+property test:
+- `datagen/inject.py`'s D09 injector corrupts `BankCredit.utr`. The
+  first draft of `_recompute_batch_and_credit` re-matched a batch to its
+  bank credit by `utr` after the fact, which would have silently broken
+  (or crashed) for any later injector recomputing a batch D09 had
+  already touched, given D09 runs before D10-D12 in the fixed D01..D12
+  order. Found during design, before any code was written — fixed by
+  resolving the batch-to-credit pairing once, up front, from the
+  unmutated world, and added a regression test
+  (`test_d09_does_not_break_later_injectors_batch_lookup`) exercising a
+  dense multi-class profile.
+- The whole-world conservation property test
+  (`test_whole_world_credit_delta_reconciles_against_ground_truth`)
+  failed by exactly 69,526 paise. Root cause (found with an Opus
+  subagent, given the required debugging effort): D04 ("refund deducted
+  twice") has no backing source record by design — the ledger's `Refund`
+  list is deliberately never duplicated, so its double-deduction is
+  written directly onto the batch total. Every other injector recomputes
+  its batch from records via `compute_batch_net_paise`, which silently
+  erased D04's delta whenever a later injector (D05/D06/D07/D08/D10/
+  D11/D12) recomputed a batch D04 had already adjusted — 3 of 3 D04
+  instances lost at the failing seed. Fixed with a small `_CreditBook`
+  that banks these "unbacked" deltas per batch and re-applies them on
+  every recompute, regardless of injection order — order-independent by
+  construction, so a future D13 recomputing a batch can't reintroduce
+  the same bug.
+- Same debugging pass surfaced a second, latent bug: `_inject_d02`'s
+  eligible-fee-line list is a snapshot taken before its loop runs, so a
+  payment with two eligible fee lines (NETBANKING/WALLET carry both MDR
+  and FIXED) could receive two separate D02 entries — hadn't triggered
+  in any test yet, found by inspection while reviewing the D04 fix.
+  Fixed by re-checking `touch.payments` inside the loop; added a
+  regression test at a high enough count (400) to reliably exercise it.
+- The same property test's own expectation logic had a sign bug, found
+  while diagnosing the above: `ROUND_HALF_EVEN` only ever differs from
+  `ROUND_HALF_UP` at an even N.5 tie, where half-even always rounds
+  *down* — so D07 (rounding drift) always *reduces* reported tax,
+  *increasing* reported net, the opposite direction from every other
+  always-one-direction class. `ROUNDING_DRIFT`, unlike
+  `FEE_OVERCHARGE`/`FEE_UNDERCHARGE`, isn't directionally named, so a
+  blanket "not-FEE_UNDERCHARGE means -1" sign heuristic was wrong for it
+  specifically. Fixed in the test's expectation logic, not the
+  generator — the generator's numbers were correct throughout.
+**Guard added:** the three regression tests named above, all committed.
