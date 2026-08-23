@@ -45,19 +45,65 @@ def test_core_never_imports_llm_or_datagen_or_llm_sdks():
 
 
 # ---------------------------------------------------------------------------
-# core/, llm/, cli/ never import datagen (ground truth is quarantined)
+# Nothing outside eval/ ever imports datagen (ground truth is quarantined).
+#
+# Deliberately dynamic rather than a hardcoded tuple of directories: a fixed
+# (CORE_DIR, LLM_DIR, CLI_DIR) list previously let chaos/ (and any future
+# top-level package) go unchecked. Enumerating every top-level package and
+# excluding only eval/ and datagen/ itself means a new package can't
+# silently slip through the way chaos/ did.
 # ---------------------------------------------------------------------------
 
 
-def test_core_llm_cli_never_import_datagen():
+def _top_level_packages(root: Path, exclude: set[str]) -> list[Path]:
+    """Every direct child of `root` that is a real Python package (has an
+    __init__.py), minus `exclude`."""
+    return sorted(
+        child
+        for child in root.iterdir()
+        if child.is_dir() and child.name not in exclude and (child / "__init__.py").exists()
+    )
+
+
+def test_top_level_packages_includes_chaos_and_excludes_eval_and_datagen():
+    # Regression guard for the bug this fix addresses: chaos/ (and any
+    # future package) was previously un-checked because the old test
+    # hardcoded (CORE_DIR, LLM_DIR, CLI_DIR).
+    names = {p.name for p in _top_level_packages(REPO_ROOT, exclude={"eval", "datagen"})}
+    assert names == {"core", "llm", "chaos", "cli"}
+
+
+def test_everything_except_eval_and_datagen_never_imports_datagen():
     offenders = []
-    for directory in (CORE_DIR, LLM_DIR, CLI_DIR):
+    for directory in _top_level_packages(REPO_ROOT, exclude={"eval", "datagen"}):
         for path in _py_files(directory):
             violations = guard_core.check_imports(_parse(path))
             for lineno, rule, message in violations:
                 if rule == "forbidden-import" and "datagen" in message:
                     offenders.append(f"{path}:{lineno}: {message}")
     assert offenders == [], "\n".join(offenders)
+
+
+def test_dynamic_package_enumeration_catches_a_future_new_package(tmp_path):
+    # Proves the mechanism, not just today's package list: a brand-new
+    # top-level package with a forbidden datagen import must be caught,
+    # without the test file needing to be edited to know its name.
+    (tmp_path / "eval").mkdir()
+    (tmp_path / "eval" / "__init__.py").touch()
+    (tmp_path / "datagen").mkdir()
+    (tmp_path / "datagen" / "__init__.py").touch()
+    new_pkg = tmp_path / "future_pkg"
+    new_pkg.mkdir()
+    (new_pkg / "__init__.py").touch()
+    (new_pkg / "bad.py").write_text("from datagen.inject import apply_discrepancies\n", encoding="utf-8")
+
+    offenders = []
+    for directory in _top_level_packages(tmp_path, exclude={"eval", "datagen"}):
+        for path in _py_files(directory):
+            for lineno, rule, message in guard_core.check_imports(_parse(path)):
+                if rule == "forbidden-import" and "datagen" in message:
+                    offenders.append(f"{path}:{lineno}: {message}")
+    assert len(offenders) == 1
 
 
 # ---------------------------------------------------------------------------
