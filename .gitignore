@@ -1,3 +1,10 @@
 .env
 .env.local
-.llm_cache/
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+conda-env/
+.pytest_cache/
+.coverage
+.vscode/
