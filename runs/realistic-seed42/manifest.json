@@ -1,0 +1,22 @@
+{
+  "run_id": "realistic-seed42",
+  "seed": 42,
+  "profile": "realistic",
+  "month": "2026-07",
+  "silent_corruption": false,
+  "generated_at": "2026-08-23T22:07:01.736674+05:30",
+  "counts": {
+    "D01": 8,
+    "D02": 4,
+    "D03": 2,
+    "D04": 3,
+    "D05": 1,
+    "D06": 4,
+    "D07": 5,
+    "D08": 3,
+    "D09": 6,
+    "D10": 4,
+    "D11": 3,
+    "D12": 2
+  }
+}

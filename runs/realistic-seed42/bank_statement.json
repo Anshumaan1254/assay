@@ -1,0 +1,314 @@
+{
+  "bank_credits": [
+    {
+      "id": "BC-000001",
+      "utr": "HDFC000123420260701000000",
+      "amount": {
+        "paise": 12463809,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-03",
+      "narration": "rtgs  indbank settlement stl-20260701 hdfc000123420260701000000"
+    },
+    {
+      "id": "BC-000002",
+      "utr": "HDFC000123420260702000000",
+      "amount": {
+        "paise": 21732868,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-04",
+      "narration": "RTGS  INDBANK SETTLEMENT STL-20260702 HDFC000123420260702000000"
+    },
+    {
+      "id": "BC-000003",
+      "utr": "HDFC000123420260703000000",
+      "amount": {
+        "paise": 16107570,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-05",
+      "narration": "NEFT-HDFC0001234-Settlement STL-20260703 HDFC000123420260703000000"
+    },
+    {
+      "id": "BC-000004",
+      "utr": "HDFC000123420260704000000",
+      "amount": {
+        "paise": 9408970,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-06",
+      "narration": "NEFT-HDFC0001234-SETTLEMENT STL-20260704 HDFC000123420260704000000"
+    },
+    {
+      "id": "BC-000005",
+      "utr": "HDFC000123420260705000000",
+      "amount": {
+        "paise": 13775409,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-07",
+      "narration": "RTGS  INDBANK SETTLEMENT STL-20260705 HDFC000123420260705000000"
+    },
+    {
+      "id": "BC-000006",
+      "utr": "HDFC000123420260706000000",
+      "amount": {
+        "paise": 16158832,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-08",
+      "narration": "UPI/ICICI/SETTLEMENT STL-20260706 HDFC000123420260706000000"
+    },
+    {
+      "id": "BC-000007",
+      "utr": "HDFC00012342026070",
+      "amount": {
+        "paise": 16065407,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-09",
+      "narration": "NEFT-HDFC0001234-Settlement STL-20260707 HDFC000123420260707000000"
+    },
+    {
+      "id": "BC-000008",
+      "utr": "HDFC000123420260708000000",
+      "amount": {
+        "paise": 13714375,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-10",
+      "narration": "RTGS INDBANK SETTLEMENT STL-20260708 HDFC000123420260708000000"
+    },
+    {
+      "id": "BC-000009",
+      "utr": "HDFC000123",
+      "amount": {
+        "paise": 21067398,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-11",
+      "narration": "upi/icici/settlement  stl-20260709 hdfc000123420260709000000"
+    },
+    {
+      "id": "BC-000010",
+      "utr": "HDFC000123420260",
+      "amount": {
+        "paise": 13794776,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-12",
+      "narration": "RTGS INDBANK Settlement STL-20260710 HDFC000123420260710000000"
+    },
+    {
+      "id": "BC-000011",
+      "utr": "HDFC000123420260711000000",
+      "amount": {
+        "paise": 10670395,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-13",
+      "narration": "imps/axis/settlement  stl-20260711 hdfc000123420260711000000"
+    },
+    {
+      "id": "BC-000012",
+      "utr": "HDFC000123420260712000000",
+      "amount": {
+        "paise": 9832355,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-14",
+      "narration": "NEFT-HDFC0001234-SETTLEMENT STL-20260712 HDFC000123420260712000000"
+    },
+    {
+      "id": "BC-000013",
+      "utr": "HDFC000123420260713000000",
+      "amount": {
+        "paise": 19642046,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-15",
+      "narration": "RTGS INDBANK SETTLEMENT STL-20260713 HDFC000123420260713000000"
+    },
+    {
+      "id": "BC-000014",
+      "utr": "HDFC000123420260714000000",
+      "amount": {
+        "paise": 20606905,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-16",
+      "narration": "UPI/ICICI/Settlement  STL-20260714 HDFC000123420260714000000"
+    },
+    {
+      "id": "BC-000015",
+      "utr": "HDFC000123420260715000000",
+      "amount": {
+        "paise": 37030221,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-17",
+      "narration": "NEFT-HDFC0001234-Settlement  STL-20260715 HDFC000123420260715000000"
+    },
+    {
+      "id": "BC-000016",
+      "utr": "HDFC000123420260716000000",
+      "amount": {
+        "paise": 36539829,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-18",
+      "narration": "IMPS/AXIS/SETTLEMENT STL-20260716 HDFC000123420260716000000"
+    },
+    {
+      "id": "BC-000017",
+      "utr": "HDFC000123420260717000000",
+      "amount": {
+        "paise": 40019232,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-19",
+      "narration": "UPI/ICICI/Settlement STL-20260717 HDFC000123420260717000000"
+    },
+    {
+      "id": "BC-000018",
+      "utr": "HDFC000123420260718000000",
+      "amount": {
+        "paise": 36883588,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-20",
+      "narration": "IMPS/AXIS/Settlement STL-20260718 HDFC000123420260718000000"
+    },
+    {
+      "id": "BC-000019",
+      "utr": "HDFC000123420260719000000",
+      "amount": {
+        "paise": 24707892,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-21",
+      "narration": "UPI/ICICI/Settlement STL-20260719 HDFC000123420260719000000"
+    },
+    {
+      "id": "BC-000020",
+      "utr": "HDFC00012",
+      "amount": {
+        "paise": 38401385,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-22",
+      "narration": "imps/axis/settlement stl-20260720 hdfc000123420260720000000"
+    },
+    {
+      "id": "BC-000021",
+      "utr": "HDFC000123420260721000000",
+      "amount": {
+        "paise": 40519238,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-23",
+      "narration": "RTGS INDBANK Settlement STL-20260721 HDFC000123420260721000000 REFHDFC00"
+    },
+    {
+      "id": "BC-000022",
+      "utr": "HDFC0001234202",
+      "amount": {
+        "paise": 13043284,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-24",
+      "narration": "IMPS/AXIS/SETTLEMENT STL-20260722 HDFC000123420260722000000"
+    },
+    {
+      "id": "BC-000023",
+      "utr": "HDFC0001234",
+      "amount": {
+        "paise": 15263035,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-25",
+      "narration": "neft-hdfc0001234-settlement stl-20260723 hdfc000123420260723000000"
+    },
+    {
+      "id": "BC-000024",
+      "utr": "HDFC000123420260724000000",
+      "amount": {
+        "paise": 13792219,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-26",
+      "narration": "NEFT-HDFC0001234-SETTLEMENT STL-20260724 HDFC000123420260724000000"
+    },
+    {
+      "id": "BC-000025",
+      "utr": "HDFC000123420260725000000",
+      "amount": {
+        "paise": 14331506,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-27",
+      "narration": "RTGS INDBANK Settlement STL-20260725 HDFC000123420260725000000"
+    },
+    {
+      "id": "BC-000026",
+      "utr": "HDFC000123420260726000000",
+      "amount": {
+        "paise": 10675365,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-28",
+      "narration": "IMPS/AXIS/SETTLEMENT STL-20260726 HDFC000123420260726000000"
+    },
+    {
+      "id": "BC-000027",
+      "utr": "HDFC000123420260727000000",
+      "amount": {
+        "paise": 16749656,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-29",
+      "narration": "RTGS INDBANK SETTLEMENT STL-20260727 HDFC000123420260727000000"
+    },
+    {
+      "id": "BC-000028",
+      "utr": "HDFC000123420260728000000",
+      "amount": {
+        "paise": 18264291,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-30",
+      "narration": "UPI/ICICI/SETTLEMENT STL-20260728 HDFC000123420260728000000"
+    },
+    {
+      "id": "BC-000029",
+      "utr": "HDFC000123420260729000000",
+      "amount": {
+        "paise": 17768444,
+        "currency": "INR"
+      },
+      "value_date": "2026-07-31",
+      "narration": "UPI/ICICI/Settlement STL-20260729 HDFC000123420260729000000"
+    },
+    {
+      "id": "BC-000030",
+      "utr": "HDFC000123420260730000000",
+      "amount": {
+        "paise": 17684283,
+        "currency": "INR"
+      },
+      "value_date": "2026-08-01",
+      "narration": "RTGS  INDBANK Settlement STL-20260730 HDFC000123420260730000000"
+    },
+    {
+      "id": "BC-000031",
+      "utr": "HDFC000123420260731000000",
+      "amount": {
+        "paise": 10082519,
+        "currency": "INR"
+      },
+      "value_date": "2026-08-02",
+      "narration": "RTGS INDBANK SETTLEMENT STL-20260731 HDFC000123420260731000000"
+    }
+  ]
+}

@@ -8,3 +8,9 @@ conda-env/
 .pytest_cache/
 .coverage
 .vscode/
+
+# datagen output is deterministic (same seed -> byte-identical) and
+# regenerable via `python -m datagen.cli --profile ... --seed ...`, so
+# ad-hoc runs aren't committed. The one canonical realistic-profile demo
+# run is force-added past this ignore -- see DECISIONS.md.
+runs/

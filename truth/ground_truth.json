@@ -1,0 +1,849 @@
+{
+  "run_id": "realistic-seed42",
+  "seed": 42,
+  "profile": "realistic",
+  "generated_at": "2026-08-23T22:07:01.736674+05:30",
+  "silent_corruption": null,
+  "discrepancies": [
+    {
+      "code": "D01",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-005275"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-004509"
+        }
+      ],
+      "amount_impact_paise": 495,
+      "detail": {
+        "correct_tier_bps": 195,
+        "wrong_tier_bps": 160,
+        "payment_gross_paise": 120000
+      }
+    },
+    {
+      "code": "D01",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-005414"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-004629"
+        }
+      ],
+      "amount_impact_paise": 133,
+      "detail": {
+        "correct_tier_bps": 195,
+        "wrong_tier_bps": 160,
+        "payment_gross_paise": 32475
+      }
+    },
+    {
+      "code": "D01",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-000714"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-000611"
+        }
+      ],
+      "amount_impact_paise": 265,
+      "detail": {
+        "correct_tier_bps": 180,
+        "wrong_tier_bps": 160,
+        "payment_gross_paise": 111933
+      }
+    },
+    {
+      "code": "D01",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-001565"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-001347"
+        }
+      ],
+      "amount_impact_paise": 126,
+      "detail": {
+        "correct_tier_bps": 90,
+        "wrong_tier_bps": 80,
+        "payment_gross_paise": 106629
+      }
+    },
+    {
+      "code": "D01",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-005290"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-004522"
+        }
+      ],
+      "amount_impact_paise": 142,
+      "detail": {
+        "correct_tier_bps": 85,
+        "wrong_tier_bps": 70,
+        "payment_gross_paise": 80275
+      }
+    },
+    {
+      "code": "D01",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-003867"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-003308"
+        }
+      ],
+      "amount_impact_paise": 21,
+      "detail": {
+        "correct_tier_bps": 195,
+        "wrong_tier_bps": 160,
+        "payment_gross_paise": 4900
+      }
+    },
+    {
+      "code": "D01",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-001813"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-001561"
+        }
+      ],
+      "amount_impact_paise": 51,
+      "detail": {
+        "correct_tier_bps": 180,
+        "wrong_tier_bps": 160,
+        "payment_gross_paise": 21029
+      }
+    },
+    {
+      "code": "D01",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-005470"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-004677"
+        }
+      ],
+      "amount_impact_paise": 120,
+      "detail": {
+        "correct_tier_bps": 195,
+        "wrong_tier_bps": 160,
+        "payment_gross_paise": 29023
+      }
+    },
+    {
+      "code": "D02",
+      "discrepancy_class": "tax_miscalculation",
+      "records": [
+        {
+          "type": "tax_line",
+          "id": "TAX-005255"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-004492"
+        }
+      ],
+      "amount_impact_paise": 52691,
+      "detail": {
+        "correct_base_paise": 5670,
+        "wrong_base_paise": 298402,
+        "gst_bps": 1800
+      }
+    },
+    {
+      "code": "D02",
+      "discrepancy_class": "tax_miscalculation",
+      "records": [
+        {
+          "type": "tax_line",
+          "id": "TAX-000840"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-000720"
+        }
+      ],
+      "amount_impact_paise": 1727,
+      "detail": {
+        "correct_base_paise": 87,
+        "wrong_base_paise": 9683,
+        "gst_bps": 1800
+      }
+    },
+    {
+      "code": "D02",
+      "discrepancy_class": "tax_miscalculation",
+      "records": [
+        {
+          "type": "tax_line",
+          "id": "TAX-003804"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-003257"
+        }
+      ],
+      "amount_impact_paise": 11143,
+      "detail": {
+        "correct_base_paise": 300,
+        "wrong_base_paise": 62203,
+        "gst_bps": 1800
+      }
+    },
+    {
+      "code": "D02",
+      "discrepancy_class": "tax_miscalculation",
+      "records": [
+        {
+          "type": "tax_line",
+          "id": "TAX-002960"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-002536"
+        }
+      ],
+      "amount_impact_paise": 3438,
+      "detail": {
+        "correct_base_paise": 200,
+        "wrong_base_paise": 19299,
+        "gst_bps": 1800
+      }
+    },
+    {
+      "code": "D03",
+      "discrepancy_class": "fee_overcharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-000678"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-000578"
+        }
+      ],
+      "amount_impact_paise": 697,
+      "detail": {
+        "cap_paise": 7000,
+        "uncapped_paise": 7591
+      }
+    },
+    {
+      "code": "D03",
+      "discrepancy_class": "fee_overcharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-003315"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-002846"
+        }
+      ],
+      "amount_impact_paise": 3709,
+      "detail": {
+        "cap_paise": 7000,
+        "uncapped_paise": 10143
+      }
+    },
+    {
+      "code": "D04",
+      "discrepancy_class": "refund_amount_mismatch",
+      "records": [
+        {
+          "type": "refund",
+          "id": "REF-000090"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260731"
+        }
+      ],
+      "amount_impact_paise": 46443,
+      "detail": {
+        "batch_id": "STL-20260731"
+      }
+    },
+    {
+      "code": "D04",
+      "discrepancy_class": "refund_amount_mismatch",
+      "records": [
+        {
+          "type": "refund",
+          "id": "REF-000098"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260731"
+        }
+      ],
+      "amount_impact_paise": 35185,
+      "detail": {
+        "batch_id": "STL-20260731"
+      }
+    },
+    {
+      "code": "D04",
+      "discrepancy_class": "refund_amount_mismatch",
+      "records": [
+        {
+          "type": "refund",
+          "id": "REF-000118"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260729"
+        }
+      ],
+      "amount_impact_paise": 19873,
+      "detail": {
+        "batch_id": "STL-20260729"
+      }
+    },
+    {
+      "code": "D05",
+      "discrepancy_class": "chargeback_amount_mismatch",
+      "records": [
+        {
+          "type": "chargeback",
+          "id": "CB-000005"
+        }
+      ],
+      "amount_impact_paise": 411407,
+      "detail": {
+        "chargeback_stage": "won",
+        "omitted_reversal_id": "ADJ-CBR-000004"
+      }
+    },
+    {
+      "code": "D06",
+      "discrepancy_class": "refund_amount_mismatch",
+      "records": [
+        {
+          "type": "refund",
+          "id": "REF-000072"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260724"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260728"
+        }
+      ],
+      "amount_impact_paise": 126635,
+      "detail": {
+        "true_batch_id": "STL-20260724",
+        "wrong_batch_id": "STL-20260728"
+      }
+    },
+    {
+      "code": "D06",
+      "discrepancy_class": "refund_amount_mismatch",
+      "records": [
+        {
+          "type": "refund",
+          "id": "REF-000091"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260722"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260701"
+        }
+      ],
+      "amount_impact_paise": 430500,
+      "detail": {
+        "true_batch_id": "STL-20260722",
+        "wrong_batch_id": "STL-20260701"
+      }
+    },
+    {
+      "code": "D06",
+      "discrepancy_class": "refund_amount_mismatch",
+      "records": [
+        {
+          "type": "refund",
+          "id": "REF-000012"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260706"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260714"
+        }
+      ],
+      "amount_impact_paise": 11688,
+      "detail": {
+        "true_batch_id": "STL-20260706",
+        "wrong_batch_id": "STL-20260714"
+      }
+    },
+    {
+      "code": "D06",
+      "discrepancy_class": "refund_amount_mismatch",
+      "records": [
+        {
+          "type": "refund",
+          "id": "REF-000074"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260718"
+        },
+        {
+          "type": "settlement_batch",
+          "id": "STL-20260706"
+        }
+      ],
+      "amount_impact_paise": 67396,
+      "detail": {
+        "true_batch_id": "STL-20260718",
+        "wrong_batch_id": "STL-20260706"
+      }
+    },
+    {
+      "code": "D07",
+      "discrepancy_class": "rounding_drift",
+      "records": [
+        {
+          "type": "tax_line",
+          "id": "TAX-000218"
+        }
+      ],
+      "amount_impact_paise": 1,
+      "detail": {
+        "half_up_paise": 41,
+        "half_even_paise": 40
+      }
+    },
+    {
+      "code": "D07",
+      "discrepancy_class": "rounding_drift",
+      "records": [
+        {
+          "type": "tax_line",
+          "id": "TAX-003059"
+        }
+      ],
+      "amount_impact_paise": 1,
+      "detail": {
+        "half_up_paise": 725,
+        "half_even_paise": 724
+      }
+    },
+    {
+      "code": "D07",
+      "discrepancy_class": "rounding_drift",
+      "records": [
+        {
+          "type": "tax_line",
+          "id": "TAX-000526"
+        }
+      ],
+      "amount_impact_paise": 1,
+      "detail": {
+        "half_up_paise": 59,
+        "half_even_paise": 58
+      }
+    },
+    {
+      "code": "D07",
+      "discrepancy_class": "rounding_drift",
+      "records": [
+        {
+          "type": "tax_line",
+          "id": "TAX-001913"
+        }
+      ],
+      "amount_impact_paise": 1,
+      "detail": {
+        "half_up_paise": 77,
+        "half_even_paise": 76
+      }
+    },
+    {
+      "code": "D07",
+      "discrepancy_class": "rounding_drift",
+      "records": [
+        {
+          "type": "tax_line",
+          "id": "TAX-005163"
+        }
+      ],
+      "amount_impact_paise": 1,
+      "detail": {
+        "half_up_paise": 239,
+        "half_even_paise": 238
+      }
+    },
+    {
+      "code": "D08",
+      "discrepancy_class": "missing_transaction",
+      "records": [
+        {
+          "type": "payment",
+          "id": "PAY-002582"
+        }
+      ],
+      "amount_impact_paise": 145599,
+      "detail": {
+        "true_batch_id": "STL-20260717",
+        "payment_gross_paise": 145835
+      }
+    },
+    {
+      "code": "D08",
+      "discrepancy_class": "missing_transaction",
+      "records": [
+        {
+          "type": "payment",
+          "id": "PAY-002633"
+        }
+      ],
+      "amount_impact_paise": 25086,
+      "detail": {
+        "true_batch_id": "STL-20260717",
+        "payment_gross_paise": 25322
+      }
+    },
+    {
+      "code": "D08",
+      "discrepancy_class": "missing_transaction",
+      "records": [
+        {
+          "type": "payment",
+          "id": "PAY-000031"
+        }
+      ],
+      "amount_impact_paise": 274694,
+      "detail": {
+        "true_batch_id": "STL-20260701",
+        "payment_gross_paise": 279980
+      }
+    },
+    {
+      "code": "D10",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-003983"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-003413"
+        }
+      ],
+      "amount_impact_paise": 328,
+      "detail": {
+        "stale_version": "v1",
+        "correct_version": "v2",
+        "stale_bps": 180
+      }
+    },
+    {
+      "code": "D10",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-004014"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-003439"
+        }
+      ],
+      "amount_impact_paise": 175,
+      "detail": {
+        "stale_version": "v1",
+        "correct_version": "v2",
+        "stale_bps": 180
+      }
+    },
+    {
+      "code": "D10",
+      "discrepancy_class": "fee_overcharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-004271"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-003655"
+        }
+      ],
+      "amount_impact_paise": 30,
+      "detail": {
+        "stale_version": "v1",
+        "correct_version": "v2",
+        "stale_bps": 90
+      }
+    },
+    {
+      "code": "D10",
+      "discrepancy_class": "fee_undercharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-003936"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-003369"
+        }
+      ],
+      "amount_impact_paise": 221,
+      "detail": {
+        "stale_version": "v1",
+        "correct_version": "v2",
+        "stale_bps": 180
+      }
+    },
+    {
+      "code": "D11",
+      "discrepancy_class": "fee_overcharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-INJ-000001"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-002205"
+        }
+      ],
+      "amount_impact_paise": 236,
+      "detail": {
+        "duplicated_fee_line_id": "FEE-002569",
+        "fixed_fee_paise": 200
+      }
+    },
+    {
+      "code": "D11",
+      "discrepancy_class": "fee_overcharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-INJ-000002"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-004868"
+        }
+      ],
+      "amount_impact_paise": 354,
+      "detail": {
+        "duplicated_fee_line_id": "FEE-005694",
+        "fixed_fee_paise": 300
+      }
+    },
+    {
+      "code": "D11",
+      "discrepancy_class": "fee_overcharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-INJ-000003"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-003739"
+        }
+      ],
+      "amount_impact_paise": 236,
+      "detail": {
+        "duplicated_fee_line_id": "FEE-004367",
+        "fixed_fee_paise": 200
+      }
+    },
+    {
+      "code": "D12",
+      "discrepancy_class": "fee_overcharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-INJ-000004"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-003261"
+        }
+      ],
+      "amount_impact_paise": 7996,
+      "detail": {
+        "surcharge_bps": 200,
+        "payment_gross_paise": 338784
+      }
+    },
+    {
+      "code": "D12",
+      "discrepancy_class": "fee_overcharge",
+      "records": [
+        {
+          "type": "fee_line",
+          "id": "FEE-INJ-000005"
+        },
+        {
+          "type": "payment",
+          "id": "PAY-004711"
+        }
+      ],
+      "amount_impact_paise": 1486,
+      "detail": {
+        "surcharge_bps": 200,
+        "payment_gross_paise": 62957
+      }
+    }
+  ],
+  "data_quality_flags": [
+    {
+      "code": "D09",
+      "records": [
+        {
+          "type": "bank_credit",
+          "id": "BC-000010"
+        }
+      ],
+      "amount_impact_paise": 0,
+      "detail": {
+        "field": "utr",
+        "true_utr": "HDFC000123420260710000000",
+        "corrupted_utr": "HDFC000123420260"
+      }
+    },
+    {
+      "code": "D09",
+      "records": [
+        {
+          "type": "bank_credit",
+          "id": "BC-000007"
+        }
+      ],
+      "amount_impact_paise": 0,
+      "detail": {
+        "field": "utr",
+        "true_utr": "HDFC000123420260707000000",
+        "corrupted_utr": "HDFC00012342026070"
+      }
+    },
+    {
+      "code": "D09",
+      "records": [
+        {
+          "type": "bank_credit",
+          "id": "BC-000020"
+        }
+      ],
+      "amount_impact_paise": 0,
+      "detail": {
+        "field": "utr",
+        "true_utr": "HDFC000123420260720000000",
+        "corrupted_utr": "HDFC00012"
+      }
+    },
+    {
+      "code": "D09",
+      "records": [
+        {
+          "type": "bank_credit",
+          "id": "BC-000022"
+        }
+      ],
+      "amount_impact_paise": 0,
+      "detail": {
+        "field": "utr",
+        "true_utr": "HDFC000123420260722000000",
+        "corrupted_utr": "HDFC0001234202"
+      }
+    },
+    {
+      "code": "D09",
+      "records": [
+        {
+          "type": "bank_credit",
+          "id": "BC-000023"
+        }
+      ],
+      "amount_impact_paise": 0,
+      "detail": {
+        "field": "utr",
+        "true_utr": "HDFC000123420260723000000",
+        "corrupted_utr": "HDFC0001234"
+      }
+    },
+    {
+      "code": "D09",
+      "records": [
+        {
+          "type": "bank_credit",
+          "id": "BC-000009"
+        }
+      ],
+      "amount_impact_paise": 0,
+      "detail": {
+        "field": "utr",
+        "true_utr": "HDFC000123420260709000000",
+        "corrupted_utr": "HDFC000123"
+      }
+    }
+  ],
+  "counts": {
+    "D01": 8,
+    "D02": 4,
+    "D03": 2,
+    "D04": 3,
+    "D05": 1,
+    "D06": 4,
+    "D07": 5,
+    "D08": 3,
+    "D09": 6,
+    "D10": 4,
+    "D11": 3,
+    "D12": 2
+  }
+}
