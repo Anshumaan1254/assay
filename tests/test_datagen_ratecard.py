@@ -253,7 +253,7 @@ def test_default_rate_card_revision_moves_debit_tier1_down():
 def test_default_rate_card_debit_top_tier_has_a_cap():
     card = default_rate_card(month="2026-07")
     tier = card.versions[0].rule_for(PaymentMethod.CARD, CardType.DEBIT).tier_for(5_000_000)
-    assert tier.cap_paise == 15_000
+    assert tier.cap_paise == 7_000
 
 
 def test_default_rate_card_upi_has_no_mdr_but_has_fixed_fee():

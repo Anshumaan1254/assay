@@ -1,0 +1,21 @@
+# Dense counts, deliberately bounded by the natural eligible population a
+# 5,200-payment / 0.15%-chargeback month actually produces -- inject.py
+# raises InjectionProfileError rather than silently under-delivering if a
+# count here exceeds what's available. D03 (cap-not-applied, debit-only,
+# >Rs.10,000 gross) and D05 (won-chargeback reversal) have the thinnest
+# natural pools (roughly 5-6 and ~4 at this scale respectively), so they
+# stay conservative here rather than "dense" like the rest. Provisional --
+# see the execution-phase note about verifying real per-class populations
+# from an actual clean-profile run before treating these as final.
+D01: 20
+D02: 15
+D03: 4
+D04: 15
+D05: 3
+D06: 15
+D07: 8
+D08: 15
+D09: 15
+D10: 15
+D11: 15
+D12: 15

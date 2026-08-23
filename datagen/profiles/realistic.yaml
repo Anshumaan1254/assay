@@ -1,0 +1,14 @@
+# Sparse, plausible counts for one 5,200-payment month. Every class gets
+# at least one instance, including D09 (zero rupee impact by design).
+D01: 8
+D02: 4
+D03: 3
+D04: 3
+D05: 2
+D06: 4
+D07: 5
+D08: 3
+D09: 6
+D10: 4
+D11: 3
+D12: 2

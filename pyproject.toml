@@ -17,6 +17,7 @@ dependencies = [
     "sqlmodel",
     "google-genai",
     "python-dotenv",
+    "pyyaml",
 ]
 
 [project.optional-dependencies]

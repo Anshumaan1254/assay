@@ -1,12 +1,17 @@
-"""Fixed shape of one generated month. Only injection counts
-(InjectionProfile, added alongside inject.py) are YAML-configurable --
-everything here is a Python constant, not a CLI flag, per the working
-agreement against unrequested configurability.
+"""Fixed shape of one generated month (GenerationConfig) plus the
+per-discrepancy-class instance counts (InjectionProfile) loaded from the
+YAML files under datagen/profiles/ -- the only part of a run that's
+YAML-configurable, per the working agreement against unrequested
+configurability.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
+from pydantic import BaseModel, Field
 
 from core.models import CardType, PaymentMethod
 
@@ -59,3 +64,39 @@ class GenerationConfig:
     goodwill_credit_range_paise: tuple[int, int] = (5_000, 50_000)
 
     settlement_lag_days: int = 2
+
+
+_PROFILES_DIR = Path(__file__).resolve().parent / "profiles"
+_BUILTIN_PROFILE_NAMES = ("clean", "realistic", "stress")
+
+
+class InjectionProfile(BaseModel):
+    """Absolute instance counts per discrepancy class, not rates -- loaded
+    from a flat YAML mapping (datagen/profiles/*.yaml or a custom path)."""
+
+    D01: int = Field(ge=0, default=0)
+    D02: int = Field(ge=0, default=0)
+    D03: int = Field(ge=0, default=0)
+    D04: int = Field(ge=0, default=0)
+    D05: int = Field(ge=0, default=0)
+    D06: int = Field(ge=0, default=0)
+    D07: int = Field(ge=0, default=0)
+    D08: int = Field(ge=0, default=0)
+    D09: int = Field(ge=0, default=0)
+    D10: int = Field(ge=0, default=0)
+    D11: int = Field(ge=0, default=0)
+    D12: int = Field(ge=0, default=0)
+
+    @classmethod
+    def from_yaml(cls, path: Path) -> InjectionProfile:
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return cls(**data)
+
+
+def load_profile(name_or_path: str) -> InjectionProfile:
+    """Resolves one of the three built-in profile names to
+    datagen/profiles/<name>.yaml; anything else is treated as a path to a
+    custom profile."""
+    if name_or_path in _BUILTIN_PROFILE_NAMES:
+        return InjectionProfile.from_yaml(_PROFILES_DIR / f"{name_or_path}.yaml")
+    return InjectionProfile.from_yaml(Path(name_or_path))

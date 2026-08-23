@@ -124,7 +124,12 @@ def _card_rule(card_type: CardType, tier1_bps: int) -> MethodFeeRule:
         tiers = (
             MDRTier(min_paise=0, max_paise=200_000, bps=tier1_bps),
             MDRTier(min_paise=200_000, max_paise=1_000_000, bps=80),
-            MDRTier(min_paise=1_000_000, max_paise=None, bps=70, cap_paise=15_000),
+            # Rs.70 cap, deliberately close to the tier's own 70bps rate at
+            # its lower boundary (~Rs.70 fee at exactly Rs.10,000 gross) so
+            # the cap is actually binding across most of this tier rather
+            # than only for rare outlier transactions -- D03 (cap not
+            # applied) needs a real population to plant into.
+            MDRTier(min_paise=1_000_000, max_paise=None, bps=70, cap_paise=7_000),
         )
     return MethodFeeRule(
         method=PaymentMethod.CARD,
