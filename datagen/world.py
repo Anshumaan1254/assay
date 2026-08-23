@@ -414,45 +414,38 @@ def generate_narration(rng: Random, utr: str, batch_id: str) -> str:
     return text
 
 
-def _assemble_batches(
-    config: GenerationConfig,
-    payments: list[Payment],
-    refunds: list[Refund],
-    chargebacks: list[Chargeback],
-    adjustments: list[Adjustment],
-    fee_lines: list[FeeLine],
-    tax_lines: list[TaxLine],
-    rng: Random,
-) -> tuple[list[SettlementBatch], list[BankCredit]]:
+def compute_batch_net_paise(world: World, batch_id: str) -> int:
+    """The settlement net for one batch, recomputed directly from the raw
+    records currently in `world`. The single implementation of the
+    conservation formula in the codebase: the initial true-world assembly
+    below and datagen/inject.py's post-mutation recomputation both call
+    this rather than each keeping their own copy of the arithmetic."""
+    payment_ids = {p.id for p in world.payments if p.settlement_id == batch_id}
+    gross = sum(p.amount.paise for p in world.payments if p.settlement_id == batch_id)
+
+    fee_lines_in_batch = [f for f in world.fee_lines if f.applies_to_id in payment_ids]
+    fees = sum(f.computed_amount.paise for f in fee_lines_in_batch)
+    fee_ids_in_batch = {f.id for f in fee_lines_in_batch}
+
+    tax = sum(t.amount.paise for t in world.tax_lines if t.applies_to_fee_id in fee_ids_in_batch)
+    refunds_total = sum(r.amount.paise for r in world.refunds if r.settlement_id == batch_id)
+    chargebacks_total = sum(c.amount.paise for c in world.chargebacks if c.settlement_id == batch_id)
+    add_back = sum(
+        a.amount.paise for a in world.adjustments if a.settlement_id == batch_id and a.kind in _ADD_BACK_KINDS
+    )
+    subtract = sum(
+        a.amount.paise for a in world.adjustments if a.settlement_id == batch_id and a.kind in _SUBTRACT_KINDS
+    )
+
+    return gross - refunds_total - fees - tax - chargebacks_total + add_back - subtract
+
+
+def _assemble_batches(config: GenerationConfig, world: World, rng: Random) -> tuple[list[SettlementBatch], list[BankCredit]]:
     batch_ids: set[str] = set()
-    batch_ids.update(p.settlement_id for p in payments)
-    batch_ids.update(r.settlement_id for r in refunds)
-    batch_ids.update(c.settlement_id for c in chargebacks)
-    batch_ids.update(a.settlement_id for a in adjustments)
-
-    payments_by_batch: dict[str, list[Payment]] = defaultdict(list)
-    for p in payments:
-        payments_by_batch[p.settlement_id].append(p)
-
-    fee_lines_by_payment: dict[str, list[FeeLine]] = defaultdict(list)
-    for f in fee_lines:
-        fee_lines_by_payment[f.applies_to_id].append(f)
-
-    tax_lines_by_fee: dict[str, list[TaxLine]] = defaultdict(list)
-    for t in tax_lines:
-        tax_lines_by_fee[t.applies_to_fee_id].append(t)
-
-    refunds_by_batch: dict[str, list[Refund]] = defaultdict(list)
-    for r in refunds:
-        refunds_by_batch[r.settlement_id].append(r)
-
-    chargebacks_by_batch: dict[str, list[Chargeback]] = defaultdict(list)
-    for c in chargebacks:
-        chargebacks_by_batch[c.settlement_id].append(c)
-
-    adjustments_by_batch: dict[str, list[Adjustment]] = defaultdict(list)
-    for a in adjustments:
-        adjustments_by_batch[a.settlement_id].append(a)
+    batch_ids.update(p.settlement_id for p in world.payments)
+    batch_ids.update(r.settlement_id for r in world.refunds)
+    batch_ids.update(c.settlement_id for c in world.chargebacks)
+    batch_ids.update(a.settlement_id for a in world.adjustments)
 
     batches: list[SettlementBatch] = []
     bank_credits: list[BankCredit] = []
@@ -460,28 +453,7 @@ def _assemble_batches(
 
     for batch_id in sorted(batch_ids):
         day = date(int(batch_id[4:8]), int(batch_id[8:10]), int(batch_id[10:12]))
-
-        batch_payments = payments_by_batch.get(batch_id, [])
-        gross = sum(p.amount.paise for p in batch_payments)
-        fees = sum(
-            f.computed_amount.paise for p in batch_payments for f in fee_lines_by_payment.get(p.id, [])
-        )
-        tax = sum(
-            t.amount.paise
-            for p in batch_payments
-            for f in fee_lines_by_payment.get(p.id, [])
-            for t in tax_lines_by_fee.get(f.id, [])
-        )
-        refunds_total = sum(r.amount.paise for r in refunds_by_batch.get(batch_id, []))
-        chargebacks_total = sum(c.amount.paise for c in chargebacks_by_batch.get(batch_id, []))
-        add_back = sum(
-            a.amount.paise for a in adjustments_by_batch.get(batch_id, []) if a.kind in _ADD_BACK_KINDS
-        )
-        subtract = sum(
-            a.amount.paise for a in adjustments_by_batch.get(batch_id, []) if a.kind in _SUBTRACT_KINDS
-        )
-
-        expected_credit = gross - refunds_total - fees - tax - chargebacks_total + add_back - subtract
+        net = compute_batch_net_paise(world, batch_id)
 
         utr = f"HDFC0001234{batch_id[4:]}{'0' * 6}"
         batches.append(
@@ -490,7 +462,7 @@ def _assemble_batches(
                 merchant_id=config.merchant_id,
                 cycle_start=datetime(day.year, day.month, day.day, 0, 0, 0, tzinfo=IST),
                 cycle_end=datetime(day.year, day.month, day.day, 23, 59, 59, tzinfo=IST),
-                expected_credit=Money(expected_credit),
+                expected_credit=Money(net),
                 utr=utr,
                 status=BatchStatus.SETTLED,
             )
@@ -502,7 +474,7 @@ def _assemble_batches(
             BankCredit(
                 id=bank_credit_ids.next(),
                 utr=utr,
-                amount=Money(expected_credit),
+                amount=Money(net),
                 value_date=value_date,
                 narration=narration,
             )
@@ -518,17 +490,15 @@ def build_true_world(config: GenerationConfig, rate_card: RateCard, rng: Random)
     reserve_and_goodwill = _generate_reserve_and_goodwill_adjustments(config, payments, rng)
     adjustments = reversal_adjustments + reserve_and_goodwill
 
-    batches, bank_credits = _assemble_batches(
-        config, payments, refunds, chargebacks, adjustments, fee_lines, tax_lines, rng
-    )
-
-    return World(
+    world = World(
         payments=payments,
         refunds=refunds,
         chargebacks=chargebacks,
         adjustments=adjustments,
         fee_lines=fee_lines,
         tax_lines=tax_lines,
-        batches=batches,
-        bank_credits=bank_credits,
+        batches=[],
+        bank_credits=[],
     )
+    world.batches, world.bank_credits = _assemble_batches(config, world, rng)
+    return world

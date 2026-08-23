@@ -41,6 +41,10 @@ _SUBTRACT_KINDS = {AdjustmentKind.RESERVE_HOLD, AdjustmentKind.MANUAL_DEBIT}
 
 
 def _recompute_expected_credit_paise(world, batch_id: str) -> int:
+    # Deliberately NOT calling datagen.world.compute_batch_net_paise: this
+    # test's entire point is to catch a bug in that function by checking
+    # its output against an independently written formula. Importing and
+    # calling the same function here would make the test tautological.
     payments_in_batch = {p.id for p in world.payments if p.settlement_id == batch_id}
     gross = sum(p.amount.paise for p in world.payments if p.settlement_id == batch_id)
     fees = sum(f.computed_amount.paise for f in world.fee_lines if f.applies_to_id in payments_in_batch)
