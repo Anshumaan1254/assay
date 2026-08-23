@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "assay"
+version = "0.1.0"
+description = "Independently verifies payment-gateway settlements, line by line, in rupees."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11,<3.12"
+authors = [{ name = "Anshumaan1254", email = "singhub1267@gmail.com" }]
+dependencies = [
+    "pydantic>=2",
+    "typer",
+    "structlog",
+    "sqlmodel",
+    "google-genai",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-timeout",
+    "hypothesis",
+    "ruff",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "llm", "datagen", "eval", "chaos", "cli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 110

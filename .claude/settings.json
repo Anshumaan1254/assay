@@ -6,7 +6,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "python scripts/guard_core.py $CLAUDE_FILE_PATHS"
+                        "command": "D:/CondaEnvs/ai/python.exe scripts/guard_core.py $CLAUDE_FILE_PATHS"
                     }
                 ]
             }
@@ -16,7 +16,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "python -m pytest -q --timeout=120"
+                        "command": "D:/CondaEnvs/ai/python.exe -m pytest -q --timeout=120"
                     }
                 ]
             }
