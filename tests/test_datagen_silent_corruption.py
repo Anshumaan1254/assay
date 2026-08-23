@@ -12,11 +12,12 @@ from __future__ import annotations
 
 from random import Random
 
+from core.models import EntityType, FeeLine, FeeType
 from core.money import Money
 from datagen.config import GenerationConfig
 from datagen.inject import apply_silent_corruption
 from datagen.ratecard import default_rate_card
-from datagen.world import build_true_world
+from datagen.world import World, build_true_world
 
 _CONFIG = GenerationConfig(month="2026-07", total_payments=600)
 _RATE_CARD = default_rate_card(_CONFIG.month)
@@ -40,6 +41,55 @@ def _get_field(world, record_type: str, record_id: str, field: str) -> Money:
     items = getattr(world, attr_by_type[record_type])
     record = next(x for x in items if x.id == record_id)
     return getattr(record, field)
+
+
+def _single_fee_world(paise: int) -> World:
+    # A minimal, hand-built World holding exactly one candidate Money field
+    # (one FeeLine.computed_amount) so rng.choice(candidates) has only one
+    # possible pick regardless of seed -- isolates the sign-selection branch
+    # (`sign = rng.choice((1, -1)) if original.paise > 0 else 1`) at an
+    # exact original.paise value, rather than hoping the real, much larger
+    # true-world candidate pool happens to contain one at that value.
+    fee = FeeLine(
+        id="FEE-000001",
+        applies_to_id="PAY-000001",
+        applies_to_type=EntityType.PAYMENT,
+        fee_type=FeeType.MDR,
+        computed_amount=Money(paise),
+        rule_id="test:mdr",
+    )
+    return World(payments=[], refunds=[], chargebacks=[], adjustments=[], fee_lines=[fee], tax_lines=[], batches=[], bank_credits=[])
+
+
+def test_zero_paise_original_only_ever_corrupts_upward():
+    # Exact boundary: original.paise == 0 forces the `else 1` branch --
+    # sign is never -1, which would otherwise produce a negative Money
+    # value. No existing test targets this value specifically; the
+    # generic test_never_produces_a_negative_amount only proves the
+    # *outcome* holds across 50 random picks from the full true-world
+    # candidate pool, which may never happen to select a zero-value field.
+    world = _single_fee_world(0)
+    for seed in range(50):
+        _, corruption = apply_silent_corruption(world, Random(seed))
+        assert corruption.original_paise == 0
+        assert corruption.delta_paise == 1
+        assert corruption.corrupted_paise == 1
+
+
+def test_one_paise_original_can_reach_the_lowest_non_negative_value():
+    # Exact boundary: original.paise == 1 is the lowest value where sign is
+    # genuinely random (original.paise > 0 is True), and the -1 branch
+    # lands exactly on 0 -- the lowest non-negative Money value. Confirm
+    # both directions are reachable (the +1 branch isn't accidentally the
+    # only one ever taken) and neither ever goes negative.
+    world = _single_fee_world(1)
+    seen = set()
+    for seed in range(50):
+        _, corruption = apply_silent_corruption(world, Random(seed))
+        assert corruption.original_paise == 1
+        assert corruption.corrupted_paise >= 0
+        seen.add(corruption.corrupted_paise)
+    assert seen == {0, 2}
 
 
 def test_flips_exactly_one_paise():

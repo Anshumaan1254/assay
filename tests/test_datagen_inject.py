@@ -488,3 +488,118 @@ def test_every_cited_record_exists_in_the_reported_world():
             # longer appears anywhere settlement-related, but the payment
             # record itself still exists in the ledger (settlement_id=None).
             assert ref.id in ids_by_type[ref.type], f"{ref.type}:{ref.id} cited but not found in reported world"
+
+
+# ---------------------------------------------------------------------------
+# Largest-realistic-value boundary: every test above draws payment amounts
+# from the lognormal sampler (mu=6.5, sigma=1.15), whose median is ~Rs.665 --
+# reaching amount_cap_paise (Rs.2,00,000) would require a ~5-sigma draw,
+# something that practically never happens at any total_payments used in
+# this file. So no test above ever exercises an injector's arithmetic at the
+# system's actual largest realistic payment. This fixture forces every
+# payment to land exactly on amount_cap_paise by setting the floor equal to
+# the cap (GenerationConfig defaults amount_cap_paise=20_000_000), then
+# reuses that fixed value to write exact, non-approximate assertions instead
+# of only "no crash" ones. chargeback_rate is bumped from the realistic
+# default (0.0015, too thin a pool at a few thousand payments) purely to get
+# a reliable D05 population; it does not affect the fee/tax arithmetic under
+# test.
+# ---------------------------------------------------------------------------
+
+_CAP_CONFIG = GenerationConfig(
+    month="2026-07", total_payments=1_500, amount_floor_paise=20_000_000, chargeback_rate=0.02
+)
+_CAP_RATE_CARD = default_rate_card(_CAP_CONFIG.month)
+
+
+def _cap_true_world(seed: int = 42):
+    return build_true_world(_CAP_CONFIG, _CAP_RATE_CARD, Random(seed))
+
+
+def test_d03_cap_removed_at_largest_realistic_gross_produces_expected_overcharge():
+    # At gross=20,000,000 the debit top tier's uncapped MDR (70bps) is
+    # exactly 1,40,000 paise against a cap of 7,000 -- a 20x gap, nothing
+    # like the modest overcharges the realistic-distribution D03 test above
+    # exercises. delta_fee = 140,000 - 7,000 = 133,000; the cascading GST
+    # recompute on the now-uncapped fee adds gst(140,000) - gst(7,000) =
+    # 25,200 - 1,260 = 23,940. Total = 156,940 paise, computed independently
+    # here rather than by re-deriving it from the injector's own formula.
+    true_world = _cap_true_world()
+    reported, discrepancies, _ = apply_discrepancies(true_world, _CAP_RATE_CARD, _only({"D03": 1}), Random(100))
+    assert len(discrepancies) == 1
+    entry = discrepancies[0]
+    assert entry.detail["cap_paise"] == 7_000
+    assert entry.detail["uncapped_paise"] == 140_000
+    assert entry.amount_impact_paise == 156_940
+
+
+def test_d02_tax_on_gross_at_largest_realistic_gross_uses_full_gross_as_base():
+    # D02's wrong base is always the payment's own gross regardless of which
+    # fee line was targeted -- at the largest realistic gross that base is
+    # 20,000,000 paise, the single largest number anywhere in the fee/tax
+    # pipeline, and 18% of it (3,600,000 paise) is exact with no rounding
+    # ambiguity, unlike most of this module's realistic-scale D02 cases.
+    true_world = _cap_true_world()
+    reported, discrepancies, _ = apply_discrepancies(true_world, _CAP_RATE_CARD, _only({"D02": 1}), Random(101))
+    assert len(discrepancies) == 1
+    entry = discrepancies[0]
+    tax_ref = next(r for r in entry.records if r.type == EntityType.TAX_LINE)
+    reported_tax = next(t for t in reported.tax_lines if t.id == tax_ref.id)
+    assert reported_tax.base_amount.paise == 20_000_000
+    assert reported_tax.amount.paise == 3_600_000
+
+
+def test_d10_has_no_eligible_candidates_at_the_largest_realistic_gross():
+    # Genuine finding, not a bug: default_rate_card's mid-month revision
+    # (see datagen/ratecard.py::default_rate_card) only changes each card
+    # type's TIER-1 bps between v1 and v2 -- tier 2 and tier 3 bps are
+    # hardcoded identically in both versions (_card_rule). At gross >=
+    # Rs.10,000 every CARD payment sits in tier 3 for both versions, so
+    # "applying the stale v1 rule" computes the exact same MDR as the
+    # correct v2 rule -- _inject_d10's own `if stale_mdr ==
+    # fee_line.computed_amount.paise: continue` guard (datagen/inject.py)
+    # correctly skips every such candidate rather than planting a
+    # zero-impact "discrepancy". At the largest realistic gross (always
+    # tier 3) this means D10 has ZERO eligible instances and
+    # InjectionProfileError is the correct, already-implemented outcome --
+    # this test locks in that behavior rather than leaving it unexercised.
+    # Whether large-transaction contract revisions should be representable
+    # by D10 at all is a data-generation design question for a human to
+    # decide, not something to silently patch here.
+    true_world = _cap_true_world()
+    with pytest.raises(InjectionProfileError):
+        apply_discrepancies(true_world, _CAP_RATE_CARD, _only({"D10": 1}), Random(102))
+
+
+def test_discrepancies_reconcile_exactly_at_the_largest_realistic_payment_amount():
+    # The whole-run reconciliation property (see
+    # test_whole_world_credit_delta_reconciles_against_ground_truth above),
+    # re-run at the largest realistic payment amount instead of the normal
+    # lognormal spread -- the most direct way to catch any scale-dependent
+    # arithmetic bug across every amount-sensitive injector at once. D07 is
+    # excluded because a world where every payment shares one fixed gross
+    # collapses fee amounts to a handful of exact values, none of which
+    # happen to sit on a half-paise rounding tie (no genuine candidates,
+    # not a bug); D09 is excluded as it carries zero rupee impact by
+    # design; D10 is excluded per the dedicated test above (zero eligible
+    # candidates at this gross, by design).
+    true_world = _cap_true_world()
+    profile = InjectionProfile(D01=2, D02=2, D03=2, D04=2, D05=2, D06=2, D08=2, D11=2, D12=2)
+    reported, discrepancies, flags = apply_discrepancies(true_world, _CAP_RATE_CARD, profile, Random(200))
+    assert len(discrepancies) == 2 * 9
+
+    total_true = sum(b.expected_credit.paise for b in true_world.batches)
+    total_reported = sum(b.expected_credit.paise for b in reported.batches)
+
+    fixed_sign_by_code = {"D02": -1, "D03": -1, "D04": -1, "D05": -1, "D08": -1, "D11": -1, "D12": -1}
+    expected_delta = 0
+    for entry in discrepancies:
+        if entry.code == "D06":
+            continue  # cross-batch wash; contributes 0 to the whole-world total
+        if entry.code == "D01":
+            sign = 1 if entry.discrepancy_class == DiscrepancyClass.FEE_UNDERCHARGE else -1
+        else:
+            sign = fixed_sign_by_code[entry.code]
+        expected_delta += sign * entry.amount_impact_paise
+
+    assert total_reported - total_true == expected_delta

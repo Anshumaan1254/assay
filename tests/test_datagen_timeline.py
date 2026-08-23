@@ -69,6 +69,29 @@ def test_distribute_counts_is_deterministic():
     assert distribute_counts(5200, weights) == distribute_counts(5200, weights)
 
 
+def test_distribute_counts_one_dominant_weight_gets_nearly_everything():
+    # One weight orders of magnitude larger than the rest of the pool --
+    # the largest-remainder division still must sum exactly, stay
+    # non-negative, and hand almost the entire total to the dominant
+    # bucket. Not covered by test_distribute_counts_favors_higher_weight
+    # (a mere 3:1 ratio) or the identical-weights cases elsewhere in this
+    # file.
+    shares = distribute_counts(1000, [1_000_000.0, 1.0, 1.0])
+    assert sum(shares) == 1000
+    assert all(s >= 0 for s in shares)
+    assert shares[0] >= 998
+
+
+def test_distribute_counts_zero_total_with_skewed_nonuniform_weights():
+    # test_distribute_counts_sums_exactly already covers total=0, but only
+    # with uniform weights ([1.0]*7) -- confirm a zero total also produces
+    # an all-zero, exact-sum result when the weights themselves are wildly
+    # uneven (skew must never cause a negative share or a nonzero leftover
+    # bucket when there's nothing to distribute).
+    shares = distribute_counts(0, [500.0, 1.0, 0.001])
+    assert shares == [0, 0, 0]
+
+
 def test_distribute_counts_rejects_empty_weights():
     with pytest.raises(ValueError):
         distribute_counts(10, [])

@@ -17,7 +17,7 @@ import pytest
 from core.models import AdjustmentKind, BatchStatus, ChargebackStage, EntityType
 from datagen.config import GenerationConfig
 from datagen.ratecard import default_rate_card
-from datagen.world import build_true_world
+from datagen.world import build_true_world, compute_batch_net_paise
 
 # A smaller-than-production config keeps these tests fast; the money
 # invariants they check don't depend on scale.
@@ -71,6 +71,51 @@ def test_conservation_identity_holds_exactly_per_batch():
 def test_every_batch_status_is_settled_before_injection():
     world = _build()
     assert all(b.status == BatchStatus.SETTLED for b in world.batches)
+
+
+def test_compute_batch_net_paise_for_batch_with_no_matching_records_is_zero():
+    # An empty-collection boundary on the one function every injector in
+    # datagen/inject.py relies on to recompute a batch total: a batch_id
+    # that matches zero payments/refunds/chargebacks/adjustments anywhere
+    # in the world must net to exactly 0, not raise or return something
+    # else via an empty-sum quirk.
+    world = _build()
+    assert compute_batch_net_paise(world, "STL-99999999") == 0
+
+
+# ---------------------------------------------------------------------------
+# Zero / one payment boundaries -- every other test in this file uses
+# total_payments in the hundreds or thousands; the generation pipeline
+# (refund sampling, chargeback sampling, reserve-hold aggregation, batch
+# assembly) is never exercised at the empty or single-element edge.
+# ---------------------------------------------------------------------------
+
+
+def test_zero_total_payments_produces_an_empty_but_valid_world():
+    config = GenerationConfig(month="2026-07", total_payments=0)
+    world = build_true_world(config, default_rate_card(config.month), Random(1))
+    assert world.payments == []
+    assert world.refunds == []
+    assert world.chargebacks == []
+    assert world.fee_lines == []
+    assert world.tax_lines == []
+    assert world.adjustments == []
+    assert world.batches == []
+    assert world.bank_credits == []
+
+
+def test_single_payment_world_produces_conserving_batches():
+    # A lone payment's own batch isn't necessarily the only one: its reserve
+    # hold releases config.reserve_hold_release_days later, which can fall
+    # in a different STL-YYYYMMDD batch consisting of nothing but that
+    # release adjustment. Assert conservation per batch rather than
+    # assuming a single-payment world means a single batch.
+    config = GenerationConfig(month="2026-07", total_payments=1)
+    world = build_true_world(config, default_rate_card(config.month), Random(1))
+    assert len(world.payments) == 1
+    assert world.batches
+    for batch in world.batches:
+        assert compute_batch_net_paise(world, batch.id) == batch.expected_credit.paise
 
 
 # ---------------------------------------------------------------------------

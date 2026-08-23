@@ -70,6 +70,69 @@ def test_mdr_amount_uncapped_tier_is_unaffected():
     assert mdr_amount(150_000, tier) == mdr_raw_amount(150_000, 180)
 
 
+def test_mdr_raw_amount_zero_gross_is_zero():
+    assert mdr_raw_amount(0, 200) == 0
+
+
+def test_mdr_raw_amount_zero_bps_is_zero():
+    assert mdr_raw_amount(500_000, 0) == 0
+
+
+def test_gst_amount_zero_base_is_zero():
+    assert gst_amount(0, 1800) == 0
+
+
+# ---------------------------------------------------------------------------
+# Exact-equality cap boundary and largest-realistic-value scale, using the
+# real default_rate_card debit top tier (bps=70, cap_paise=7_000) rather
+# than a custom tier -- the existing cap tests above (test_mdr_amount_
+# applies_cap_when_set / _does_not_cap_when_under_cap) use a hand-built
+# MDRTier(cap_paise=15_000) and never hit an exact raw==cap tie, nor the
+# system's real amount_cap_paise=20_000_000.
+# ---------------------------------------------------------------------------
+
+
+def test_mdr_amount_debit_cap_exact_equality_boundary():
+    # gross=10,00,000 paise (Rs 10,000) is the exact point where the debit
+    # top tier's own bps (70) times gross produces 7,000 paise -- exactly
+    # tier.cap_paise, with no rounding ambiguity. min() at an exact tie
+    # must still return the (unchanged) value, not silently do something
+    # else.
+    card = default_rate_card(month="2026-07")
+    rule = card.versions[0].rule_for(PaymentMethod.CARD, CardType.DEBIT)
+    tier = rule.tier_for(1_000_000)
+    assert tier.cap_paise == 7_000
+    raw = mdr_raw_amount(1_000_000, tier.bps)
+    assert raw == 7_000  # raw exactly equals the cap -- the boundary itself
+    assert mdr_amount(1_000_000, tier) == 7_000
+
+
+def test_mdr_amount_at_largest_realistic_gross_debit_cap_binds_hard():
+    # amount_cap_paise (the system-wide largest realistic single payment) is
+    # 20,000,000 paise. At that scale the debit top-tier cap is nowhere near
+    # exact equality -- raw MDR (1,40,000 paise) is 20x the Rs.70 cap. No
+    # existing test exercises the cap calculation at this real ceiling
+    # value; the lognormal sampler used by datagen/world.py practically
+    # never draws anywhere near it (~5 sigma out), so this boundary is
+    # otherwise never hit by any generated-world test.
+    card = default_rate_card(month="2026-07")
+    rule = card.versions[0].rule_for(PaymentMethod.CARD, CardType.DEBIT)
+    tier = rule.tier_for(20_000_000)
+    assert mdr_raw_amount(20_000_000, tier.bps) == 140_000
+    assert mdr_amount(20_000_000, tier) == 7_000
+
+
+def test_mdr_amount_at_largest_realistic_gross_credit_is_uncapped():
+    # Credit's top tier has no cap at all -- confirm the uncapped arithmetic
+    # itself stays exact (no overflow/precision issue) at the largest
+    # realistic gross.
+    card = default_rate_card(month="2026-07")
+    rule = card.versions[0].rule_for(PaymentMethod.CARD, CardType.CREDIT)
+    tier = rule.tier_for(20_000_000)
+    assert tier.cap_paise is None
+    assert mdr_amount(20_000_000, tier) == mdr_raw_amount(20_000_000, tier.bps) == 280_000
+
+
 # ---------------------------------------------------------------------------
 # MethodFeeRule.tier_for — half-open [min, max) boundaries
 # ---------------------------------------------------------------------------
@@ -218,6 +281,25 @@ def test_version_for_after_revision():
 def test_version_for_before_earliest_version_raises():
     with pytest.raises(ValueError):
         _two_version_card().version_for(_dt(2026, 6, 1))
+
+
+def test_version_for_handles_versions_tuple_out_of_chronological_order():
+    # RateCard.versions is documented as "any order; version_for sorts by
+    # effective_from" (see the field's own comment) and the implementation
+    # uses max(..., key=effective_from) rather than assuming the tuple is
+    # pre-sorted -- but no existing test actually constructs a RateCard with
+    # its versions out of order. Build the same two-version card as
+    # _two_version_card() but with v2 listed BEFORE v1 in the tuple, and
+    # confirm selection is still correct on both sides of the revision.
+    ordered = _two_version_card()
+    v1, v2 = ordered.versions
+    reversed_card = RateCard(versions=(v2, v1))
+
+    assert reversed_card.version_for(_dt(2026, 7, 15, 23, 59)).version_id == "v1"
+    assert reversed_card.version_for(_dt(2026, 7, 16, 0, 0)).version_id == "v2"
+    assert reversed_card.version_for(_dt(2026, 7, 20)).version_id == "v2"
+    with pytest.raises(ValueError):
+        reversed_card.version_for(_dt(2026, 6, 1))
 
 
 # ---------------------------------------------------------------------------
