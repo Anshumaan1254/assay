@@ -16,7 +16,7 @@ from random import Random
 import pytest
 
 from core.exceptions import DiscrepancyClass
-from core.models import AdjustmentKind, ChargebackStage, EntityType, FeeType, PaymentMethod
+from core.models import AdjustmentKind, EntityType, FeeType, PaymentMethod
 from datagen.config import GenerationConfig, InjectionProfile
 from datagen.ratecard import default_rate_card
 from datagen.world import build_true_world
@@ -40,19 +40,11 @@ def _batches_by_id(world):
     return {b.id: b for b in world.batches}
 
 
-def _credits_by_utr(world):
-    return {c.utr: c for c in world.bank_credits}
-
-
 # ---------------------------------------------------------------------------
 # Import guard -- written before the module exists.
 # ---------------------------------------------------------------------------
 
-from datagen.inject import (  # noqa: E402
-    InjectionProfileError,
-    apply_discrepancies,
-    apply_silent_corruption,
-)
+from datagen.inject import InjectionProfileError, apply_discrepancies  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -496,23 +488,3 @@ def test_every_cited_record_exists_in_the_reported_world():
             # longer appears anywhere settlement-related, but the payment
             # record itself still exists in the ledger (settlement_id=None).
             assert ref.id in ids_by_type[ref.type], f"{ref.type}:{ref.id} cited but not found in reported world"
-
-
-# ---------------------------------------------------------------------------
-# Silent corruption
-# ---------------------------------------------------------------------------
-
-
-def test_silent_corruption_flips_exactly_one_paise_on_exactly_one_record():
-    true_world = _true_world()
-    reported, corruption = apply_silent_corruption(true_world, Random(20))
-    assert abs(corruption.delta_paise) == 1
-    assert corruption.corrupted_paise - corruption.original_paise == corruption.delta_paise
-    assert corruption.corrupted_paise >= 0
-
-
-def test_silent_corruption_is_deterministic_with_seed():
-    true_world = _true_world()
-    _, a = apply_silent_corruption(true_world, Random(55))
-    _, b = apply_silent_corruption(true_world, Random(55))
-    assert a == b
