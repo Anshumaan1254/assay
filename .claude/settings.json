@@ -1,35 +1,66 @@
 {
-    "hooks": {
-        "PostToolUse": [
-            {
-                "matcher": "Edit|Write",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "D:/CondaEnvs/ai/python.exe scripts/guard_core.py $CLAUDE_FILE_PATHS"
-                    }
-                ]
-            }
-        ],
-        "Stop": [
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "D:/CondaEnvs/ai/python.exe -m pytest -q --timeout=120"
-                    }
-                ]
-            }
-        ],
-        "SessionStart": [
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "git log --oneline -5 && tail -20 DECISIONS.md"
-                    }
-                ]
-            }
+  "permissions": {
+    "allow": [
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m pytest -q tests/test_datagen_silent_corruption.py tests/test_datagen_inject.py)",
+      "Bash(git commit -m ' *)",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m datagen.cli generate --profile clean --seed 1 --out \"C:/Users/Anshu/LOCAL~1/bin/claude/d--Development-Projects-Assay/ebae6687-372c-4b56-84d1-ebf6137cd5cf/scratchpad/runs\" --truth-out \"C:/Users/Anshu/LOCAL~1/bin/claude/d--Development-Projects-Assay/ebae6687-372c-4b56-84d1-ebf6137cd5cf/scratchpad/truth/ground_truth.json\")",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -c \"import typer; print\\(typer.__version__\\)\")",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m datagen.cli --help)",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m datagen.cli --profile clean --seed 1 --out \"C:/Users/Anshu/LOCAL~1/bin/claude/d--Development-Projects-Assay/ebae6687-372c-4b56-84d1-ebf6137cd5cf/scratchpad/runs\" --truth-out \"C:/Users/Anshu/LOCAL~1/bin/claude/d--Development-Projects-Assay/ebae6687-372c-4b56-84d1-ebf6137cd5cf/scratchpad/truth/ground_truth.json\")",
+      "Bash(D:/CondaEnvs/ai/python.exe -c ' *)",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m pytest -q tests/test_datagen_writer.py tests/test_datagen_cli.py -v)",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m pytest tests/test_architecture.py -q)",
+      "Bash(echo \"step1 exit: $?\")",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -c \"import cli; print\\('cli exports:', [n for n in dir\\(cli\\) if not n.startswith\\('_'\\)]\\)\")",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m pytest -q --timeout=180 -p no:cacheprovider)",
+      "Bash(cat)",
+      "Bash(D:/CondaEnvs/ai/python.exe /tmp_check_apply_bps.py)",
+      "Bash(D:/CondaEnvs/ai/python.exe \"C:/Users/Anshu/LOCAL~1/bin/claude/d--Development-Projects-Assay/fa81623a-b9d7-4e6e-bca4-ed37c01c1cde/scratchpad/check_apply_bps.py\")",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" \"C:/Users/Anshu/LOCAL~1/bin/claude/d--Development-Projects-Assay/fa81623a-b9d7-4e6e-bca4-ed37c01c1cde/scratchpad/verify_finding.py\")",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m pytest -q tests/test_contract.py)",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -)",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" scripts/guard_core.py core/contract.py)",
+      "Bash(echo \"guard exit: $?\")",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m ruff check core/contract.py llm/ tests/test_contract.py tests/test_contract_parser.py tests/test_provider.py)",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" \"C:/Users/Anshu/LOCAL~1/bin/claude/d--Development-Projects-Assay/fa81623a-b9d7-4e6e-bca4-ed37c01c1cde/scratchpad/e2e_check.py\")",
+      "Bash(git config *)",
+      "Bash(git commit -m 'Log the contract build: twelve decisions, five incidents *)",
+      "Bash(\"D:/CondaEnvs/ai/python.exe\" -m ruff check llm/providers/gemini.py)",
+      "PowerShell(D:/CondaEnvs/ai/python.exe -m pytest tests/test_ledger.py -q --no-header 2>&1)",
+      "PowerShell(D:/CondaEnvs/ai/python.exe -m pytest tests/test_conserve.py -q --no-header 2>&1)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "D:/CondaEnvs/ai/python.exe scripts/guard_core.py $CLAUDE_FILE_PATHS"
+          }
         ]
-    }
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "D:/CondaEnvs/ai/python.exe -m pytest -q --timeout=120"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git log --oneline -5 && tail -20 DECISIONS.md"
+          }
+        ]
+      }
+    ]
+  }
 }
