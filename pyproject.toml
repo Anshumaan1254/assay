@@ -23,6 +23,11 @@ dependencies = [
     # build an int64 cost matrix, rather than relying on it transitively.
     "numpy",
     "scipy",
+    # eval/calibrate_lanes.py only: sklearn.isotonic.IsotonicRegression to
+    # fit lane calibration curves, and scipy.stats.beta for the
+    # Clopper-Pearson bound behind the AUTO-lane coverage guarantee. Never
+    # imported from core/ or llm/ -- fitting is eval/'s job alone.
+    "scikit-learn",
 ]
 
 [project.optional-dependencies]
