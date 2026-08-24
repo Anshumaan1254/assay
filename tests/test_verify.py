@@ -61,7 +61,7 @@ from core.models import (
     TaxLine,
 )
 from core.money import Money
-from core.verify import UnsupportedTaxBase, verify, verify_all
+from core.verify import UnsupportedTaxBase, fee_tax_cells, verify, verify_all
 from datagen.config import GenerationConfig, load_profile
 from datagen.inject import apply_discrepancies
 from datagen.ratecard import default_rate_card, render_markdown
@@ -256,6 +256,25 @@ def test_a_settlement_that_matches_the_contract_produces_no_findings():
     ledger = Ledger([payment, fee_line, tax_line])
     proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 8_000 - 1_440)
 
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+
+
+def test_fee_tax_cells_includes_matched_cells_that_verify_does_not_turn_into_findings():
+    """The whole reason fee_tax_cells exists: a calibration harness needs
+    to know how often this source is RIGHT, not just how it's wrong, and
+    verify() itself silently drops an exact-match cell -- there is nothing
+    for it to report."""
+    contract = _two_tier_contract()
+    payment = _payment(paise=500_000)  # correct MDR = 8_000
+    fee_line = _fee_line(paise=8_000, rule_id="card.credit.tier2")
+    tax_line = _tax_line(base_paise=8_000, paise=1_440)
+    ledger = Ledger([payment, fee_line, tax_line])
+    proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 8_000 - 1_440)
+
+    cells = fee_tax_cells(proof, ledger, contract)
+
+    assert cells, "the fixture must actually produce cells to test their shape"
+    assert all(cell.reported_paise == cell.recomputed_paise for cell in cells)
     assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
 
 

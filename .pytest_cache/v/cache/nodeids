@@ -578,6 +578,7 @@
   "tests/test_verify.py::test_a_won_chargebacks_reversal_satisfies_the_check_even_in_a_different_settlement_cycle",
   "tests/test_verify.py::test_ambiguous_proofs_are_skipped_without_error",
   "tests/test_verify.py::test_every_finding_verify_emits_is_major_severity_propose_lane_and_full_confidence",
+  "tests/test_verify.py::test_fee_tax_cells_includes_matched_cells_that_verify_does_not_turn_into_findings",
   "tests/test_verify.py::test_finding_ids_are_unique_and_stable_across_a_run",
   "tests/test_verify.py::test_tax_computed_off_the_wrong_base_is_a_tax_miscalculation_finding",
   "tests/test_verify.py::test_the_clean_profile_reconciles_to_zero_unexplained_and_zero_findings",

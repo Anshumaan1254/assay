@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable
+from typing import Literal
 
 from core.contract import CompiledContract, FeeBreakdown
 from core.decompose import DecompositionOutcome, DecompositionProof
@@ -41,6 +42,7 @@ from core.exceptions import DiscrepancyClass
 from core.ledger import Ledger
 from core.models import (
     AdjustmentKind,
+    AssayModel,
     Chargeback,
     ChargebackStage,
     EntityType,
@@ -142,65 +144,100 @@ class _IdSeq:
         return f"{self._prefix}-{self._n:03d}"
 
 
-def _fee_and_tax_findings(
-    proof: DecompositionProof, ledger: Ledger, contract: CompiledContract, ids: _IdSeq, audit_run_id: str
-) -> list[Finding]:
-    findings: list[Finding] = []
+class FeeTaxCell(AssayModel):
+    """One fee-or-tax comparison cell for a payment: what the settlement
+    reports against what the contract independently recomputes. Includes
+    exact matches (`reported_paise == recomputed_paise`) -- `verify()`
+    itself only cares about a mismatch, but a calibration harness needs the
+    matches too, to know how often this source is right, not just how it's
+    wrong."""
+
+    payment_ref: RecordRef
+    fee_type: FeeType
+    kind: Literal["fee", "tax"]
+    reported_paise: int
+    recomputed_paise: int
+    evidence_ids: list[RecordRef]
+
+
+def fee_tax_cells(proof: DecompositionProof, ledger: Ledger, contract: CompiledContract) -> list[FeeTaxCell]:
+    """Every fee/tax comparison cell for a RESOLVED proof's payments,
+    including exact matches. `_fee_and_tax_findings` is the subset of this
+    where `reported_paise != recomputed_paise`."""
+    cells: list[FeeTaxCell] = []
     for payment_ref in _resolved_payment_refs(proof):
         payment: Payment = ledger.get(payment_ref)
         breakdown = contract.fee_for(payment, at=payment.captured_at)
-        currency = payment.amount.currency
 
         reported_fees = _reported_fee_totals(ledger, payment_ref)
         recomputed_fees = _recomputed_fee_totals(breakdown)
         for fee_type in sorted(set(reported_fees) | set(recomputed_fees), key=lambda t: t.value):
-            delta = reported_fees.get(fee_type, 0) - recomputed_fees.get(fee_type, 0)
-            if delta == 0:
-                continue
-            discrepancy_class = (
-                DiscrepancyClass.FEE_UNDERCHARGE if delta < 0 else DiscrepancyClass.FEE_OVERCHARGE
-            )
-            findings.append(
-                Finding(
-                    id=ids.next(),
-                    audit_run_id=audit_run_id,
-                    discrepancy_class=discrepancy_class,
-                    severity=Severity.MAJOR,
-                    amount_impact=Money(abs(delta), currency),
+            cells.append(
+                FeeTaxCell(
+                    payment_ref=payment_ref,
+                    fee_type=fee_type,
+                    kind="fee",
+                    reported_paise=reported_fees.get(fee_type, 0),
+                    recomputed_paise=recomputed_fees.get(fee_type, 0),
                     evidence_ids=_evidence_for_fee_type(ledger, payment_ref, fee_type),
-                    confidence=CONFIDENCE,
-                    lane=Lane.PROPOSE,
-                    explanation=(
-                        f"payment {payment.id}: contract recomputes {fee_type.value} fee as "
-                        f"{recomputed_fees.get(fee_type, 0)} paise but the settlement reports "
-                        f"{reported_fees.get(fee_type, 0)} paise (delta {delta:+d} paise)"
-                    ),
                 )
             )
 
         reported_tax = _reported_tax_totals(ledger, payment_ref)
         recomputed_tax = _recomputed_tax_totals(breakdown)
         for fee_type in sorted(set(reported_tax) | set(recomputed_tax), key=lambda t: t.value):
-            delta = reported_tax.get(fee_type, 0) - recomputed_tax.get(fee_type, 0)
-            if delta == 0:
-                continue
-            findings.append(
-                Finding(
-                    id=ids.next(),
-                    audit_run_id=audit_run_id,
-                    discrepancy_class=DiscrepancyClass.TAX_MISCALCULATION,
-                    severity=Severity.MAJOR,
-                    amount_impact=Money(abs(delta), currency),
+            cells.append(
+                FeeTaxCell(
+                    payment_ref=payment_ref,
+                    fee_type=fee_type,
+                    kind="tax",
+                    reported_paise=reported_tax.get(fee_type, 0),
+                    recomputed_paise=recomputed_tax.get(fee_type, 0),
                     evidence_ids=_evidence_for_tax_of_fee_type(ledger, payment_ref, fee_type),
-                    confidence=CONFIDENCE,
-                    lane=Lane.PROPOSE,
-                    explanation=(
-                        f"payment {payment.id}: contract recomputes tax on {fee_type.value} as "
-                        f"{recomputed_tax.get(fee_type, 0)} paise but the settlement reports "
-                        f"{reported_tax.get(fee_type, 0)} paise (delta {delta:+d} paise)"
-                    ),
                 )
             )
+    return cells
+
+
+def _fee_and_tax_findings(
+    proof: DecompositionProof, ledger: Ledger, contract: CompiledContract, ids: _IdSeq, audit_run_id: str
+) -> list[Finding]:
+    findings: list[Finding] = []
+    for cell in fee_tax_cells(proof, ledger, contract):
+        delta = cell.reported_paise - cell.recomputed_paise
+        if delta == 0:
+            continue
+        payment: Payment = ledger.get(cell.payment_ref)
+        currency = payment.amount.currency
+        if cell.kind == "fee":
+            discrepancy_class = (
+                DiscrepancyClass.FEE_UNDERCHARGE if delta < 0 else DiscrepancyClass.FEE_OVERCHARGE
+            )
+            explanation = (
+                f"payment {payment.id}: contract recomputes {cell.fee_type.value} fee as "
+                f"{cell.recomputed_paise} paise but the settlement reports "
+                f"{cell.reported_paise} paise (delta {delta:+d} paise)"
+            )
+        else:
+            discrepancy_class = DiscrepancyClass.TAX_MISCALCULATION
+            explanation = (
+                f"payment {payment.id}: contract recomputes tax on {cell.fee_type.value} as "
+                f"{cell.recomputed_paise} paise but the settlement reports "
+                f"{cell.reported_paise} paise (delta {delta:+d} paise)"
+            )
+        findings.append(
+            Finding(
+                id=ids.next(),
+                audit_run_id=audit_run_id,
+                discrepancy_class=discrepancy_class,
+                severity=Severity.MAJOR,
+                amount_impact=Money(abs(delta), currency),
+                evidence_ids=cell.evidence_ids,
+                confidence=CONFIDENCE,
+                lane=Lane.PROPOSE,
+                explanation=explanation,
+            )
+        )
     return findings
 
 
