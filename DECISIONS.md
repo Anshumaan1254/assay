@@ -855,3 +855,65 @@ job and needs the taxonomy skill's five coordinated steps.
 resolve structurally and the other 6 at subset-sum — so the Hungarian path
 has unit tests behind it and no production exercise. The first real
 many-to-many statement will be its first real test.
+
+## 2026-08-24 23:10 — Settlement lag out of the code, invariant 4 gated in eval/
+
+Two follow-ups on the decomposition build, both raised in review.
+
+**`settlement_lag_days` is configuration, not a constant.** T+2 is the Indian
+standard but it is a contracted arrangement, not a law of arithmetic — a
+merchant on T+1 or T+3 is ordinary, and a hardcoded 2 would silently
+mis-price tier 3's date cost for them. `SETTLEMENT_LAG_DAYS = 2` is now a
+named module constant in `core/decompose.py`, `SETTLEMENT_LAG_DAYS=2` is in
+`.env`, and `DecompositionBudget.from_env()` reads it, mirroring
+`GeminiConfig.from_env()`.
+
+**Configuration is asked for, never inhaled.** `DecompositionBudget()` still
+returns the declared defaults and ignores the environment entirely; only the
+explicit `from_env()` reads it. Alternative rejected: read the environment
+inside `__init__` so every construction picks it up — rejected because it
+would make every run depend on the shell it was launched from, and invariant
+4's byte-identical guarantee could not then be checked at all. The same trap
+that bit `llm/providers/gemini.py` applies to the tests here: `load_dotenv()`
+resolves its path from the calling module's location, not the cwd, so the
+fallback test stubs it out rather than asserting the developer's filesystem.
+
+Only the settlement lag is wired to the environment. The other budget fields
+describe this machine's patience, not the merchant's arrangement, so they
+stay in code until one of them actually needs to vary by deployment.
+
+**`eval/determinism.py`: a run containing a wall-clock timeout must not be
+scored.** A correction to the framing this was raised with — the
+`TIME_BUDGET_EXHAUSTED` reason is *not* deterministic given the same seed.
+Whether any individual credit trips it depends on machine speed and load, so
+it is not merely the count that varies across machines; which credits time
+out varies too. The conclusion stands and the fix is the same: assert zero,
+not "assert the same".
+
+The distinction the module rests on is between the two budgets.
+`NODE_BUDGET_EXHAUSTED` is a decision about the search — the same inputs
+reach it at the same point anywhere, so a run that exhausts it is still
+reproducible, it just reproducibly gives up. `TIME_BUDGET_EXHAUSTED` is a
+decision about this machine on this day. `check_reproducibility` reports
+both; only the second sets `reproducible=False`.
+
+**`assert_reproducible` raises rather than returning a flag.** Alternative
+rejected: return the report and let callers decide — rejected because the
+failure mode is an accuracy number computed over an unreproducible run,
+which is worse than no number: it looks like evidence.
+
+**Why this could not live in `verify_proof`.** A timed-out proof verifies
+cleanly and its `proof_hash` is entirely self-consistent, because the hash
+covers what the proof *says*, not what the machine was doing while it said
+it. Nothing local to the proof reveals the problem — only the reason code
+does, and only when you are looking at the whole run. `IRREPRODUCIBLE_REASONS`
+is a frozenset of one rather than an inline comparison, so a future
+machine-dependent bound has an obvious home.
+
+`eval/determinism.py` reads no ground truth. It lives in `eval/` because it
+scores a run rather than computing one; the package's quarantine privilege
+is unused here.
+
+**Built:** `eval/determinism.py`, `tests/test_eval_determinism.py` (16),
+5 config tests in `tests/test_decompose.py`. 531 tests passing, `guard_core.py`
+clean, `ruff` adds no new findings.

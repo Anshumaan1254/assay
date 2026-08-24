@@ -24,6 +24,7 @@ from pathlib import Path
 import pytest
 
 from core.decompose import (
+    SETTLEMENT_LAG_DAYS,
     DecompositionBudget,
     DecompositionOutcome,
     DecompositionProof,
@@ -832,6 +833,57 @@ def test_proof_hash_is_recomputable_from_the_proof_alone():
     # its own content is rejected.
     assert verify_proof(proof, ledger).ok is True
     assert len(proof.proof_hash) == 64
+
+
+# ---------------------------------------------------------------------------
+# The settlement lag is configuration, not a constant
+# ---------------------------------------------------------------------------
+
+
+def test_settlement_lag_defaults_to_the_indian_standard():
+    assert SETTLEMENT_LAG_DAYS == 2
+    assert DecompositionBudget().settlement_lag_days == 2
+
+
+def test_from_env_reads_the_settlement_lag(monkeypatch):
+    monkeypatch.setattr("core.decompose.load_dotenv", lambda *a, **k: False)
+    monkeypatch.setenv("SETTLEMENT_LAG_DAYS", "3")
+
+    assert DecompositionBudget.from_env().settlement_lag_days == 3
+
+
+def test_from_env_falls_back_to_the_declared_default(monkeypatch):
+    # load_dotenv() resolves its path from the calling module's location,
+    # not the cwd, so it would find the repo's own .env and this test would
+    # assert the developer's filesystem instead of the fallback logic. The
+    # same trap is logged against llm/providers/gemini.py.
+    monkeypatch.setattr("core.decompose.load_dotenv", lambda *a, **k: False)
+    monkeypatch.delenv("SETTLEMENT_LAG_DAYS", raising=False)
+
+    assert DecompositionBudget.from_env().settlement_lag_days == SETTLEMENT_LAG_DAYS
+
+
+def test_the_plain_constructor_ignores_the_environment(monkeypatch):
+    # A budget that absorbed ambient environment would make every run depend
+    # on the shell it was launched from, and invariant 4 could not be
+    # checked. Configuration is asked for, never inhaled.
+    monkeypatch.setenv("SETTLEMENT_LAG_DAYS", "9")
+
+    assert DecompositionBudget().settlement_lag_days == SETTLEMENT_LAG_DAYS
+
+
+def test_the_settlement_lag_changes_matching_but_never_an_amount():
+    # It shapes tier 3's date cost. If it ever moved a rupee, this would
+    # differ.
+    a, net_a = _make_batch("STL-1", "UTR-1", DAY, [500_000])
+    credit = _credit("BC-1", "UTR-1", net_a, VALUE_DATE)
+    ledger = Ledger([*a, credit])
+
+    lagged = decompose(credit, ledger, merchant_id=MERCHANT, budget=DecompositionBudget(settlement_lag_days=9))
+    normal = decompose(credit, ledger, merchant_id=MERCHANT)
+
+    assert lagged.sum_paise == normal.sum_paise
+    assert lagged.residual_paise == normal.residual_paise
 
 
 # ---------------------------------------------------------------------------

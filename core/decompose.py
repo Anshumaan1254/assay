@@ -36,6 +36,7 @@ different reasons rather than one shared "budget exhausted".
 
 from __future__ import annotations
 
+import os
 import re
 import time
 from collections.abc import Callable, Iterable, Sequence
@@ -45,6 +46,7 @@ from enum import StrEnum
 from typing import ClassVar
 
 import numpy as np
+from dotenv import load_dotenv
 from pydantic import Field
 from scipy.optimize import linear_sum_assignment
 
@@ -120,6 +122,14 @@ _CLOCK_CHECK_INTERVAL = 1_024
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
+# T+2 is the standard settlement cycle in India, but it is a contracted
+# arrangement rather than a law of arithmetic -- a merchant on T+1 or T+3 is
+# ordinary. Declared here as the default and overridable through
+# SETTLEMENT_LAG_DAYS in the environment, so changing it never means editing
+# code. It shapes tier 3's date cost and nothing else; no amount anywhere
+# depends on it.
+SETTLEMENT_LAG_DAYS = 2
+
 _CONTRIBUTING_TYPES = (
     EntityType.PAYMENT,
     EntityType.REFUND,
@@ -164,9 +174,30 @@ class DecompositionBudget(AssayModel):
     window_days_after: int = 5
     max_competing: int = 4
     # A matching hint only -- how long after a cycle closes its credit
-    # normally lands. It shapes tier 3's date cost and touches no
-    # arithmetic; no amount anywhere depends on it.
-    settlement_lag_days: int = 2
+    # normally lands. See SETTLEMENT_LAG_DAYS above.
+    settlement_lag_days: int = SETTLEMENT_LAG_DAYS
+
+    @classmethod
+    def from_env(cls) -> DecompositionBudget:
+        """Budget with any environment overrides applied.
+
+        Deliberately explicit rather than read inside `__init__`: a budget
+        that silently absorbed ambient environment would make every run
+        depend on the shell it was launched from, and invariant 4's
+        byte-identical guarantee could not be checked. Callers that want
+        configuration ask for it; `DecompositionBudget()` stays pure.
+
+        Only the settlement lag is wired up, because it is the only value
+        here that describes the merchant's arrangement rather than this
+        machine's patience. The other fields are search budgets; extend this
+        the same way if one of them ever needs to vary by deployment.
+        """
+        load_dotenv()
+        return cls(
+            settlement_lag_days=int(
+                os.environ.get("SETTLEMENT_LAG_DAYS", cls.model_fields["settlement_lag_days"].default)
+            )
+        )
 
 
 DEFAULT_BUDGET = DecompositionBudget()
