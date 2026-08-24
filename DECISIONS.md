@@ -405,3 +405,321 @@ D10 (genuinely bidirectional per instance) reading their sign from
 **Guard added:** none new — the existing property test now asserts the
 correct thing; no separate regression test needed since this was a bug
 in the test's own logic, not in shipped generator code.
+
+## 2026-08-24
+
+**Built:** `core/contract.py` (the LLM-facing wire schema `RateCardParse` plus
+the deterministic `CompiledContract` engine); `llm/contract_parser.py`;
+`tests/test_contract.py` (89) and `tests/test_contract_parser.py` (21), both
+written before the implementation and confirmed failing first. Repaired
+`llm/providers/gemini.py` (see incident below) and wired `LLM_CACHE_DIR`,
+`LLM_MAX_RETRIES`, `LLM_RETRY_BACKOFF_BASE` into config. 393 tests passing;
+`guard_core.py`, `test_architecture.py` and `ruff` clean on everything
+touched.
+
+**The wire schema lives in `core/contract.py`, not in `llm/`.** Alternative
+rejected: define it beside the parser in `llm/contract_parser.py` — rejected
+because `core/` must load a compiled contract without importing `llm/`
+(invariant 2), so the schema would have to be duplicated. `llm/` importing
+`core/` is legal; the reverse is not. The model is shaped by the domain
+schema, not the other way round.
+
+**Overlap is scoped per emitted fee component type, not globally.**
+Alternative rejected: any two rules matching one transaction is an error, as
+originally specified — rejected because the +2% international surcharge
+matches every international card transaction the MDR clause also matches, so
+a global rule makes surcharges inexpressible. The workaround (folding
+international into every card rule as a duplicated variant) doubles the card
+rule count and leaves 380bps traceable to no single clause in the document.
+Two clauses emitting the same component type remain a hard error.
+
+**`cap_paise` caps the ad-valorem component only; a fixed fee is added on
+top, uncapped.** Alternative rejected: cap the rule's whole fee — rejected
+because once the cap binds, the fixed fee's own amount is unrecoverable from
+the total. Not decidable from the document, and untestable against the
+current dataset (the capped debit slab has `fixed_fee_paise=0`), so it was
+asked rather than assumed.
+
+**Completeness means gapless amount and date coverage within declared
+scope.** Alternative rejected: every `PaymentMethod` x `CardType` must have a
+rule — rejected because the real rate card prices no EMI, so strict coverage
+would require inventing an EMI rate the document does not contain. Uncovered
+methods are reported at compile time; a transaction using one raises
+`NoApplicableRule` and becomes an exception, never a guessed fee.
+
+**Every interval is half-open: `[amount_min, amount_max)` and
+`[effective_from, effective_to)`.** Alternative rejected: inclusive
+`effective_to` — rejected because "exactly midnight on the revision date"
+then has two defensible answers. Half-open also matches `MDRTier`'s existing
+`[min_paise, max_paise)` convention in `datagen/ratecard.py`.
+
+**`mcc_pattern` is a prefix glob (digits, at most one trailing `*`), not a
+regex.** Alternative rejected: regex — rejected because regex intersection is
+undecidable in general, so overlap detection could not be exact. Two prefix
+globs intersect iff one is a prefix of the other.
+
+**Rounding is not parsed from the document.** Alternative rejected: let the
+model emit a rounding mode — rejected under invariant 2: a model choosing a
+rounding mode is a model choosing an amount, and it is the highest-leverage
+thing it could get wrong. Rounding comes from config, defaults to half-up,
+and is part of the contract version. Rounding language found in the document
+lands in `rounding_note`, which the engine never reads.
+
+**`supersedes` is validated, never inferred.** Alternative rejected: close a
+dangling `effective_to` automatically when a later rule prices the same
+transactions — rejected because that is the engine inventing a business rule.
+A dangling one surfaces as an overlap and is reported. The live parse
+confirmed the model closes both revised slabs correctly, so the strict
+reading costs nothing in practice.
+
+**Basis-point arithmetic is integer-only.** Alternative rejected: `Decimal`
+plus `quantize`, as `datagen/ratecard.py` uses — rejected because invariant 1
+confines `Decimal` to ingest parsers and `core/money.py` already spends that
+allowance in `from_rupees`. `divmod(paise * bps, 10_000)` with an explicit
+tie rule is exact at these magnitudes and agrees with the Decimal path, which
+is what makes the differential test against datagen meaningful.
+
+**`FeeBreakdown` returns new component types rather than reusing
+`core.models.FeeLine` / `TaxLine`.** Alternative rejected: add `rule_id` to
+`TaxLine` — rejected because adding a field, even an optional one, changes
+the serialized JSON and breaks the byte-identical committed run under
+`runs/realistic-seed42`.
+
+**`version_id` hashes rounding mode, rules and dormant clauses; it excludes
+`source_sha256` and the prose fields.** Alternative rejected: include the
+source document hash — rejected because the version identifies the
+arithmetic, not the input's byte formatting; a reflowed document that parses
+to the same schedule is the same contract. Rounding mode is included because
+changing it changes every computed amount.
+
+**Retry, backoff and cache location read `LLM_*` env vars; RPM keeps
+`GEMINI_*`.** Alternative rejected: one vendor prefix for all of them —
+rejected because retrying and caching a prompt hash are not vendor concepts;
+any provider behind the Protocol does both the same way. Requests per minute
+is a Gemini quota and keeps the vendor name.
+
+## 2026-08-24 15:10 — every Gemini call was unconstrained prose and looked like structured output
+
+**Symptom:** first live call against the real API:
+`json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)`.
+`interaction.output_text` held `"Here are three Indian payment methods with a
+one-line description for each:\n\n1. **Unified Payments Interface (UPI):**
+An instant real-time payment system..."` — prose, with a JSON schema attached
+to the request.
+
+**Diagnosis:** two independent faults. (a) `generate_structured` passed
+`response_format={"type": "text", "mime_type": ..., "schema": ...}`, but
+`types.TextResponseFormat` has exactly two fields, `mime_type` and
+`jsonSchema`; the `schema` key was dropped with no error. (b) Corrected to
+`jsonSchema`, the Interactions API still returned prose — it does not enforce
+`response_format` for this model. Found by dumping the returned `Interaction`
+object, then inspecting `types.TextResponseFormat.model_fields`. Every call
+this project would ever have made was prompt-and-pray, and nothing at the
+call site could tell: the failure is silent by construction. No test caught
+it because every provider test fakes the client.
+
+**First fix:** moved the schema to the `jsonSchema` key on the same
+Interactions call.
+
+**Whether it worked:** no. Still prose. Ruled the Interactions API out for
+structured output.
+
+**Final fix:** `client.models.generate_content` with
+`GenerateContentConfig(response_mime_type="application/json",
+response_schema=...)`, which does enforce the schema — proven by it returning
+HTTP 400 naming our own field paths. That exposed a second fault: Pydantic
+emits `additionalProperties` (from `extra="forbid"`), `$defs`/`$ref`, and
+`anyOf: [..., null]`, and the API rejects the first outright. Added
+`to_gemini_schema()` to inline refs, strip rejected keys, and rewrite
+nullable unions as `nullable: true`. The domain schema under `core/` stays
+strict; only the wire payload is narrowed. Added `_decode` so a response that
+is not a JSON object degrades to `ProviderUnavailable` rather than a
+`JSONDecodeError`.
+
+**Guard added:** `test_the_schema_is_sent_as_a_response_schema` asserts the
+schema reaches the request config — the exact silent drop that caused this.
+Plus `test_a_non_json_response_degrades_to_provider_unavailable`,
+`test_an_empty_response_degrades_to_provider_unavailable`, and six tests over
+`to_gemini_schema` covering ref inlining, `additionalProperties` removal,
+nullable rewriting, and refusal of recursive schemas. Residual risk accepted:
+all of these use fakes, so a change in the API contract would again pass the
+suite. Only a live call catches that class of fault, and there is currently
+no scheduled one.
+
+## 2026-08-24 16:05 — a provider test passed only because .env was empty
+
+**Symptom:** `test_missing_api_key_raises_provider_unavailable` started
+failing (`DID NOT RAISE ProviderUnavailable`) the moment a real key was put
+in `.env`.
+
+**Diagnosis:** the test called `monkeypatch.chdir(tmp_path)` on the
+assumption that `load_dotenv()` resolves relative to the cwd. It resolves
+from the calling module's directory, so it walked up and found the repo's own
+`.env` regardless. The test had never asserted what it claimed to; it passed
+only while that file happened to be empty.
+
+**First fix:** none — the cause was evident from the failure.
+
+**Whether it worked:** n/a.
+
+**Final fix:** stub `llm.providers.gemini.load_dotenv` to a no-op so the test
+asserts the config logic rather than the developer's filesystem.
+
+**Guard added:** none — the repaired test is its own guard.
+
+## 2026-08-24 17:05 — a tax on transaction gross was billed once per fee line
+
+**Symptom:** found by review, not by a failing test. A clause charging
+`1.75% + Rs.10` with a tax based on `TaxBase.TRANSACTION_GROSS` emits two fee
+components, and `_taxes_for` ran once per component. Reproduced against the
+real class: gross Rs.1,000, TDS at 1800bps, two `TaxComponent`s of 18,000
+paise each, `total_tax` 36,000 paise where 18,000 is correct. Rs.180
+overcharged on a schema-legal contract.
+
+**Diagnosis:** `fee_for` looped `for component in ...: taxes.extend(
+_taxes_for(rule, component, payment))`, and `_taxes_for` selected the base per
+treatment — `component.amount` for `FEE_AMOUNT`, `payment.amount` for
+`TRANSACTION_GROSS`. Per-component is right for `FEE_AMOUNT`, because each fee
+line is a distinct taxable amount. It is wrong for `TRANSACTION_GROSS`,
+because the gross belongs to the transaction, not to a fee line, so repeating
+it per component multiplies the same base. No validator caught it: this is
+not an overlap between two rules, it is one rule applying one treatment
+twice. No test caught it either — `TRANSACTION_GROSS` was never exercised
+anywhere in the suite.
+
+**First fix:** none — the reproduction made the cause plain.
+
+**Whether it worked:** n/a.
+
+**Final fix:** split `_taxes_for` into `_fee_taxes_for` (per component, filters
+to `FEE_AMOUNT`) and `_gross_taxes_for` (once per matched rule, filters to
+`TRANSACTION_GROSS`). `TaxComponent.on_fee_type` became `FeeType | None`, with
+None meaning the tax is levied on the transaction rather than on any one fee
+line. A gross-based tax now applies whenever its clause matched, including
+when the clause charges no fee at all.
+
+**Guard added:**
+`test_a_gross_based_tax_is_charged_once_however_many_fee_lines_the_clause_emits`,
+`test_a_gross_based_tax_is_not_attributed_to_any_one_fee_line`,
+`test_a_gross_based_tax_applies_even_when_the_clause_charges_no_fee`, and
+`test_a_fee_based_tax_stays_per_fee_line` as the control that per-line GST did
+not regress. Not reachable from the current rate card, which taxes only fee
+amounts — so nothing in the demo data would ever have surfaced it.
+
+## 2026-08-24 17:20 — a cap that zeroed a fee erased its own evidence
+
+**Symptom:** found by review. With `cap_paise=0` and `rate_bps>0` (both
+schema-legal), `_components_for` computed `charged=0`, `cap_applied=True`,
+then dropped the component at `if charged != 0`. Verified: `fees == []`, so
+`uncapped_amount` and `cap_applied` vanished.
+
+**Diagnosis:** the `charged != 0` guard exists to mirror datagen's
+`if mdr > 0`, which suppresses a fee line that rounds to nothing. It cannot
+tell that case apart from a cap that deliberately waived the fee. The paise
+were not lost — zero is zero — but `FeeComponent`'s stated purpose is to make
+"a cap contractually due but not applied" nameable, and a verifier had no
+component left to compare a wrongly-charged settlement line against.
+
+**First fix:** none.
+
+**Whether it worked:** n/a.
+
+**Final fix:** guard is now `charged != 0 or cap_applied`. A fee that merely
+rounds to nothing still emits nothing, preserving datagen parity.
+
+**Guard added:** `test_a_cap_of_zero_still_reports_that_the_cap_bit`, plus
+`test_a_fee_rounding_to_zero_emits_no_component` to pin the case that must
+keep emitting nothing.
+
+## 2026-08-24 17:35 — the sign-off render told a human prepaid cards were priced
+
+**Symptom:** found by review. `uncovered_methods` reported only `emi`, so
+`render_schedule` printed "Not priced by this card: emi" — while
+`fee_for` on a prepaid card raised `NoApplicableRule`.
+
+**Diagnosis:** `uncovered_methods` tested coverage at method granularity
+(`r.applies_when.method in (None, method)`), so CARD counted as covered as
+soon as any card clause existed. Card slabs are scoped to credit and debit;
+prepaid has no clause. The failure mode is the bad one: the document a human
+signs states the schedule is complete when it is not.
+
+**First fix:** added `uncovered_card_types` checking, per card type, whether
+any rule with `method in (None, CARD)` and `card_type in (None, ct)` exists.
+
+**Whether it worked:** no. It reported prepaid as covered, because the
+international surcharge clause has `card_type=None` (meaning any) and so
+matched every card type. A surcharge is not what prices a card.
+
+**Final fix:** the same check, additionally requiring
+`applies_when.is_international is not True`, so a clause scoped to
+international transactions cannot stand in for base pricing.
+`render_schedule` now lists unpriced card types beside unpriced methods.
+`uncovered_methods` was deliberately left at method granularity: the
+live-parsed contract types UPI's flat fee as `fixed` rather than `mdr`, so
+narrowing that property by fee type would misreport UPI as unpriced.
+
+**Guard added:** `test_prepaid_cards_are_reported_as_unpriced`,
+`test_priced_card_types_are_not_reported_as_unpriced`,
+`test_render_names_the_unpriced_card_type`,
+`test_a_card_with_no_card_type_has_no_clause`.
+
+## 2026-08-24 17:45 — three gaps where a test proved less than it appeared to
+
+**Symptom:** found by review; no defect behind any of them, but each left a
+branch where a regression would pass silently.
+
+**Diagnosis:** (a) the only half-even tie test used 600 paise at 175bps =
+10.5, where the whole part 10 is even, so half-even and truncation give the
+same answer — deleting the `whole % 2` clause in `apply_bps` left all 110
+tests passing. (b) The real card's slab edges (200,000 and 1,000,000 paise)
+appeared only in the datagen differential test, which the file's own docstring
+disclaims as not the correctness proof. (c) Every overlap test drove the
+conflict through the amount or MCC axis, leaving `_dates_intersect`'s
+genuinely-offset branch unexercised.
+
+**First fix:** none — these are test gaps, not code faults. Behaviour verified
+correct before writing each assertion.
+
+**Whether it worked:** n/a.
+
+**Final fix:** none to shipped code.
+
+**Guard added:** `test_half_even_rounds_up_at_an_odd_tie` (1,800 paise at
+175bps = 31.5, odd whole part, must round up to 32 while DOWN gives 31);
+`test_golden_at_the_real_tier_boundaries` (seven hand-computed literals at
+199,999/200,000 and 999,999/1,000,000 for both card types);
+`test_the_addendum_leaves_tiers_two_and_three_untouched`;
+`test_partially_offset_date_ranges_overlap`; `test_zero_gross_payment_emits_no_fee`.
+
+## 2026-08-24 17:55 — the flash-lite default named a model that does not exist
+
+**Symptom:** listing the models this project's API key can reach returned no
+`gemini-3.7-flash-lite`, which was `GeminiConfig.model_flash_lite`'s default.
+`gemini-3.7-flash` does exist, so the parser and adjudicator paths were
+unaffected; the narrator would have failed on its first call.
+
+**Diagnosis:** found while checking which model names the key accepts, after
+the structured-output repair. Available lite models were
+`gemini-2.5-flash-lite`, `gemini-3.1-flash-lite`, `gemini-3.5-flash-lite` and
+`gemini-flash-lite-latest`. Nothing has ever called the `flash-lite` hint —
+`llm/narrator.py` is still a stub — so no test or run had exercised it. The
+default was wrong from the day it was written and would have stayed wrong
+until the first narration.
+
+**First fix:** none.
+
+**Whether it worked:** n/a.
+
+**Final fix:** default changed to `gemini-flash-lite-latest`, with `.env` set
+to match. A floating alias was chosen over pinning a version: pinning is
+exactly what broke here, and a retired generation should degrade to the
+current one rather than to an error. Accepted cost: the model behind the
+alias can change under us, so a narration prompt could shift output without a
+code change. Acceptable for narration, which generates no amounts; it would
+not be acceptable for the contract parser, where `GEMINI_MODEL_FLASH` stays
+pinned to an explicit version.
+
+**Guard added:** `test_flash_lite_default_is_a_model_that_exists` asserts the
+default. It compares a string, not the live model list, so it catches a
+regression of this value but not the underlying risk of a default that stops
+resolving. Only a live call catches that, and there is no scheduled one.
