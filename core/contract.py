@@ -590,8 +590,14 @@ def _validate_completeness(rules: list[FeeRule]) -> None:
 # ---------------------------------------------------------------------
 
 
-def _canonical(payload: object) -> str:
+def canonical_json(payload: object) -> str:
+    """The one canonical-JSON encoding in the engine. Every hash that has to
+    be byte-identical across runs (invariant 4) goes through this --
+    contract version ids here, decomposition proof hashes in decompose.py."""
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+_canonical = canonical_json
 
 
 def sha256_of(text: str) -> str:

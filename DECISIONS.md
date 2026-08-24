@@ -723,3 +723,135 @@ pinned to an explicit version.
 default. It compares a string, not the live model list, so it catches a
 regression of this value but not the underlying risk of a default that stops
 resolving. Only a live call catches that, and there is no scheduled one.
+
+## 2026-08-24 22:35 — Build core/decompose.py: three-tier cascade, proof, verifier
+
+**Built:** `core/decompose.py` (three-tier cascade, `DecompositionProof`,
+`verify_proof`), `core/conserve.py` (the sign convention only), four new
+`core/ledger.py` indexes, `core/contract.py`'s `_canonical` promoted to a
+public `canonical_json`. `tests/test_decompose.py` (49), `tests/test_conserve.py`
+(21), `tests/test_ledger.py` (+20). 510 tests passing, `guard_core.py` clean,
+`ruff` adds no new findings.
+
+On the committed run (`runs/realistic-seed42`, 17,707 records, 31 credits):
+25 resolve structurally, 6 at subset-sum, none unresolved or ambiguous, no
+record claimed twice, every proof verifies. The 6 are exactly the credits
+D09 corrupted the UTR of, and each recovered its *true* batch — checked
+against `truth/ground_truth.json` ad-hoc, not in a test. 29 of 31 net
+exactly; 2 carry a residual, −101,501 paise in total, which is the money
+`unexplained` will have to account for.
+
+**A structural hit never cascades, even when the arithmetic disagrees.** If
+the UTR names a batch whose records do not net to the credit, tier 1 still
+resolves and the proof carries a non-zero `residual_paise`. Alternative
+rejected: fall through to tier 2 on an arithmetic mismatch — rejected
+because tier 2 would then go looking for some *other* subset that nets
+exactly, find one, and the shortfall would disappear from the report. That
+inverts the product: a short settlement is the finding, not a matching
+failure. Confidence stays 10,000 in that case, because a UTR join is certain
+about *which records* regardless of whether the amount is right; whether the
+amount is right is `verify.py`'s question.
+
+**The atom of a decomposition is a settlement unit, not a record.** A unit
+is a whole batch, or a payment with its own fee and tax lines, or a
+standalone refund/chargeback/adjustment. Alternative rejected: subset-sum
+over individual records — rejected because a credit in the committed run
+would face ~168 payments and 2^168 subsets, so the node budget would trip on
+every credit, every time. It is also semantically wrong: you cannot include
+a payment's fee without the payment. At unit granularity the six hard
+credits expanded 15–81 nodes against a 200,000 budget.
+
+**Tier 1 matches the UTR by exact equality only.** Alternative rejected:
+accept a unique prefix match, which would resolve all six D09 credits at
+tier 1 — rejected because a truncated UTR is corrupt data, and repairing it
+inside the most-trusted tier hides a data-quality problem behind a confident
+answer. Falling through is the visible behaviour, and tier 2 recovers all
+six anyway.
+
+**A split settlement resolves at tier 2, not tier 3.** When several credits
+name one UTR, that batch is exploded into payment-level sub-units and
+subset-sum searches those. Alternative rejected: handle splits with the
+Hungarian method as originally scoped — rejected because assignment is 1:1
+and structurally cannot express "this credit is payments 0 and 1". Tier 3
+keeps the case it can actually express: choosing which credit goes with
+which unit when no subset sums exactly. Whole-batch and sub-unit granularity
+are never offered together — the whole always equals the sum of its parts,
+so every split credit would report as ambiguous.
+
+**Ambiguity is reported with the competitors named and `terms` left empty.**
+Two subsets hitting the target, or an assignment whose runner-up costs
+exactly the same, both produce `AMBIGUOUS`. An ambiguous proof carrying an
+answer fails verification. This is the behaviour the module exists for:
+silently picking one would produce a clean report over the wrong records
+with nothing anywhere to indicate it.
+
+**A zero-margin assignment is a tie, and a tie is ambiguous for every credit
+in it.** This does double duty. It is the confidence signal — a low margin
+routes to `ESCALATE` — and it removes the one place `scipy`'s undocumented
+tie-breaking could make a report differ across BLAS builds, which invariant
+4 would not survive. Reporting the whole assignment as ambiguous rather than
+just the tied pair is deliberately conservative: a tie anywhere means the
+pairing as a whole could have come out differently.
+
+**`scipy` and `numpy` added to `pyproject.toml`.** Both were already in the
+conda env but undeclared; asked first, confirmed. `linear_sum_assignment`
+converts to float64 internally, so tier 3's costs are integers capped well
+under 2^53 and every tie is detected exactly rather than trusted. Alternative
+rejected: a hand-rolled integer Jonker-Volgenant — rejected on the ask, not
+on the merits; the tie check makes the float64 conversion a non-issue.
+
+**The node budget is the binding bound; the wall clock is a safety net.**
+They bail out with different reasons on purpose. `NODE_BUDGET_EXHAUSTED` is
+reproducible across machines; `TIME_BUDGET_EXHAUSTED` is not, and a run that
+trips it is **not** covered by invariant 4's byte-identical guarantee.
+Collapsing them into one "budget exhausted" reason would make a
+non-deterministic run indistinguishable from a deterministic one in the
+report. `eval/` should assert zero `TIME_BUDGET_EXHAUSTED` in any run it
+scores.
+
+**`elapsed_ns` is on the proof but excluded from `proof_hash`.** A declared
+`TELEMETRY_FIELDS` set is stripped before canonical JSON. Timing is worth
+observing and cannot be hashed without breaking invariant 4. Integer
+nanoseconds via `time.monotonic_ns`, never `time.monotonic` — a float
+literal anywhere under `core/` fails `test_core_has_no_float_literals`.
+
+**Per-tier confidence is a fixed placeholder, not an invented score:**
+10,000 / 8,000 / 6,000 bps. `core/lanes.py` (conformal-calibrated lanes) is
+the module that will calibrate this properly; inventing a formula here would
+put an uncalibrated number in front of a reviewer. The raw features the
+calibration needs — `candidate_count`, `subset_size`, `nodes_expanded`,
+`assignment_margin` — travel on the proof instead.
+
+**`core/conserve.py` adopts `datagen`'s sign convention rather than
+re-deriving one.** DECISIONS.md 2026-08-23 flagged both the adjustment sign
+tables and "a won chargeback's reversal is a `MANUAL_CREDIT` `Adjustment`"
+for whoever built this. Both adopted. That second one is why chargebacks
+subtract at *every* stage including `WON`: the reversal is a separate
+record, so a positive won chargeback would credit it twice. `core/` may not
+import `datagen/`, so this is a reimplementation;
+`test_signed_sum_equals_the_independently_written_batch_formula` reconciles
+the two against a third, independently written formula rather than calling
+either.
+
+**`signed_paise` raises for non-contributing types instead of returning 0.**
+A silent zero would let a mis-typed record vanish from a sum, and would let
+a bank credit be cited as a term in its own decomposition — which nets to
+zero and "balances" while explaining nothing.
+
+**`settlement_lag_days` (default 2) is on the budget, not in the code.** Tier
+3's date cost measures distance from the *expected* credit date, not from
+the cycle close, because a settlement lands T+2 by design and comparing
+against the raw cycle date systematically favours the wrong batch. It is a
+matching hint only and touches no arithmetic; no amount anywhere depends on
+it.
+
+**Not built:** `verify.py`, `lanes.py`, and the rest of `conserve.py` — only
+`signed_paise` landed there. No loader in `core/` for the run JSON (tests
+load it themselves). No `Finding` construction: turning an ambiguous or
+unresolved proof into a `Finding` with a `DiscrepancyClass` is `verify.py`'s
+job and needs the taxonomy skill's five coordinated steps.
+
+**Untested in anger:** tier 3 never fires on the committed run — 25 credits
+resolve structurally and the other 6 at subset-sum — so the Hungarian path
+has unit tests behind it and no production exercise. The first real
+many-to-many statement will be its first real test.

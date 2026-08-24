@@ -18,6 +18,11 @@ dependencies = [
     "google-genai",
     "python-dotenv",
     "pyyaml",
+    # core/decompose.py tier 3 only: scipy.optimize.linear_sum_assignment.
+    # numpy is declared explicitly because decompose imports it directly to
+    # build an int64 cost matrix, rather than relying on it transitively.
+    "numpy",
+    "scipy",
 ]
 
 [project.optional-dependencies]
