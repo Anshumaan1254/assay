@@ -13,7 +13,6 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel
 
 from core.contract import IST, CompiledContract, RateCardParse, RoundingMode, sha256_of
 from core.models import FeeType, PaymentMethod
@@ -26,6 +25,7 @@ from llm.contract_parser import (
 from llm.provider import ProviderUnavailable
 from llm.providers.cached import CachedProvider
 from llm.providers.null import NullProvider
+from tests.support import RecordingProvider
 
 DOCUMENT = "# Merchant Rate Card - MERCH-0001\n\nUPI: flat Rs.2.00/txn processing fee.\n"
 
@@ -62,20 +62,6 @@ def good_response() -> dict:
         "rounding_note": None,
         "parser_notes": "",
     }
-
-
-class RecordingProvider:
-    """Captures exactly what the parser handed the model."""
-
-    def __init__(self, result: dict | Exception):
-        self.calls: list[tuple[str, type[BaseModel], str]] = []
-        self._result = result
-
-    def generate_structured(self, prompt: str, schema: type[BaseModel], model_hint: str) -> dict:
-        self.calls.append((prompt, schema, model_hint))
-        if isinstance(self._result, Exception):
-            raise self._result
-        return self._result
 
 
 # ---------------------------------------------------------------------
