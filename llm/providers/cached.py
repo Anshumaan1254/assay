@@ -3,23 +3,37 @@
 The cache directory is committed to the repo (see .llm_cache/), so `make
 demo` and replays never need a live API key or network access — a cache hit
 never calls the wrapped provider.
+
+Where the cache lives is read from LLM_CACHE_DIR, not hard-coded — the
+same rule the rate limits follow. It is deliberately not named for a
+vendor: caching a prompt hash is not a Gemini concern, and this wrapper
+sits over any provider.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic import BaseModel
 
-DEFAULT_CACHE_DIR = Path(".llm_cache")
+FALLBACK_CACHE_DIR = Path(".llm_cache")
+
+
+def default_cache_dir() -> Path:
+    """Resolved per call rather than at import, so a test or a chaos
+    scenario can redirect the cache without reloading the module."""
+    load_dotenv()
+    return Path(os.environ.get("LLM_CACHE_DIR") or FALLBACK_CACHE_DIR)
 
 
 class CachedProvider:
-    def __init__(self, inner, cache_dir: Path = DEFAULT_CACHE_DIR):
+    def __init__(self, inner, cache_dir: Path | str | None = None):
         self._inner = inner
-        self._cache_dir = Path(cache_dir)
+        self._cache_dir = Path(cache_dir) if cache_dir is not None else default_cache_dir()
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_structured(self, prompt: str, schema: type[BaseModel], model_hint: str) -> dict:

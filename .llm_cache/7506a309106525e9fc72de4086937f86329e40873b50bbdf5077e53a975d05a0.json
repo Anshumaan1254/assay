@@ -1,0 +1,259 @@
+{
+  "currency": "INR",
+  "dormant_clauses": [
+    {
+      "label": "TDS (Section 194-O)",
+      "reason_not_applicable": "merchant is not classified as an e-commerce marketplace operator under the current registration on file.",
+      "source_quote": "Not applicable - merchant is not classified as an e-commerce marketplace operator under the current registration on file. (e-commerce marketplace operator transactions under Section 194-O)"
+    }
+  ],
+  "merchant_id": "MERCH-0001",
+  "parser_notes": "",
+  "rounding_note": null,
+  "rules": [
+    {
+      "applies_when": {
+        "amount_max_paise": 200000,
+        "amount_min_paise": 0,
+        "card_type": "credit",
+        "method": "card"
+      },
+      "effective_from": "2026-07-01",
+      "effective_to": "2026-07-16",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 0,
+      "rate_bps": 180,
+      "rule_id": "card.credit.slab1",
+      "source_quote": "Credit | Up to Rs.2,000.00 | 1.80%",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "amount_max_paise": 200000,
+        "amount_min_paise": 0,
+        "card_type": "credit",
+        "method": "card"
+      },
+      "effective_from": "2026-07-16",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 0,
+      "rate_bps": 195,
+      "rule_id": "card.credit.slab1.revised",
+      "source_quote": "Credit card slab 1 (up to Rs.2,000.00) revised from 1.80% to 1.95%.",
+      "supersedes": "card.credit.slab1",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "amount_max_paise": 1000000,
+        "amount_min_paise": 200000,
+        "card_type": "credit",
+        "method": "card"
+      },
+      "effective_from": "2026-07-01",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 0,
+      "rate_bps": 160,
+      "rule_id": "card.credit.slab2",
+      "source_quote": "Credit | Rs.2,000.00 - Rs.10,000.00 | 1.60%",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "amount_min_paise": 1000000,
+        "card_type": "credit",
+        "method": "card"
+      },
+      "effective_from": "2026-07-01",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 0,
+      "rate_bps": 140,
+      "rule_id": "card.credit.slab3",
+      "source_quote": "Credit | Above Rs.10,000.00 | 1.40%",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "amount_max_paise": 200000,
+        "amount_min_paise": 0,
+        "card_type": "debit",
+        "method": "card"
+      },
+      "effective_from": "2026-07-01",
+      "effective_to": "2026-07-16",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 0,
+      "rate_bps": 90,
+      "rule_id": "card.debit.slab1",
+      "source_quote": "Debit | Up to Rs.2,000.00 | 0.90%",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "amount_max_paise": 200000,
+        "amount_min_paise": 0,
+        "card_type": "debit",
+        "method": "card"
+      },
+      "effective_from": "2026-07-16",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 0,
+      "rate_bps": 85,
+      "rule_id": "card.debit.slab1.revised",
+      "source_quote": "Debit card slab 1 (up to Rs.2,000.00) revised from 0.90% to 0.85%.",
+      "supersedes": "card.debit.slab1",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "amount_max_paise": 1000000,
+        "amount_min_paise": 200000,
+        "card_type": "debit",
+        "method": "card"
+      },
+      "effective_from": "2026-07-01",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 0,
+      "rate_bps": 80,
+      "rule_id": "card.debit.slab2",
+      "source_quote": "Debit | Rs.2,000.00 - Rs.10,000.00 | 0.80%",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "amount_min_paise": 1000000,
+        "card_type": "debit",
+        "method": "card"
+      },
+      "cap_paise": 7000,
+      "effective_from": "2026-07-01",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 0,
+      "rate_bps": 70,
+      "rule_id": "card.debit.slab3",
+      "source_quote": "Debit | Above Rs.10,000.00 | 0.70%, capped at Rs.70.00 per transaction",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "method": "upi"
+      },
+      "effective_from": "2026-07-01",
+      "fee_type": "fixed",
+      "fixed_fee_paise": 200,
+      "rate_bps": 0,
+      "rule_id": "upi.processing_fee",
+      "source_quote": "UPI: no MDR, flat Rs.2.00/txn processing fee.",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "method": "netbanking"
+      },
+      "effective_from": "2026-07-01",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 1000,
+      "rate_bps": 175,
+      "rule_id": "netbanking.mdr",
+      "source_quote": "Netbanking: 1.75% + Rs.10.00/txn.",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "method": "wallet"
+      },
+      "effective_from": "2026-07-01",
+      "fee_type": "mdr",
+      "fixed_fee_paise": 300,
+      "rate_bps": 190,
+      "rule_id": "wallet.mdr",
+      "source_quote": "Wallet: 1.90% + Rs.3.00/txn.",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    },
+    {
+      "applies_when": {
+        "is_international": true,
+        "method": "card"
+      },
+      "effective_from": "2026-07-01",
+      "fee_type": "international",
+      "fixed_fee_paise": 0,
+      "rate_bps": 200,
+      "rule_id": "international.surcharge",
+      "source_quote": "+2.00% surcharge on gross, card transactions only.",
+      "taxes": [
+        {
+          "base": "fee_amount",
+          "rate_bps": 1800,
+          "tax_type": "GST"
+        }
+      ]
+    }
+  ]
+}
