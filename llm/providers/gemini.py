@@ -1,6 +1,28 @@
 """Gemini implementation of LLMProvider, using `models.generate_content`
 with a `response_schema` for constrained decoding — never prompt-and-pray.
 
+WARNING — this module's worst failure modes are invisible to its own tests.
+Every test in `tests/test_provider.py` fakes the client, so a schema-dialect
+mismatch (`additionalProperties`, `$defs`/`$ref`, a renamed request field)
+passes a green suite and fails only against the live endpoint. That is not
+hypothetical: see the 2026-08-24 15:10 entry in DECISIONS.md. The schema was
+passed under a key the API silently ignored, so every call this project made
+returned unconstrained prose, and nothing at the call site could tell —
+`generate_structured` still returned a dict, and the suite still passed. A
+live call was the only thing that found it.
+
+The disk cache compounds this. `CachedProvider` keys on
+sha256(prompt + schema + model) and is committed to the repo so replays need
+no API key, which also means a replay never re-contacts the API. A cached
+response that looks correct proves only that it was correct under whatever
+contract held when it was recorded; if the endpoint has changed since, the
+cache keeps serving the old shape and the suite stays green over an
+integration that no longer works.
+
+So: exercise any new model, endpoint or SDK version against the live API
+before trusting it, and read a passing unit suite as evidence about this
+module's logic only — never about the integration.
+
 Two things here are load-bearing and non-obvious.
 
 **The schema must go through `to_gemini_schema` first.** Pydantic and
