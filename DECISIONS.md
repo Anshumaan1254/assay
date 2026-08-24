@@ -917,3 +917,145 @@ is unused here.
 **Built:** `eval/determinism.py`, `tests/test_eval_determinism.py` (16),
 5 config tests in `tests/test_decompose.py`. 531 tests passing, `guard_core.py`
 clean, `ruff` adds no new findings.
+
+## 2026-08-25 01:15 — core/verify.py built, core/conserve.py's identity finished
+
+`core/verify.py` was a 1-line stub; built in full. Recomputes fee/tax per
+payment via `CompiledContract.fee_for()`, aggregated by `fee_type` rather
+than 1:1 line matching. `core/conserve.py` had only the sign convention;
+added `ConservationReport`, `ConservationViolation`, `conserve()`,
+`conserve_all()`, `total_unexplained_paise()`. `unexplained_paise` is
+exactly `proof.residual_paise`; `conserve()` self-checks by reconstructing
+`credit_paise` from its own buckets before returning.
+
+**`unexplained_paise` stays orthogonal to verify.py, never absorbs its
+deltas.** Rejected: substitute verify.py's contract-correct fee/tax into
+the identity so `unexplained` reflects contract-recomputation deltas
+directly. Rejected because that couples `conserve()` to `verify()`'s
+output — it could no longer run on a proof alone — and because orthogonal
+is what makes D01 (wrong MDR tier, settlement math internally consistent)
+provable as the case `conserve.py` alone structurally cannot catch:
+`unexplained=0` on a D01 credit, nonzero `Finding` from `verify.py` on the
+same credit, asserted together in one test.
+
+**Clean-profile proof generated at test time, not committed.** Rejected
+committing a fixture (`runs/clean-seed*`, mirroring `realistic-seed42`) —
+a fixed seed already makes it fully reproducible; no reason to add another
+~15-20K-record JSON file to the repo for that.
+
+**`Finding.severity`/`lane` hardcoded to MAJOR/PROPOSE, always.** Rejected
+a paise-threshold or percentage-of-credit severity scale — `core/lanes.py`
+doesn't exist yet, and `decompose.py` already set the precedent
+(`CONFIDENCE_BY_TIER` hardcoded per tier) of not inventing an uncalibrated
+score ahead of the module whose job that is.
+
+**Chargeback reversal matched ledger-wide, not within the same proof.**
+Traced `datagen/world.py` directly: a WON chargeback's reversal is booked
+on its resolution day, a 3-10 day lag that routinely lands it in a
+different settlement cycle — a different credit/proof — than the
+chargeback itself. Proof-local matching would have false-positived a
+`CHARGEBACK_AMOUNT_MISMATCH` on nearly every WON chargeback in otherwise
+clean data.
+
+**No new orchestration module for "wire them" (decompose+verify+conserve
+together).** Rejected `core/audit.py`. Only `verify.py`/`conserve.py` were
+asked for; the three pipelines are called in sequence at each call site
+instead.
+
+**Realistic-run number reported via a light regression-guard test plus a
+one-time terminal run, not a committed script.** Rejected `scripts/`
+entry — `cli/` is where a real "run the audit" entry point belongs later,
+and this repo already declines to half-build one early (`demo: not
+implemented yet` in the `Makefile`).
+
+**Built:** `core/verify.py`, `ConservationReport`/`conserve()`/`conserve_all()`/
+`total_unexplained_paise()` in `core/conserve.py`, `tests/test_verify.py` (16),
+9 tests added to `tests/test_conserve.py`. 555 tests passing at this point.
+Clean profile (~5,200 payments) reconciles to `unexplained=0`, `verify()=[]`
+on every credit. Committed `realistic-seed42`: `unexplained` totals
+-Rs 1,015.01 (unchanged from `decompose.py` alone — `conserve.py` adds no new
+residual), `verify()` finds 48 discrepancies (~Rs 4,972.32), including the
+profile's one planted D05 case.
+
+## 2026-08-25 01:25 — chargeback reversal check silently passed on shared amounts
+
+**Symptom:** money-auditor review, reviewing the diff before commit: two
+credits, each with a WON chargeback of the same amount, competing for one
+real `MANUAL_CREDIT` reversal in the ledger, would both pass. Reproduced
+directly — pre-fix logic against that fixture printed
+`pre-fix behavior (fresh Counter per proof): []`, i.e. neither chargeback
+was flagged, though only one of the two actually had a reversal.
+
+**Diagnosis:** `_chargeback_findings` built its `Counter` of available
+`MANUAL_CREDIT` amounts fresh inside every call. `verify_all()` calls
+`verify()` once per proof with no shared state between calls, so each
+proof's chargeback check saw the reversal as untouched and available,
+regardless of what a prior proof in the same run had already claimed.
+
+**First fix:** thread one `Counter`, built once by `verify_all()`, through
+every `verify()` call in a run via a new optional `reversal_amounts`
+parameter; `verify()` still builds its own fresh pool when called alone.
+
+**Whether it worked:** yes.
+
+**Final fix:** as above — `_reversal_amount_pool(ledger)` extracted once,
+passed through `verify()` to `_chargeback_findings()`, consumed
+(decremented) in sorted-proof, sorted-chargeback-ref order for determinism.
+
+**Guard added:**
+`test_two_won_chargebacks_of_the_same_amount_in_different_proofs_still_need_two_separate_reversals`
+in `tests/test_verify.py`, asserting `verify_all()` over two such proofs
+flags exactly the one without a reversal.
+
+## 2026-08-25 02:15 — a settlement batch with no bank credit audited clean
+
+**Symptom:** payments-domain review, immediately after the fix above:
+`total_unexplained_paise` only sums residual on credits that exist.
+Reproduced directly — a fixture with one paid batch (STL-A) and one
+formed-but-never-credited batch (STL-B, Rs 2,941 net, deliberately no
+`BankCredit`) printed `total_unexplained_paise: 0`.
+
+**Diagnosis:** `decompose_all` iterates the bank statement's credit list,
+never the ledger's records. A batch whose credit never arrived produces no
+proof at all, so no `ConservationReport` is ever computed for it — the run
+reports as fully conserved while an entire batch's money is simply absent
+from every sum.
+
+**First fix:** add a run-level check over the whole ledger, independent of
+which credits showed up — `unclaimed_records()`/`unclaimed_paise()` in
+`core/conserve.py`, diffing every money-contributing ledger ref against the
+union of refs claimed by any proof in the run.
+
+**Whether it worked:** yes.
+
+**Final fix:** as above.
+
+**Guard added:**
+`test_a_settlement_batch_with_no_bank_credit_at_all_reports_clean_by_total_unexplained_alone`
+and `test_unclaimed_paise_is_zero_when_every_ledger_record_was_claimed` in
+`tests/test_conserve.py`. Validated against the committed `realistic-seed42`
+run, not just the synthetic fixture: `unclaimed_paise` surfaced Rs 4,511.37
+across 3 payments — the profile's three planted D08 instances (payment
+never reaches any settlement), previously invisible to every existing check.
+
+**Not fixed today, named but out of scope (fix-one-issue-at-a-time
+instruction each round):** `Ledger`'s duplicate-record-id collision (last
+write wins in `_by_ref`, join indexes double-append regardless — a
+duplicate fee-line id could double-count); `decompose.py`'s tier-1 vs
+tier-2/3 inconsistency in which record types get fee/tax lines attached
+(dormant — `datagen` never emits a non-`Payment` fee line, so nothing
+exercises it yet); gross-based tax stacking uninhibited across two
+overlapping-but-permitted fee clauses in `core/contract.py`;
+`CompiledContract.fee_for()` pinning fee versioning to payment capture
+date rather than settlement/billing date; no property-based or fuzz
+testing anywhere over N proofs sharing one ledger (`hypothesis` is a
+dependency used in exactly one file, `tests/test_money.py`) — the class of
+test that would have caught the 01:25 incident before a review had to find
+it by reading code, not just after.
+
+**Built:** `unclaimed_records()`, `unclaimed_paise()` in `core/conserve.py`.
+2 more tests in `tests/test_conserve.py`. 557 tests passing, `ruff` and
+`guard_core.py` clean. `/verify-invariants` run afterward: architecture
+tests pass, guard on changed files passes, live clean-profile audit gives
+`unexplained=0`/`unclaimed=0`/`verify()=[]`, two independent runs over the
+same seed hash identical, full suite green.

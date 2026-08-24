@@ -17,11 +17,23 @@ written formula and asserts `signed_paise` agrees.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
-from core.conserve import ADD_BACK_KINDS, SUBTRACT_KINDS, signed_paise
+from core.conserve import (
+    ADD_BACK_KINDS,
+    SUBTRACT_KINDS,
+    ConservationViolation,
+    conserve,
+    conserve_all,
+    signed_paise,
+    total_unexplained_paise,
+    unclaimed_paise,
+    unclaimed_records,
+)
+from core.decompose import DecompositionOutcome, DecompositionProof, DecompositionTier, ProofTerm
+from core.ledger import Ledger
 from core.models import (
     Adjustment,
     AdjustmentKind,
@@ -36,6 +48,7 @@ from core.models import (
     JournalEntry,
     Payment,
     PaymentMethod,
+    RecordRef,
     Refund,
     SettlementBatch,
     TaxLine,
@@ -292,3 +305,189 @@ def test_the_reconciliation_fixture_is_not_accidentally_zero():
     # Guards the test above: if every term happened to cancel, both sides
     # would be 0 and the assertion would prove nothing.
     assert signed_paise(_payment("PAY-1", 500_000, "STL-20260701")) != 0
+
+
+# ---------------------------------------------------------------------------
+# Part two: conserve() -- bucketing a proof's terms into the identity.
+#
+# unexplained_paise must equal proof.residual_paise exactly (the "orthogonal
+# layers" design: conserve.py checks the settlement's own arithmetic nets
+# against the credit; whether that arithmetic is *correct* per the contract
+# is core/verify.py's separate question).
+# ---------------------------------------------------------------------------
+
+
+def _term(record) -> ProofTerm:
+    return ProofTerm(
+        ref=RecordRef(type=record.RECORD_TYPE, id=record.id), signed_paise=signed_paise(record)
+    )
+
+
+def _proof(terms: list[ProofTerm], credit_paise: int, credit_id="BC-1", outcome=DecompositionOutcome.RESOLVED):
+    total = sum(t.signed_paise for t in terms)
+    return DecompositionProof(
+        credit_ref=RecordRef(type=EntityType.BANK_CREDIT, id=credit_id),
+        credit_paise=credit_paise,
+        currency="INR",
+        tier=DecompositionTier.STRUCTURAL,
+        tiers_attempted=[DecompositionTier.STRUCTURAL],
+        declined_reasons=[],
+        outcome=outcome,
+        reason=None,
+        terms=terms,
+        sum_paise=total,
+        residual_paise=credit_paise - total,
+        competing=[],
+        confidence=10_000,
+        candidate_count=1,
+        subset_size=len(terms),
+        nodes_expanded=0,
+        assignment_cost=None,
+        assignment_margin=None,
+        elapsed_ns=0,
+        proof_hash="test-hash",
+    )
+
+
+def test_conserve_reconstructs_credit_paise_exactly_from_its_buckets():
+    payments = [_payment("PAY-1", 500_000, "STL-1"), _payment("PAY-2", 300_000, "STL-1")]
+    refunds = [_refund("REF-1", 25_000, "STL-1")]
+    chargebacks = [_chargeback("CB-1", 40_000, ChargebackStage.LOST, "STL-1")]
+    adjustments = [
+        _adjustment("ADJ-RR-1", AdjustmentKind.RESERVE_RELEASE, 10_000, "STL-1"),
+        _adjustment("ADJ-RH-1", AdjustmentKind.RESERVE_HOLD, 15_000, "STL-1"),
+    ]
+    fee_lines = [_fee_line("FEE-1", "PAY-1", 11_800), _fee_line("FEE-2", "PAY-2", 7_080)]
+    tax_lines = [_tax_line("TAX-1", "FEE-1", 2_124), _tax_line("TAX-2", "FEE-2", 1_274)]
+    records = payments + refunds + chargebacks + adjustments + fee_lines + tax_lines
+    ledger = Ledger(records)
+
+    terms = [_term(r) for r in records]
+    credit_paise = sum(signed_paise(r) for r in records)  # a batch that nets exactly, residual == 0
+    proof = _proof(terms, credit_paise)
+
+    report = conserve(proof, ledger)
+    assert report.settled_gross_paise == 800_000
+    assert report.refunds_paise == 25_000
+    assert report.fees_paise == 18_880
+    assert report.tax_paise == 3_398
+    assert report.chargebacks_paise == 40_000
+    assert report.adjustments_paise == 15_000
+    assert report.reversals_paise == 10_000
+    assert report.unexplained_paise == 0
+    reconstructed = (
+        report.settled_gross_paise - report.refunds_paise - report.fees_paise - report.tax_paise
+        - report.chargebacks_paise - report.adjustments_paise + report.reversals_paise
+        + report.unexplained_paise
+    )
+    assert reconstructed == credit_paise
+
+
+def test_conserve_unexplained_equals_the_proofs_own_residual_paise():
+    payment = _payment("PAY-1", 500_000, "STL-1")
+    ledger = Ledger([payment])
+    # A credit that does NOT net exactly against the term -- a residual on
+    # purpose, mirroring a report whose reported numbers don't add up.
+    proof = _proof([_term(payment)], credit_paise=450_000)
+
+    report = conserve(proof, ledger)
+    assert report.unexplained_paise == proof.residual_paise
+    assert report.unexplained_paise == -50_000
+
+
+def test_conserve_on_an_ambiguous_proof_puts_the_whole_credit_in_unexplained():
+    proof = _proof([], credit_paise=250_000, outcome=DecompositionOutcome.AMBIGUOUS)
+    report = conserve(proof, Ledger([]))
+    assert report.settled_gross_paise == 0
+    assert report.refunds_paise == 0
+    assert report.fees_paise == 0
+    assert report.tax_paise == 0
+    assert report.chargebacks_paise == 0
+    assert report.adjustments_paise == 0
+    assert report.reversals_paise == 0
+    assert report.unexplained_paise == 250_000
+
+
+def test_conserve_on_an_unresolved_proof_puts_the_whole_credit_in_unexplained():
+    proof = _proof([], credit_paise=250_000, outcome=DecompositionOutcome.UNRESOLVED)
+    report = conserve(proof, Ledger([]))
+    assert report.unexplained_paise == 250_000
+
+
+def test_a_hand_corrupted_proof_raises_conservation_violation_instead_of_reporting_a_wrong_number():
+    payment = _payment("PAY-1", 500_000, "STL-1")
+    ledger = Ledger([payment])
+    proof = _proof([_term(payment)], credit_paise=500_000)
+    corrupted = proof.model_copy(update={"residual_paise": proof.residual_paise + 1})
+
+    with pytest.raises(ConservationViolation):
+        conserve(corrupted, ledger)
+
+
+def test_conserve_all_returns_one_report_per_proof_in_input_order():
+    payment1 = _payment("PAY-1", 500_000, "STL-1")
+    payment2 = _payment("PAY-2", 300_000, "STL-2")
+    ledger = Ledger([payment1, payment2])
+    proof1 = _proof([_term(payment1)], credit_paise=500_000, credit_id="BC-1")
+    proof2 = _proof([_term(payment2)], credit_paise=300_000, credit_id="BC-2")
+
+    reports = conserve_all([proof1, proof2], ledger)
+    assert [r.credit_ref.id for r in reports] == ["BC-1", "BC-2"]
+
+
+def test_total_unexplained_paise_sums_across_a_run():
+    payment1 = _payment("PAY-1", 500_000, "STL-1")
+    payment2 = _payment("PAY-2", 300_000, "STL-2")
+    ledger = Ledger([payment1, payment2])
+    proof1 = _proof([_term(payment1)], credit_paise=480_000, credit_id="BC-1")  # residual -20_000
+    proof2 = _proof([_term(payment2)], credit_paise=310_000, credit_id="BC-2")  # residual +10_000
+
+    reports = conserve_all([proof1, proof2], ledger)
+    assert total_unexplained_paise(reports) == -10_000
+
+
+# ---------------------------------------------------------------------------
+# unclaimed_paise() -- the run-level check. total_unexplained_paise() only
+# ever sums the residual on credits that exist; a settlement batch whose
+# bank credit never arrived at all contributes no proof and no residual,
+# so it is invisible to total_unexplained_paise no matter how large it is.
+# Found in a skeptical staff-engineer review: a whole missing batch
+# reported as a perfectly clean, zero-unexplained run.
+# ---------------------------------------------------------------------------
+
+
+def test_a_settlement_batch_with_no_bank_credit_at_all_reports_clean_by_total_unexplained_alone():
+    # STL-A actually gets paid and resolves cleanly.
+    pay_a = _payment("PAY-A", 500_000, "STL-A")
+    fee_a = _fee_line("FEE-A", "PAY-A", 8_000)
+    tax_a = _tax_line("TAX-A", "FEE-A", 1_440)
+    credit_a = BankCredit(id="BC-A", utr="UTR-A", amount=Money(490_560), value_date=date(2026, 7, 12), narration="NEFT")
+
+    # STL-B was formed and reported -- but the bank never actually sent the
+    # money. There is deliberately no BankCredit for it anywhere.
+    pay_b = _payment("PAY-B", 300_000, "STL-B")
+    fee_b = _fee_line("FEE-B", "PAY-B", 5_000)
+    tax_b = _tax_line("TAX-B", "FEE-B", 900)
+
+    ledger = Ledger([pay_a, fee_a, tax_a, credit_a, pay_b, fee_b, tax_b])
+    proof_a = _proof([_term(pay_a), _term(fee_a), _term(tax_a)], credit_paise=490_560, credit_id="BC-A")
+
+    reports = conserve_all([proof_a], ledger)
+    assert total_unexplained_paise(reports) == 0  # the blind spot: looks perfectly clean
+
+    missing = unclaimed_records(ledger, [proof_a])
+    assert missing == [
+        RecordRef(type=EntityType.FEE_LINE, id="FEE-B"),
+        RecordRef(type=EntityType.PAYMENT, id="PAY-B"),
+        RecordRef(type=EntityType.TAX_LINE, id="TAX-B"),
+    ]
+    assert unclaimed_paise(ledger, [proof_a]) == 300_000 - 5_000 - 900  # STL-B's net, never seen anywhere
+
+
+def test_unclaimed_paise_is_zero_when_every_ledger_record_was_claimed():
+    payment = _payment("PAY-1", 500_000, "STL-1")
+    ledger = Ledger([payment])
+    proof = _proof([_term(payment)], credit_paise=500_000)
+
+    assert unclaimed_records(ledger, [proof]) == []
+    assert unclaimed_paise(ledger, [proof]) == 0
