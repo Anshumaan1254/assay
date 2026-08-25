@@ -24,7 +24,6 @@ from zoneinfo import ZoneInfo
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer, PlainValidator
 
-from core.exceptions import DiscrepancyClass
 from core.money import Money
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -257,6 +256,16 @@ class Lane(StrEnum):
     AUTO = "auto"
     PROPOSE = "propose"
     ESCALATE = "escalate"
+
+
+# Imported here, immediately before Finding, rather than at module top:
+# core/exceptions.py's clustering/pricing code needs AssayModel, EntityType,
+# RecordRef and PaisaAmount back from this module, which would otherwise be
+# a genuine import cycle (models -> exceptions -> models) if this import
+# ran before any of those names existed yet. By the time Python reaches
+# this line, they're already defined above, so exceptions.py's own import
+# of them succeeds regardless of which of the two modules loads first.
+from core.exceptions import DiscrepancyClass
 
 
 class Finding(AssayModel):

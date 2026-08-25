@@ -30,8 +30,10 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
+from datetime import datetime
 
-from core.models import AssayModel, EntityType, RecordRef
+from core.contract import sha256_of
+from core.models import AssayModel, EntityType, Finding, JournalEntry, Lane, RecordRef
 
 
 def _sort_key(ref: RecordRef) -> tuple[str, str]:
@@ -119,3 +121,68 @@ class Ledger:
 
     def __iter__(self) -> Iterator[RecordRef]:
         return iter(self._all_refs)
+
+
+# ---------------------------------------------------------------------------
+# AUTO-lane journal posting.
+#
+# Pure function: findings + input_hash + already-posted entries in, new
+# JournalEntry rows out. No file/DB I/O here -- persistence is a caller's
+# job, kept separate so this stays as unit-testable as decompose.py/
+# verify.py. The account names are a minimal placeholder convention, not a
+# real chart of accounts -- flagged in DECISIONS.md for later refinement.
+# ---------------------------------------------------------------------------
+
+_DEBIT_ACCOUNT_PREFIX = "discrepancy_receivable"
+_CREDIT_ACCOUNT = "settlement_suspense"
+
+
+def _idempotency_key(input_hash: str, finding_id: str) -> str:
+    return sha256_of(f"{input_hash}:{finding_id}")
+
+
+def journal_entries_for_auto_findings(
+    findings: Iterable[Finding],
+    *,
+    input_hash: str,
+    already_posted: Iterable[JournalEntry] = (),
+    posted_at: datetime,
+) -> list[JournalEntry]:
+    """Double-entry JournalEntry per AUTO-lane finding not already posted.
+
+    Only lane == Lane.AUTO ever posts, checked here regardless of what the
+    caller already filtered -- a money-safety invariant worth enforcing at
+    the point of posting, not trusted upstream. Idempotency key is derived
+    from (input_hash, finding.id), so re-running the same audit -- same
+    input_hash, same findings -- against its own prior output produces zero
+    new entries.
+
+    `posted_keys` is updated as entries are built, not just seeded once from
+    `already_posted`: a `findings` argument that names the same finding id
+    twice (an upstream merge bug, or a caller passing one finding in twice)
+    must not double-post within a single call either -- the dedup guarantee
+    doesn't rely on `already_posted` being threaded correctly across calls,
+    the same way the AUTO-lane filter above doesn't rely on the caller
+    having already filtered.
+    """
+    posted_keys = {entry.idempotency_key for entry in already_posted}
+    entries: list[JournalEntry] = []
+    for finding in sorted(findings, key=lambda f: f.id):
+        if finding.lane is not Lane.AUTO:
+            continue
+        key = _idempotency_key(input_hash, finding.id)
+        if key in posted_keys:
+            continue
+        posted_keys.add(key)
+        entries.append(
+            JournalEntry(
+                id=f"JNL-{finding.id}",
+                debit_account=f"{_DEBIT_ACCOUNT_PREFIX}:{finding.discrepancy_class.value}",
+                credit_account=_CREDIT_ACCOUNT,
+                amount=finding.amount_impact,
+                narration=f"AUTO-posted: {finding.discrepancy_class.value} on finding {finding.id}",
+                idempotency_key=key,
+                posted_at=posted_at,
+            )
+        )
+    return entries

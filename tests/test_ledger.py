@@ -14,18 +14,21 @@ applies_to_fee_id.
 
 from datetime import UTC, date, datetime
 
-from core.ledger import Ledger
+from core.ledger import Ledger, journal_entries_for_auto_findings
 from core.models import (
     BankCredit,
     BatchStatus,
     EntityType,
     FeeLine,
     FeeType,
+    Finding,
+    Lane,
     Payment,
     PaymentMethod,
     RecordRef,
     Refund,
     SettlementBatch,
+    Severity,
     TaxLine,
 )
 from core.money import Money
@@ -337,3 +340,103 @@ def test_iter_yields_every_ref_sorted():
         RecordRef(type=EntityType.PAYMENT, id="pay_1"),
         RecordRef(type=EntityType.REFUND, id="ref_1"),
     ]
+
+
+# ---------------------------------------------------------------------------
+# journal_entries_for_auto_findings -- AUTO-lane double-entry posting.
+# Pure function: findings + input_hash + already-posted entries in, new
+# JournalEntry rows out. No I/O here -- persistence is a caller's job.
+# ---------------------------------------------------------------------------
+
+POSTED_AT = UTC_NOON
+
+
+def _finding(id_="FND-1", amount_paise=1_000, lane=Lane.AUTO, discrepancy_class="fee_overcharge"):
+    return Finding(
+        id=id_,
+        audit_run_id="RUN-1",
+        discrepancy_class=discrepancy_class,
+        severity=Severity.MAJOR,
+        amount_impact=Money(amount_paise),
+        evidence_ids=[],
+        confidence=9_500,
+        lane=lane,
+        explanation="test finding",
+    )
+
+
+def test_an_auto_lane_finding_posts_a_journal_entry():
+    finding = _finding(lane=Lane.AUTO)
+
+    entries = journal_entries_for_auto_findings([finding], input_hash="HASH-1", posted_at=POSTED_AT)
+
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.amount == Money(1_000)
+    assert entry.debit_account == "discrepancy_receivable:fee_overcharge"
+    assert entry.credit_account == "settlement_suspense"
+    assert entry.posted_at == POSTED_AT
+
+
+def test_a_propose_lane_finding_never_posts():
+    finding = _finding(lane=Lane.PROPOSE)
+    entries = journal_entries_for_auto_findings([finding], input_hash="HASH-1", posted_at=POSTED_AT)
+    assert entries == []
+
+
+def test_an_escalate_lane_finding_never_posts():
+    finding = _finding(lane=Lane.ESCALATE)
+    entries = journal_entries_for_auto_findings([finding], input_hash="HASH-1", posted_at=POSTED_AT)
+    assert entries == []
+
+
+def test_non_auto_lane_findings_never_post_even_if_caller_forgot_to_filter():
+    findings = [_finding("FND-1", lane=Lane.AUTO), _finding("FND-2", lane=Lane.PROPOSE)]
+    entries = journal_entries_for_auto_findings(findings, input_hash="HASH-1", posted_at=POSTED_AT)
+    assert [e.id for e in entries] == ["JNL-FND-1"]
+
+
+def test_a_duplicate_finding_id_within_one_call_does_not_double_post():
+    # An upstream merge bug (or a caller passing the same finding twice)
+    # must not double-post within a single call -- the dedup guarantee
+    # can't depend solely on already_posted being threaded correctly across
+    # calls, the same way the AUTO-lane filter isn't trusted to the caller.
+    finding = _finding("FND-1", amount_paise=1_000, lane=Lane.AUTO)
+    same_id_different_amount = _finding("FND-1", amount_paise=9_999, lane=Lane.AUTO)
+
+    entries = journal_entries_for_auto_findings(
+        [finding, same_id_different_amount], input_hash="HASH-1", posted_at=POSTED_AT
+    )
+
+    assert len(entries) == 1
+    assert len({e.idempotency_key for e in entries}) == 1
+
+
+def test_rerunning_the_same_audit_produces_zero_new_entries():
+    finding = _finding(lane=Lane.AUTO)
+
+    first = journal_entries_for_auto_findings([finding], input_hash="HASH-1", posted_at=POSTED_AT)
+    second = journal_entries_for_auto_findings(
+        [finding], input_hash="HASH-1", already_posted=first, posted_at=POSTED_AT
+    )
+
+    assert first != []
+    assert second == []
+
+
+def test_two_different_input_hashes_do_not_collide_on_idempotency_key():
+    finding = _finding(lane=Lane.AUTO)
+
+    run1 = journal_entries_for_auto_findings([finding], input_hash="HASH-1", posted_at=POSTED_AT)
+    run2 = journal_entries_for_auto_findings(
+        [finding], input_hash="HASH-2", already_posted=run1, posted_at=POSTED_AT
+    )
+
+    assert run2 != [], "a different audit run's idempotency key must not be shadowed by another run's"
+    assert run1[0].idempotency_key != run2[0].idempotency_key
+
+
+def test_entries_are_sorted_by_finding_id_for_determinism():
+    findings = [_finding("FND-2", lane=Lane.AUTO), _finding("FND-1", lane=Lane.AUTO)]
+    entries = journal_entries_for_auto_findings(findings, input_hash="HASH-1", posted_at=POSTED_AT)
+    assert [e.id for e in entries] == ["JNL-FND-1", "JNL-FND-2"]
