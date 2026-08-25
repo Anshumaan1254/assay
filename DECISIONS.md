@@ -1212,3 +1212,292 @@ correctness is fully tested, but only 14 seeds' worth of real model output
 exists so far, and `ADJUDICATION_BATCH_SIZE=8`'s tradeoff against
 `CachedProvider`'s per-call cache granularity is untuned against real
 free-tier throughput.
+
+## 2026-08-25 23:14 — Phase C lane wiring; exceptions.py clustering/pricing/
+dispute packets; AUTO-lane posting; `assay explain`
+
+**Built:** Phase C — `core/lanes.py`'s `assign_lane_for_verify_finding`/
+`assign_lane_for_proof` wired into `core/verify.py` and `core/decompose.py`
+via a new optional `calibration: CalibrationArtifact | None = None`
+parameter on `verify()`/`verify_all()`/`decompose()`/`decompose_all()`,
+defaulting to `None` (the old hardcoded MAJOR/PROPOSE/10_000 placeholder),
+so every existing test kept passing untouched. `DecompositionProof` gained
+`lane_assignment: LaneAssignment | None`, excluded from `proof_hash` via
+`TELEMETRY_FIELDS` (same precedent as `elapsed_ns`). `core/exceptions.py`'s
+`cluster_findings()` (deterministic clustering by discrepancy_class +
+resolved rule_id + a 50-bps-bucketed delta signature, ranked strictly by
+money) and `build_dispute_packet()` (claim, contract clause text via
+`rule_id` → `FeeRule.source_quote`, a representative recomputed-arithmetic
+example, full evidence list). `llm/narrator.py` built from a 2-line stub:
+`narrate_dispute_packet()`, with every digit sequence in the model's
+narration checked against the packet's own computed numbers and rejected
+(`NarrationRejected`) if any is ungrounded. `core/ledger.py`'s
+`journal_entries_for_auto_findings()` — a pure function, idempotency key
+`sha256(input_hash:finding_id)`, no persistence layer built. `cli/loaders.py`
+and `cli/explain.py`, `cli/__init__.py`'s first real Typer app,
+`[project.scripts] assay = "cli:main"` in `pyproject.toml`. 682 tests
+passing (641 at session start), `ruff`/`guard_core.py` clean on everything
+touched.
+
+Live-checked via the installed `assay explain` command (real
+`GeminiProvider`, committed cache hit, no network call) against
+`runs/realistic-seed42`: prints the full causal chain — contract clause
+text, recomputed vs. reported fee/tax, which credit, decomposition
+tier/outcome, calibrated lane/confidence, proof hash, every `Finding`
+citing the record. An unknown record id and a clean payment both checked
+live too.
+
+**With the committed calibration artifact, a live run posts zero AUTO-lane
+journal entries.** Not a bug: `calibration/lane_calibration.v1.json`'s
+`auto_min_calibrated_bps` is `null` (16:11 above — honestly reporting AUTO
+as currently uncertifiable). Checked directly against the committed run: 48
+real findings, all calibrate to `propose`, `journal_entries_for_auto_findings`
+returns `[]`. Phase C's wiring is real and correct; nothing in this
+session's work makes AUTO reachable, because nothing should until a re-fit
+certifies it.
+
+**`DecompositionProof.lane_assignment` lives on the proof itself, and
+`decompose()`/`decompose_all()` take an optional `calibration` parameter
+rather than always loading one.** Asked first (three-way question):
+rejected leaving the proof schema alone and calling `assign_lane_for_proof`
+separately downstream — `core/lanes.py` was already built with exactly this
+`assign_lane_for_proof(proof, artifact) -> LaneAssignment` signature in
+anticipation of this, and there is nowhere else for a per-proof calibrated
+verdict to live. `None`-default keeps the ~750 existing lines of
+`tests/test_decompose.py` untouched.
+
+**AUTO-lane posting is a pure function; no persistence layer was built.**
+Asked first: rejected standing up real `sqlmodel`/SQLite storage now (the
+first real use of that already-declared, currently-unused dependency) in
+favor of keeping the money-critical posting logic pure and unit-testable —
+idempotency tested by re-running the function against its own prior output
+and asserting zero new entries — deferring the storage medium to a later,
+separate task.
+
+**The double-entry chart of accounts
+(`discrepancy_receivable:<class>`/`settlement_suspense`) is an explicit
+placeholder, not a real one.** Asked first; flagged here the same way
+`Finding.severity`/`lane` were flagged and left for later refinement on
+2026-08-23 — nothing in the codebase specifies a real chart of accounts.
+
+**`RecomputedArithmetic` carries the contract's rate formula plus one
+representative worked example, not a full reported-vs-recomputed pair.**
+Alternative rejected: recompute reported-vs-recomputed via the
+representative finding's own payment and fee lines — rejected because it
+would require `core/exceptions.py` to either duplicate `core/verify.py`'s
+fee/tax comparison logic (the exact drift risk 16:49 above already
+flagged once) or import `core.verify` directly, which is circular
+(`core/verify.py` already imports `core.exceptions.DiscrepancyClass`). The
+rule's own formula plus the representative finding's already-computed
+delta is checkable without either problem.
+
+**Clustering key is `(discrepancy_class, rule_id, delta_bucket)`,
+`delta_bucket` being the finding's impact as integer bps of its first
+resolvable payment's gross, rounded to the nearest 50 bps.** Not asked — a
+reversible implementation choice, not a payments-domain business rule.
+Chosen so "the same clause misapplied at slightly different amounts"
+collapses into one cluster (tested: 37 synthetic findings at a fixed bps
+ratio collapse to one `Cluster` with `count == 37`) while a different bug
+sharing the same `rule_id` at a different bps ratio does not merge.
+
+**Incident:** see below — a latent circular import between
+`core/models.py` and `core/exceptions.py`, exposed (not caused) by this
+session's new code.
+
+**Not built:** an `assay audit` command (only `explain` was asked for this
+session); real persistence for posted journal entries; `EVIDENCE.md`
+generation (unchanged, out of scope).
+
+**Unsure about:** whether `RecomputedArithmetic`'s "one representative
+example" reading is what "the recomputed arithmetic" was meant to promise —
+flagged above rather than re-litigated unasked. The 50-bps delta-bucket
+width is untuned against real data beyond `tests/test_exceptions.py`'s
+synthetic cases; a real run's clusters haven't been eyeballed for over- or
+under-merging.
+
+## 2026-08-25 23:05 — core/models.py and core/exceptions.py had a latent circular import
+
+**Symptom:** `tests/test_exceptions.py` failed to collect:
+`ImportError: cannot import name 'CompiledContract' from partially
+initialized module 'core.contract' (most likely due to a circular import)`,
+the moment `core/exceptions.py` gained a module-level
+`from core.contract import CompiledContract`.
+
+**Diagnosis:** `core/models.py` has imported `from core.exceptions import
+DiscrepancyClass` at its own top since 2026-08-23 (`Finding
+.discrepancy_class`'s field type) — one-directional, harmless because
+nothing in `core/exceptions.py` needed anything back from `core/models.py`.
+This session's new clustering code genuinely needs `AssayModel`,
+`PaisaAmount`, `EntityType`, `RecordRef` from `core.models` to build its own
+Pydantic models and do real ledger lookups, which closed the cycle:
+whichever of `core.models`/`core.exceptions` a test imported first, the
+other was only partially initialized by the time the reverse import ran.
+
+**First fix:** none attempted before diagnosis — traced directly from the
+traceback.
+
+**Whether it worked:** n/a.
+
+**Final fix:** `core/models.py`'s `from core.exceptions import
+DiscrepancyClass` moved from the top-level import block to immediately
+before `class Finding(AssayModel):`, the only place it's used, so
+`AssayModel`/`EntityType`/`RecordRef`/`PaisaAmount` are already defined by
+the time it runs regardless of import order. `core/exceptions.py`'s own new
+imports moved to after its `DiscrepancyClass` enum for the same reason;
+`CompiledContract`/`Ledger`/`Finding` — used only as function-parameter type
+hints inside `core/exceptions.py`, never instantiated or used as a Pydantic
+field type there — became `TYPE_CHECKING`-only, removing two more legs of
+the cycle entirely.
+
+**Guard added:** none dedicated — the failure mode is structural (an
+`ImportError` at collection time), not a value that could silently regress.
+Exercised by the full 682-test suite passing clean afterward, including
+files on both sides of the import ordering.
+
+## 2026-08-25 23:28 — a duplicate finding id in one posting call could double-post
+
+**Symptom:** found by a money-auditor review of `journal_entries_for_auto_findings`,
+not a failing test in the wild. Asked to independently verify "can re-running
+the same audit ever double-post"; the reviewer traced the dedup set and found
+it is seeded once from `already_posted` and never updated as entries are
+built within the same call.
+
+**Diagnosis:** `posted_keys = {entry.idempotency_key for entry in
+already_posted}` ran once before the loop. A `findings` argument naming the
+same finding id twice — an upstream merge bug, or a caller passing one
+finding in twice — passed the `key in posted_keys` check both times, since
+neither iteration's key was ever added to the set. Two `JournalEntry` rows,
+same `id`, same `idempotency_key`, were appended in one call. The function's
+own docstring already re-checks the AUTO-lane filter "regardless of what the
+caller already filtered" — this was the same class of caller-misuse the
+function was supposed to be defensive against, just not actually covered for
+duplicate ids. No existing test caught it: every idempotency test called the
+function twice with `already_posted` threaded through correctly, none passed
+a repeated id within one call.
+
+**First fix:** none — the reproduction (two `Finding` objects sharing id
+`FND-1`, different `amount_impact`, both AUTO lane, one call) made the cause
+plain immediately.
+
+**Whether it worked:** n/a.
+
+**Final fix:** `posted_keys.add(key)` right after a new entry is appended,
+inside the loop — so a duplicate id later in the same `findings` iterable is
+caught by the same check that already covers cross-call reruns.
+
+**Guard added:**
+`test_a_duplicate_finding_id_within_one_call_does_not_double_post` in
+`tests/test_ledger.py` — two findings sharing id `FND-1` (deliberately with
+different `amount_impact`, so a bug would also be visible as which amount
+"won"), asserts exactly one entry with one distinct `idempotency_key`.
+Confirmed failing (2 entries) before the fix, passing after. Full 682-test
+suite, `tests/test_architecture.py`, and `guard_core.py` all re-run clean
+after the fix.
+
+## 2026-08-26 00:21 — decompose_all interleaved tiers per credit; its own docstring said it didn't
+
+**Symptom:** found by a `payments-domain` skeptical review, not a failing
+test in the wild. Asked directly: "the assumption that breaks first against
+real production data" and "three places money could be silently lost or
+double-counted." The reviewer traced `decompose_all`'s own docstring —
+*"A structural sweep over every credit first claims the records it can
+account for with certainty; only then does subset-sum run, over the
+residue"* — against what the code actually did, and found the two didn't
+match.
+
+**Diagnosis:** `decompose_all`'s single loop called `decompose()` once per
+credit in id order, and `decompose()` itself cascades tier 1 (structural)
+*then* tier 2 (subset-sum) for that one credit before the loop moves on.
+That is "structural-then-subset-sum, per credit, in id order" — not "every
+credit's structural sweep, then every remaining credit's subset-sum sweep."
+A credit with no UTR (a dropped UTR — D09's own shape) that sorts earlier by
+id runs its tier-2 subset-sum search against a pool that still contains a
+later credit's own batch, because that later credit hasn't had its
+structural turn yet. If the earlier credit's amount happens to sum against
+that batch, it claims it — confidently, at tier 2, `RESOLVED`, low residual.
+The later credit then finds its own batch already claimed, falls through to
+a worse tier, and reports a fabricated discrepancy on the wrong credit,
+often sign-flipped. Reproduced independently (not just taking the review's
+word for it) before touching any code: two batches, STL-A (₹1,000.00, UTR
+intact) and STL-B (₹995.00, UTR intact); BC-1 (id sorts first, UTR dropped,
+amount coincidentally equal to STL-B's net) and BC-2 (id sorts second, UTR
+intact, points at STL-B). Before the fix: BC-1 claimed STL-B at tier 2,
+`residual=0`, `confidence=8000`; BC-2 lost its own batch, fell to tier 3,
+paired with STL-A's leftover payment, reported `residual=-500` (₹5.00) on
+the wrong credit. Nothing raised; both proofs individually verify.
+
+This is the exact failure the module's own docstring (lines 16-28,
+2026-08-24 22:35 above) says the design exists to make impossible: *"a clean
+report over the wrong records, with nothing anywhere to indicate it."* It
+did not show up on `runs/realistic-seed42` only because that dataset gives
+every credit a distinct UTR pointing at a distinct batch (D09 corrupts 6
+UTRs, but each corrupted credit's true batch happens to be uncontested by
+anything else) — a one-credit-per-batch bijection no real gateway's
+settlement files guarantee.
+
+**First fix:** none attempted before diagnosis — the docstring/code mismatch
+and the independent reproduction made the cause and the fix shape plain
+together.
+
+**Whether it worked:** n/a.
+
+**Final fix:** `decompose_all` now runs two explicit, complete phases
+instead of one interleaved loop. Phase 1 calls `_tier_structural` for every
+credit, in id order, claiming as it goes; only credits that don't resolve
+structurally (and aren't a terminal reason) carry over. Phase 2 then calls
+`_tier_subset_sum` for exactly that residue, against the pool phase 1 left
+behind. Tier 3 (assignment) is unchanged — it already reads from the
+finished `proofs`/`claimed` state, not from the old loop's shape. The public
+`decompose()` function itself is untouched: a standalone call against one
+credit still cascades tier 1 then tier 2 in one call, which is correct and
+separately tested behavior for examining a single credit in isolation. Only
+`decompose_all`'s orchestration changed.
+
+Re-ran the reproduction after the fix: BC-2 now resolves structurally to
+its own batch (`residual=0`, `confidence=10000`); BC-1 falls to assignment
+and reports the real `residual=-500` on the credit that actually has it.
+Re-ran the committed `runs/realistic-seed42` decomposition directly (not
+just via pytest) to confirm the fix doesn't disturb the one dataset this
+project has real numbers for: tier counts (25 structural / 6 subset-sum),
+outcome counts (31 resolved), zero double-claims, and total residual
+(−101,501 paise) are all byte-identical to the pre-fix numbers recorded
+2026-08-24 22:35 — confirming those 6 D09 credits' true batches were never
+actually contested, so the bug was real and latent, not something the
+demo data was already exercising.
+
+**Guard added:**
+`test_a_lower_id_credits_subset_sum_never_preempts_a_higher_id_credits_structural_claim`
+in `tests/test_decompose.py`, built from the same reproduction. Confirmed
+failing (`BC-2` resolved at `ASSIGNMENT`, not `STRUCTURAL`) before the fix,
+passing after. Full 684-test suite, `guard_core.py`, and `ruff` all re-run
+clean.
+
+**Not fixed today, named by the same review, out of scope for a single
+most-severe-issue fix:** a currency check missing before `cluster_findings`
+sums `amount_impact.paise` across findings that could carry different
+currencies; `core/contract.py` trusting the LLM's rate-card *reading*
+with no independent second check beyond schema/overlap/completeness
+validation, and no test asserting a compiled contract reproduces the
+undisputed majority of a real settlement's own fees; `core/exceptions.py`'s
+`rule_id` resolution reading the gateway's own self-reported rule id
+(`fee_line.rule_id`) rather than the contract's own
+`FeeBreakdown.matched_rule_ids`, which on the committed run's actual
+generator output means every dispute packet's `contract_clause` and
+`recomputed_arithmetic` are `None` — the two namespaces never intersect;
+`core/verify.py`'s WON-chargeback-reversal match by amount alone, with no
+use of `Adjustment.reason`/`settlement_id`, plausible to false-negative on
+real data where round rupee amounts recur; `core/ledger.py`'s
+`JournalEntry.id` (`f"JNL-{finding.id}"`, one-per-finding) versus its
+`idempotency_key` (`sha256(input_hash:finding_id)`, one-per-(run,finding))
+disagreeing about uniqueness, meaning two audit runs over a corrected
+settlement file for the same finding produce two journal rows with the same
+id and different keys, both intended-idempotent, actually duplicating the
+posted amount; `core/verify.py`'s `_IdSeq` producing colliding `Finding` ids
+across two proofs for one credit (documented as impossible by a
+"BankCredit ids are unique" argument the function does not itself enforce);
+`core/decompose.py` overwriting a good proof on a duplicated `BankCredit`
+row in the input rather than rejecting the duplicate; `core/contract.py`
+never checking `payment.amount.currency` against the rate card's declared
+currency, so a foreign-currency payment gets priced by whichever INR-paise
+band its minor-unit amount happens to fall into. All flagged to the user
+directly, none guessed around.
