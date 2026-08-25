@@ -1111,3 +1111,104 @@ a residual bug: tier-3 (ASSIGNMENT) proofs are rare — 9 samples in 14
 seeds — and getting enough of them to certify a 0.5%/95% guarantee would
 need far more synthetic seeds than this pass generated. No amount of
 pooling should have papered over that.
+
+## 2026-08-25 16:49 — Build llm/adjudicator.py and core/lanes.py: eight decisions, one incident
+
+**Built:** `llm/adjudicator.py` — for the three residual shapes nothing in
+the engine turned into a `Finding` before (a conservation residual on any
+proof outcome including `RESOLVED`, an `AMBIGUOUS`/`UNRESOLVED` proof, an
+unclaimed ledger record), batches residuals to an `LLMProvider`,
+reference-checks citations against both `Ledger.exists()` and the shown
+evidence pool, arithmetically re-verifies via `signed_paise`, and emits one
+`Finding` per residual on `lane=PROPOSE`. `core/verify.py::fee_tax_cells`,
+extracted as a superset of `_fee_and_tax_findings` (no behaviour change).
+`core/lanes.py` — applies a committed `CalibrationArtifact` in integer
+basis points only. `eval/labels.py`, `eval/metrics.py` — ground-truth
+matching and calibration diagnostics. `eval/calibrate_lanes.py` — fits the
+artifact via isotonic regression per source and a Clopper-Pearson lane
+threshold sweep. `calibration/lane_calibration.v1.json` — the committed
+artifact, fit against synthetic seeds 1-14 plus a live, cached Gemini pass
+for the adjudicator source, validated against held-out seeds 15-20. Full
+suite 641 passing, 1 skipped (expected — the AUTO-reachable coverage test
+skips because AUTO is currently unreachable), `ruff` clean. `/verify-invariants`
+run twice, both clean. Two independent reviews run via the Agent tool
+(money-auditor, test-writer): money-auditor confirmed no model output ever
+reaches a rupee amount and `AUTO` is unreachable for LLM-sourced items at
+two independent enforcement points; test-writer found the coverage gaps
+that led to decision 8 below, all now closed.
+
+**The adjudicator's actual input is three residual shapes, not a `Finding`
+requiring `UNKNOWN`.** Root `CLAUDE.md`'s literal wording names findings
+"classified UNKNOWN"; no such `DiscrepancyClass` member exists, and nothing
+in the engine constructed an `UNRECONCILED_RESIDUAL` `Finding` either.
+Alternative rejected: inventing a taxonomy member, or narrowing scope to
+only `AMBIGUOUS`/`UNRESOLVED` proofs — rejected because a `RESOLVED` proof
+can still leave a non-zero residual (a structural hit never cascades), and
+`verify.py` never looks at that residual at all.
+
+**A citation must exist in the ledger AND have been shown in that
+residual's own evidence pool.** Alternative rejected: existence alone, the
+literal invariant-6 wording — rejected because it would accept a real but
+irrelevant record the model never saw as if verified, which is worse than
+no check at all: it looks verified.
+
+**Calibration fitting lives entirely in `eval/`; `core/lanes.py` only
+applies a pre-fit artifact, in integers.** Not really an alternative so
+much as a constraint: `core/`'s float ban is absolute (zero exceptions,
+not just money-adjacent) and `core/` cannot import `datagen/`, so fitting
+against ground truth with floats could not have lived there regardless.
+
+**`scikit-learn` added to `pyproject.toml` for `IsotonicRegression`, asked
+and approved.** Alternative rejected: hand-rolling isotonic regression
+(PAVA) — decided the approved dependency was simpler and more standard
+than reimplementing a well-known algorithm for one call site.
+
+**`fee_tax_cells` is a refactor of `verify.py`, not a second
+reimplementation inside `eval/labels.py`.** Alternative rejected:
+`eval/labels.py` walks payments/fee-lines independently, touching nothing
+in `verify.py` — rejected because two copies of the same fee/tax
+comparison logic drifting apart is exactly the class of bug this project
+has already been burned by once (the documented `Ledger` collision).
+
+**Rewiring `verify.py`/`decompose.py` to actually call `assign_lane` is
+deferred, not done this session.** Alternative rejected: wire it in now —
+rejected to keep this already-large change reviewable, matching the
+existing precedent against a new orchestration module ("Rejected
+`core/audit.py`", above).
+
+**`ADJUDICATOR_HYPOTHESIS` calibration comes from a real, small, cached
+live Gemini pass — not a placeholder identity mapping, not omitted.**
+~14 batched calls across the 14 calibration seeds. Alternatives rejected:
+ship `calibrated_bps = raw_bps` unfitted, or leave the source out of the
+artifact entirely — rejected both because a real API key was already
+configured and the cost was one-time and cacheable; there was no reason to
+ship a fake number when a real one was this cheap.
+
+**`findings_from_adjudication_run` emits one `Finding` per residual, not
+one per accepted hypothesis.** Built the other way first — one `Finding`
+per accepted hypothesis, mirroring `decompose.py`'s "don't collapse
+competing explanations" precedent — and shipped it that way through most
+of the session. Reversed after a money-auditor review found it let a
+single residual's amount be claimed multiple times the moment anything
+sums `Finding.amount_impact` over a run's findings, which is the natural
+thing a report does. Runner-up hypotheses stay on `AdjudicationResult`,
+already logged; they never become independent money claims. This is the
+one place this session's own first instinct was wrong, not just a gap —
+`decompose.py`'s precedent was for storing alternatives as metadata on
+*one* proof, not for minting several proofs that each claim the same
+credit, and the difference didn't surface until a reviewer asked "what
+happens when something sums this."
+
+**Incident:** see 16:11 above (`derive_auto_threshold` pooled all sources
+into one bound, then a threshold-clamping bug turned "unreachable" into a
+number that looked real) — not duplicated here.
+
+**Not built:** the Phase C rewiring (decision above), an `EVIDENCE.md`
+generator (`api_call_count` is tracked and returned, nothing writes it to
+a file yet), `llm/narrator.py` (still a stub, out of scope this session).
+
+**Unsure about:** hypothesis *quality* — schema/reference/arithmetic
+correctness is fully tested, but only 14 seeds' worth of real model output
+exists so far, and `ADJUDICATION_BATCH_SIZE=8`'s tradeoff against
+`CachedProvider`'s per-call cache granularity is untuned against real
+free-tier throughput.
