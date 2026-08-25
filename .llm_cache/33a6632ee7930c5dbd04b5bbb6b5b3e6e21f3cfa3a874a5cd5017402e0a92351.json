@@ -1,0 +1,158 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-GW-000009",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The residual amount likely corresponds to an undocumented adjustment, with ADJ-GW-000009 being a strong candidate based on its presence in the pool and the 'candidate_count: 1' context."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-001026",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The negative residual could indicate a fee overcharge, with FEE-001026 representing one of potentially many fee lines contributing to the discrepancy."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000008",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "This residual might be an unreconciled item, possibly related to ADJ-RH-000008, whose exact nature remains unclarified."
+        }
+      ],
+      "residual_id": "RES-BC-000008"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000010",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The residual amount points to an undocumented adjustment. ADJ-RH-000010 is a plausible candidate given its type and the 'candidate_count: 2' context suggesting specific items."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-001344",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-001345",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The negative residual suggests a cumulative fee overcharge, potentially involving multiple fee lines like FEE-001344 and FEE-001345."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-GW-000001",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual could represent a more complex issue, potentially involving ADJ-GW-000001, where the exact discrepancy is not fully clear."
+        }
+      ],
+      "residual_id": "RES-BC-000010"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000018",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The residual amount is likely an undocumented adjustment, with ADJ-RH-000018 standing out as a primary candidate given the 'candidate_count: 1' context."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-003265",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "A general fee overcharge, possibly impacting FEE-003265 and other fee lines, could explain the negative residual."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RR-000006",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The exact cause of this residual remains uncertain, with ADJ-RR-000006 being another adjustment in the candidate pool."
+        }
+      ],
+      "residual_id": "RES-BC-000018"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000186",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unclaimed payment (PAY-000186) that was processed but not correctly reconciled, leading to an unexplained credit."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000186"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001335",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-001335 is an unclaimed transaction, causing an unexplained positive residual amount in the reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001335"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003458",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual is directly attributable to the unclaimed payment PAY-003458, indicating a missing transaction in the system."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003458"
+    }
+  ]
+}

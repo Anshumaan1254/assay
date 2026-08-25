@@ -1,0 +1,144 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000023",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The bank settlement was short by 16890 paise, possibly due to an adjustment (ADJ-RH-000023) applied by the bank that was not recorded internally or accounted for in reconciliation."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-004766",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An overcharge of 16890 paise on one or more fee lines, such as FEE-004766, resulted in the settlement being lower than expected."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000006",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "The chargeback CB-000006 might have been processed for an amount 16890 paise higher than our internal records, leading to a deficit in the settlement."
+        }
+      ],
+      "residual_id": "RES-BC-000023"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000024",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unrecorded adjustment (ADJ-RH-000024) of 23398 paise from the bank's side led to a deficit in the expected settlement amount."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-004930",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "A fee line, for instance FEE-004930, was overcharged by 23398 paise, causing the bank settlement to be less than anticipated."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000008",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "The chargeback CB-000008 was processed for 23398 paise more than expected, creating the settlement deficit."
+        }
+      ],
+      "residual_id": "RES-BC-000024"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000025",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The settlement was short by 12214 paise, likely due to an undocumented adjustment (ADJ-RH-000025) applied by the bank that our system did not recognize."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005091",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An overcharge of 12214 paise on a fee line, such as FEE-005091, explains the reduced settlement amount."
+        }
+      ],
+      "residual_id": "RES-BC-000025"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002995",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The bank reported payment PAY-002995 for 13399 paise, but no corresponding internal payment record was found for reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002995"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003256",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-003256 for 29730 paise was received by the bank but lacks a matching internal transaction record."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003256"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003943",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-003943 for 64919 paise was settled by the bank, but no corresponding internal payment record exists."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003943"
+    }
+  ]
+}

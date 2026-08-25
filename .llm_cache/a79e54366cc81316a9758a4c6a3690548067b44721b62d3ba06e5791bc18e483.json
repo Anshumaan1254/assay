@@ -1,0 +1,154 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000012",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The negative residual of 6378 paise strongly suggests a debit adjustment that was not properly recorded or reconciled. Adjustment ADJ-RH-000012 is a direct candidate for this undocumented debit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-001632",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_undercharge",
+          "rationale": "The unexplained debit of 6378 paise could be caused by an undercharged fee, where the merchant was charged less than the expected amount for a service, leading to a residual debit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-001633",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "A fee transaction of 6378 paise might be entirely missing from the settlement, resulting in this unexplained debit from the bank."
+        }
+      ],
+      "residual_id": "RES-BC-000012"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000025",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The negative residual of 5014 paise indicates an unrecorded debit adjustment. Adjustment ADJ-RH-000025 is a suitable candidate to explain this undocumented debit amount."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005095",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_undercharge",
+          "rationale": "An undercharged fee of 5014 paise could result in this unexplained debit, meaning the expected fee was greater than what was actually processed."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005096",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "A debit transaction, such as a fee of 5014 paise, could be entirely missing from the records, leading to the observed negative residual."
+        }
+      ],
+      "residual_id": "RES-BC-000025"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000028",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The substantial negative residual of 471611 paise points to a significant unrecorded debit adjustment. Adjustment ADJ-RH-000028 is a strong candidate for this large undocumented debit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005482",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_undercharge",
+          "rationale": "This large unexplained debit could be due to a significant fee undercharge, where the actual fee settled was 471611 paise less than the expected amount."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005483",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "A substantial debit transaction, such as a large fee of 471611 paise, might be completely missing from the reconciliation, causing this significant residual."
+        }
+      ],
+      "residual_id": "RES-BC-000028"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000693",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The positive residual of 25301 paise exactly matches the payment PAY-000693, indicating this payment was processed but not successfully reconciled or matched to a corresponding bank credit."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000693"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001947",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained credit of 97549 paise precisely corresponds to payment PAY-001947, suggesting this transaction was settled but not properly recognized in the reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001947"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003799",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 8761 paise directly matches payment PAY-003799, indicating this payment transaction was not reconciled and remains an unmatched credit."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003799"
+    }
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005209",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005210",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The negative residual suggests that more fees were debited than anticipated. Multiple fee lines are present as candidates, making a cumulative fee overcharge a plausible explanation for the -4839 paise."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000026",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The presence of an adjustment record in the candidates could indicate a manual adjustment that was not properly documented or processed, leading to the unexplained negative balance of -4839 paise."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005211",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005212",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005213",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "rounding_drift",
+          "rationale": "A small, consistent rounding discrepancy across numerous individual fee calculations could accumulate to the total negative residual of -4839 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000026"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000007",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "A discrepancy in the expected versus actual amount of chargeback CB-000007 could directly cause the negative unexplained residual of -27526 paise."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005646",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005647",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005648",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The significant negative residual of -27526 paise could be attributed to an overcharge across multiple fee lines, resulting in more debits than expected."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000029",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An undocumented adjustment, potentially represented by ADJ-RH-000029, could be responsible for the negative unexplained amount of -27526 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000029"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000002",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "The large negative residual amount of -71937 paise strongly suggests an issue with chargeback CB-000002, where the debited amount might have exceeded expectations."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-GW-000008",
+              "type": "adjustment"
+            },
+            {
+              "id": "ADJ-RH-000030",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "With multiple adjustment records as candidates, it's plausible that one or more undocumented adjustments contributed to the substantial negative unexplained amount of -71937 paise."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005807",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005808",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005809",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An aggregate overcharge across numerous fee lines, as evidenced by the candidate fee records, could explain the significant negative residual of -71937 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000030"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001901",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unclaimed payment, PAY-001901, where the full amount of the payment (330366 paise) was received but not reconciled against expected debits."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001901"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002188",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount (76109 paise) exactly matches the value of the candidate payment PAY-002188, indicating it is a missing transaction that was not fully accounted for."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002188"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003571",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount (33173 paise) directly corresponds to the candidate payment PAY-003571, signifying that this payment is a missing transaction that requires reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003571"
+    }
+  ]
+}

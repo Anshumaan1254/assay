@@ -1,0 +1,140 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000023",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The residual ID's numeric portion aligns with ADJ-RH-000023, suggesting an undocumented adjustment in the amount of 88221 paise that reduced the expected bank credit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-004783",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-004784",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "A portion of the negative unexplained amount could be attributed to an overcharge in fees, where the combined impact of various fee lines like FEE-004783 and FEE-004784 reduced the net settlement."
+        }
+      ],
+      "residual_id": "RES-BC-000023"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000025",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained -30620 paise might be due to an undocumented adjustment, potentially related to ADJ-RH-000025, which reduced the credited amount."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005091",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005092",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The negative residual suggests that processing fees, such as those represented by FEE-005091 and FEE-005092, were overcharged or not fully reconciled, leading to a smaller than expected credit."
+        }
+      ],
+      "residual_id": "RES-BC-000025"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000030",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An adjustment, specifically ADJ-RH-000030, which numerically corresponds to the residual, may be an undocumented deduction causing the -193590 paise discrepancy."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005813",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005814",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005815",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The significant negative residual could indicate an overcharge of fees. Multiple fee lines like FEE-005813, FEE-005814, and FEE-005815 might collectively contribute to this discrepancy."
+        }
+      ],
+      "residual_id": "RES-BC-000030"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001589",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 57162 paise matches the payment PAY-001589, indicating this payment was made but remains unclaimed or unmatched in the settlement process."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001589"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002883",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual of 19485 paise is perfectly explained by the unclaimed payment PAY-002883, which was not reconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002883"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004757",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unclaimed payment PAY-004757 for 40288 paise is the exact amount of the residual, suggesting it's a missing transaction in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004757"
+    }
+  ]
+}

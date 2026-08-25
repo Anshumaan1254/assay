@@ -1,0 +1,174 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005095",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005096",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The negative residual of -61241 paise suggests an overcharge on one or more fee lines, collectively leading to a deficit in the bank settlement."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000025",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unrecorded debit adjustment, potentially related to ADJ-RH-000025, could account for the -61241 paise deficit in the settlement."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005100",
+              "type": "fee_line"
+            },
+            {
+              "id": "ADJ-RR-000013",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual of -61241 paise may represent a collection of small discrepancies across multiple fee lines or adjustments that remain unmatched."
+        }
+      ],
+      "residual_id": "RES-BC-000025"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005331",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "A smaller negative residual of -1148 paise suggests a minor overcharge on a fee line, reducing the net settlement received."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000027",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unrecorded debit adjustment, possibly related to ADJ-RH-000027, could explain the -1148 paise residual."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000006",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "A mismatch in the recorded value versus the actual amount for chargeback CB-000006 could lead to the -1148 paise residual."
+        }
+      ],
+      "residual_id": "RES-BC-000027"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000001",
+              "type": "chargeback"
+            },
+            {
+              "id": "CB-000002",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "The large negative residual of -488981 paise strongly suggests discrepancies in the amounts of several chargebacks, leading to a substantial under-credit in the settlement."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-CBR-000001",
+              "type": "adjustment"
+            },
+            {
+              "id": "ADJ-CBR-000003",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "A large undocumented debit adjustment or a series of adjustments with a cumulative effect of -488981 paise could be the cause of this significant deficit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005963",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005964",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "A considerable cumulative fee overcharge across many fee lines could result in the large -488981 paise discrepancy."
+        }
+      ],
+      "residual_id": "RES-BC-000031"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000062",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-000062, with an amount of 17217 paise, is an unclaimed ledger record, indicating it has not yet been reflected or reconciled in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000062"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002509",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-002509, with an amount of 46660 paise, is an unclaimed ledger record, indicating it has not yet been reflected or reconciled in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002509"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003688",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-003688, with an amount of 40370 paise, is an unclaimed ledger record, indicating it has not yet been reflected or reconciled in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003688"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000010",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained negative amount of -99994 paise aligns with an undocumented adjustment ADJ-RH-000010, which reduced the expected bank credit."
+        }
+      ],
+      "residual_id": "RES-BC-000010"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000024",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The deficit of -83101 paise is best explained by an undocumented adjustment ADJ-RH-000024 affecting the settled amount."
+        }
+      ],
+      "residual_id": "RES-BC-000024"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000031",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The residual amount of -27607 paise directly corresponds to a possible undocumented adjustment ADJ-RH-000031 that was not expected."
+        }
+      ],
+      "residual_id": "RES-BC-000031"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000197",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The positive unexplained amount of 30305 paise is due to payment PAY-000197 being an unclaimed transaction not yet matched."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000197"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004057",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-004057 for 165215 paise is an unclaimed record, indicating a missing settlement entry for this transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004057"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004096",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 51151 paise corresponds to the unclaimed payment PAY-004096, which suggests a missing transaction in the reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004096"
+    }
+  ]
+}

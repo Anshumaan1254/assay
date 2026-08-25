@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "fitted_at": "2026-08-25T10:14:58.550573+00:00",
+  "seeds_used": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "profile": "realistic",
+  "calibrations": [
+    {
+      "source": "decompose_structural",
+      "breakpoints": [
+        {
+          "raw_bps": 10000,
+          "calibrated_bps": 10000
+        }
+      ],
+      "n_calibration_points": 350,
+      "n_positive": 350
+    },
+    {
+      "source": "decompose_subset_sum",
+      "breakpoints": [
+        {
+          "raw_bps": 8000,
+          "calibrated_bps": 10000
+        }
+      ],
+      "n_calibration_points": 75,
+      "n_positive": 75
+    },
+    {
+      "source": "decompose_assignment",
+      "breakpoints": [
+        {
+          "raw_bps": 6000,
+          "calibrated_bps": 10000
+        }
+      ],
+      "n_calibration_points": 9,
+      "n_positive": 9
+    },
+    {
+      "source": "verify_deterministic",
+      "breakpoints": [
+        {
+          "raw_bps": 10000,
+          "calibrated_bps": 9981
+        }
+      ],
+      "n_calibration_points": 171652,
+      "n_positive": 171318
+    },
+    {
+      "source": "adjudicator_hypothesis",
+      "breakpoints": [
+        {
+          "raw_bps": 0,
+          "calibrated_bps": 0
+        },
+        {
+          "raw_bps": 2478,
+          "calibrated_bps": 0
+        },
+        {
+          "raw_bps": 2583,
+          "calibrated_bps": 1429
+        },
+        {
+          "raw_bps": 9730,
+          "calibrated_bps": 1429
+        },
+        {
+          "raw_bps": 10000,
+          "calibrated_bps": 3830
+        }
+      ],
+      "n_calibration_points": 146,
+      "n_positive": 37
+    }
+  ],
+  "thresholds": {
+    "auto_min_calibrated_bps": null,
+    "escalate_max_calibrated_bps": 3830,
+    "auto_target_error_bps": 50,
+    "auto_confidence_level_bps": 9500
+  },
+  "artifact_sha256": "bbfefb7533f3e42004dafa41e038fb4cf96f12c49f33c931cacf26535da4703d"
+}

@@ -1,0 +1,94 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000006",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The residual amount likely corresponds to an undocumented debit in the form of adjustment ADJ-RH-000006, leading to a shortfall in the bank credit."
+        }
+      ],
+      "residual_id": "RES-BC-000006"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000020",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Adjustment ADJ-RH-000020, which shares a numerical sequence with the residual, is the most probable candidate for an undocumented debit causing the residual."
+        }
+      ],
+      "residual_id": "RES-BC-000020"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000025",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The residual is best explained by the undocumented adjustment ADJ-RH-000025, which likely represents an unrecorded debit."
+        }
+      ],
+      "residual_id": "RES-BC-000025"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000486",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "Payment PAY-000486 is an unclaimed record directly accounting for the residual, indicating it remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000486"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003636",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "Payment PAY-003636 is an unclaimed record directly accounting for the residual, indicating it remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003636"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-005166",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "Payment PAY-005166 is an unclaimed record directly accounting for the residual, indicating it remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-005166"
+    }
+  ]
+}

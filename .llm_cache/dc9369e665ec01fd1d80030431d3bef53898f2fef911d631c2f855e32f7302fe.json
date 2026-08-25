@@ -1,0 +1,166 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000022",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The negative residual amount of -15499 paise suggests an unexpected debit or missing credit, potentially due to an undocumented adjustment that reduced the settlement."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-004645",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The unexplained negative amount could be due to an overcharge of fees, where the bank debited more fees than recorded, leading to a shortfall in the settlement."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000022",
+              "type": "adjustment"
+            },
+            {
+              "id": "FEE-004645",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual persists as an unexplained amount, implying a general settlement discrepancy where the specific cause cannot be definitively identified from available records."
+        }
+      ],
+      "residual_id": "RES-BC-000022"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000025",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "A significant negative residual of -404630 paise indicates a large unrecorded debit or missing credit, which could be an undocumented adjustment impacting the settlement."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005128",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The substantial negative amount suggests an aggregation of fee overcharges, where total fees debited by the bank were higher than expected, causing the settlement shortfall."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000025",
+              "type": "adjustment"
+            },
+            {
+              "id": "FEE-005128",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The large unexplained residual points to an unidentifiable settlement issue, despite the presence of various adjustments and fee lines."
+        }
+      ],
+      "residual_id": "RES-BC-000025"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000027",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The negative residual of -2591 paise could be caused by an adjustment not properly recognized, leading to a debit that was not expected in the system."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005343",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An overcharge in one or more fee lines could account for the negative residual amount, as the bank debited more fees than anticipated."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000027",
+              "type": "adjustment"
+            },
+            {
+              "id": "FEE-005343",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual remains unexplained by specific transactions, indicating a general discrepancy whose root cause is not clear from the available candidate records."
+        }
+      ],
+      "residual_id": "RES-BC-000027"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002847",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The positive residual amount of 23290 paise exactly matches the value of payment PAY-002847, indicating this payment was expected but not reconciled in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002847"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003931",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual's positive value of 72416 paise is precisely equal to payment PAY-003931, strongly suggesting this payment was not included or recognized in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003931"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-005146",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The positive unexplained amount of 39143 paise matches the value of payment PAY-005146, indicating that this specific payment is missing from the reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-005146"
+    }
+  ]
+}

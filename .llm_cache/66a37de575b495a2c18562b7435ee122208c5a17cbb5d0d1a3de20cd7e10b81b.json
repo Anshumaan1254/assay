@@ -1,0 +1,178 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-GW-000009",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained debit of 35733 paise could be due to an unrecorded adjustment, such as ADJ-GW-000009, which should have been a credit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-003567",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-003568",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "A collective overcharge across multiple fee lines, including FEE-003567 and FEE-003568, likely led to the 35733 paise net debit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-003569",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-003570",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "rounding_drift",
+          "rationale": "Small cumulative discrepancies across numerous fee calculations, exemplified by FEE-003569 and FEE-003570, could account for the 35733 paise debit due to rounding drift."
+        }
+      ],
+      "residual_id": "RES-BC-000019"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000020",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The significant debit of 157247 paise is likely due to an undocumented adjustment, possibly represented by ADJ-RH-000020, that was not properly recorded as a credit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-003849",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-003850",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-003851",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "A substantial overcharge across numerous fee lines, such as FEE-003849 to FEE-003851, contributed to the unexplained 157247 paise debit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-003852",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-003853",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "rounding_drift",
+          "rationale": "Accumulated rounding differences across a large volume of fee calculations, including FEE-003852 and FEE-003853, could sum up to the 157247 paise discrepancy."
+        }
+      ],
+      "residual_id": "RES-BC-000020"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000002",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "The unexplained debit of 52496 paise points to a discrepancy in the amount of a chargeback, such as CB-000002, which was settled for an incorrect higher value."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000029",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unrecorded adjustment, perhaps ADJ-RH-000029, meant to be a credit of 52496 paise, could explain the net debit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005665",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005666",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An aggregate overcharge on various fee lines, including FEE-005665 and FEE-005666, resulted in the excess debit of 52496 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000029"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001516",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-001516 of 29337 paise was received but could not be reconciled, indicating a missing corresponding transaction in the ledger."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001516"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002473",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002473, with an amount of 112156 paise, is an unclaimed credit, suggesting a missing transaction in the system."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002473"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003721",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unclaimed payment PAY-003721 of 21104 paise indicates that a corresponding transaction is missing from the reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003721"
+    }
+  ]
+}

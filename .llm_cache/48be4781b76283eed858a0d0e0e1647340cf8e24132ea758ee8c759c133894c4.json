@@ -1,0 +1,132 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-001900",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-001901",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The sum of two or more fees, potentially FEE-001900 and FEE-001901, represents the 57036 paise shortfall in the bank credit due to an overcharge or unrecorded fees."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000014",
+              "type": "adjustment"
+            },
+            {
+              "id": "ADJ-RR-000002",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Two debit adjustments (ADJ-RH-000014 and ADJ-RR-000002) were applied externally by the bank but not accounted for in internal records, leading to the -57036 paise discrepancy."
+        }
+      ],
+      "residual_id": "RES-BC-000014"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005108",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "A single fee, such as FEE-005108, was overcharged or incorrectly processed, accounting for the -18496 paise unexplained amount in the bank credit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000025",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An adjustment, ADJ-RH-000025, represents an undocumented debit of 18496 paise applied by the bank, causing the residual."
+        }
+      ],
+      "residual_id": "RES-BC-000025"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005222",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An unaccounted fee, possibly FEE-005222, matches the -121105 paise unexplained amount, indicating an overcharge or missing fee record."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000026",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "A debit adjustment (ADJ-RH-000026) for 121105 paise was made by the bank but not recorded internally, leading to the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-BC-000026"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001771",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-001771 for 20772 paise was received but not matched to a corresponding settlement, leaving it as an unclaimed credit."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001771"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004978",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-004978, amounting to 317658 paise, was made but remains unreconciled against a bank credit."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004978"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-005096",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-005096 for 255598 paise was received but has not been settled, contributing to the unexplained positive amount."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-005096"
+    }
+  ]
+}
