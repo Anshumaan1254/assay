@@ -198,6 +198,20 @@ def test_a_hypothesis_with_the_right_class_but_wrong_records_labels_false():
     assert points[0].label is False
 
 
+def test_a_fully_rejected_residual_produces_no_labeled_points():
+    # A residual where every hypothesis failed reference-check/arithmetic
+    # re-verification (llm/adjudicator.py's job, not this module's) leaves
+    # accepted_hypotheses empty -- nothing here for a calibration curve to
+    # learn from, and nothing should be fabricated to fill the gap.
+    result = AdjudicationResult(
+        residual_id="RES-BC-1", credit_ref=RecordRef(type=EntityType.BANK_CREDIT, id="BC-1"),
+        residual_paise=5_000, currency="INR", accepted_hypotheses=[], rejected_count=3,
+    )
+    run = AdjudicationRun(results=[result], skipped_no_evidence=[], api_call_count=1, residuals_submitted=1)
+
+    assert label_adjudicated_hypotheses(run, ground_truth=[], seed=1) == []
+
+
 def test_a_hypothesis_with_the_right_records_but_wrong_class_labels_false():
     run = _run(DiscrepancyClass.ROUNDING_DRIFT, [PAY_1])
     ground_truth = [_entry(DiscrepancyClass.UNRECONCILED_RESIDUAL, [PAY_1])]

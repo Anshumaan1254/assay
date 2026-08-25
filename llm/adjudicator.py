@@ -430,51 +430,46 @@ def adjudicate_residuals(
 # ---------------------------------------------------------------------------
 
 
-class _IdSeq:
-    """Deterministic, collision-free Finding ids, mirroring core/verify.py's
-    _IdSeq: one residual can yield several accepted hypotheses, each its own
-    Finding, and every caller here iterates in a fixed sorted order, so a
-    given run produces the same ids on every replay."""
-
-    def __init__(self, audit_run_id: str, residual_id: str):
-        self._prefix = f"FND-ADJ-{audit_run_id}-{residual_id}"
-        self._n = 0
-
-    def next(self) -> str:
-        self._n += 1
-        return f"{self._prefix}-{self._n:03d}"
-
-
 def findings_from_adjudication_run(run: AdjudicationRun, audit_run_id: str) -> list[Finding]:
-    """One Finding per accepted hypothesis, not just the top-ranked one --
-    mirrors decompose.py's refusal to silently collapse competing
-    explanations. `lane` is unconditionally PROPOSE: "it proposes, it never
-    posts" is structural here, not advisory. `confidence` is `coverage_bps`,
-    a deterministically Python-computed integer -- never the model's own
-    self-report -- so invariant 2 holds even though a number ends up on the
-    Finding.
+    """One Finding per residual, from its top-ranked accepted hypothesis --
+    never one per hypothesis. Emitting a full-amount Finding per accepted
+    hypothesis would mean a residual with 3 accepted hypotheses claims 3x
+    its own money the moment anything sums `amount_impact` over a
+    `list[Finding]`, which is the natural thing a report does. Competing
+    hypotheses are not discarded information -- they stay on `run.results`,
+    already logged -- they just never become independent money claims.
+    This mirrors decompose.py's own pattern: `proof.competing` carries
+    alternatives as metadata on ONE proof, not as several proofs each
+    claiming the credit. `lane` is unconditionally PROPOSE: "it proposes,
+    it never posts" is structural here, not advisory. `confidence` is
+    `coverage_bps`, a deterministically Python-computed integer -- never
+    the model's own self-report -- so invariant 2 holds even though a
+    number ends up on the Finding.
     """
     findings: list[Finding] = []
     for result in sorted(run.results, key=lambda r: r.residual_id):
         if not result.accepted_hypotheses:
             continue
-        ids = _IdSeq(audit_run_id, result.residual_id)
-        amount = Money(abs(result.residual_paise), result.currency)
-        for hypothesis in sorted(result.accepted_hypotheses, key=lambda h: h.rank):
-            findings.append(
-                Finding(
-                    id=ids.next(),
-                    audit_run_id=audit_run_id,
-                    discrepancy_class=hypothesis.discrepancy_class,
-                    severity=Severity.MAJOR,
-                    amount_impact=amount,
-                    evidence_ids=hypothesis.cited_evidence,
-                    confidence=hypothesis.coverage_bps,
-                    lane=Lane.PROPOSE,
-                    explanation=(
-                        f"[adjudicator hypothesis, {hypothesis.coverage_bps} bps arithmetic coverage] "
-                        f"{hypothesis.rationale}"
-                    ),
-                )
+        top = min(result.accepted_hypotheses, key=lambda h: h.rank)
+        runner_up_count = len(result.accepted_hypotheses) - 1
+        alternatives_note = ""
+        if runner_up_count > 0:
+            suffix = "is" if runner_up_count == 1 else "es"
+            alternatives_note = f" ({runner_up_count} alternative hypothes{suffix} considered)"
+        findings.append(
+            Finding(
+                id=f"FND-ADJ-{audit_run_id}-{result.residual_id}",
+                audit_run_id=audit_run_id,
+                discrepancy_class=top.discrepancy_class,
+                severity=Severity.MAJOR,
+                amount_impact=Money(abs(result.residual_paise), result.currency),
+                evidence_ids=top.cited_evidence,
+                confidence=top.coverage_bps,
+                lane=Lane.PROPOSE,
+                explanation=(
+                    f"[adjudicator hypothesis, {top.coverage_bps} bps arithmetic coverage]{alternatives_note} "
+                    f"{top.rationale}"
+                ),
             )
+        )
     return findings

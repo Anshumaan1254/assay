@@ -174,6 +174,26 @@ def test_mid_calibrated_confidence_routes_to_propose():
     assert result.calibrated_confidence_bps == 4_000
 
 
+def test_calibrated_confidence_exactly_at_auto_min_routes_to_auto():
+    # raw=9_000 interpolates to exactly 8_000 between the (5_000,4_000) and
+    # (10_000,9_000) breakpoints -- both boundaries are inclusive
+    # (core/lanes.py::assign_lane uses >=), so this must be AUTO, not PROPOSE.
+    artifact = _artifact(auto_min=8_000, escalate_max=3_000)
+    result = assign_lane(9_000, SourceKind.VERIFY_DETERMINISTIC, is_llm_sourced=False, artifact=artifact)
+    assert result.calibrated_confidence_bps == 8_000
+    assert result.lane is Lane.AUTO
+
+
+def test_calibrated_confidence_exactly_at_escalate_max_routes_to_escalate():
+    # raw=3_750 interpolates to exactly 3_000 between the (0,0) and
+    # (5_000,4_000) breakpoints -- assign_lane uses <=, so this must be
+    # ESCALATE, not PROPOSE.
+    artifact = _artifact(auto_min=8_000, escalate_max=3_000)
+    result = assign_lane(3_750, SourceKind.VERIFY_DETERMINISTIC, is_llm_sourced=False, artifact=artifact)
+    assert result.calibrated_confidence_bps == 3_000
+    assert result.lane is Lane.ESCALATE
+
+
 def test_auto_min_none_makes_auto_unreachable_even_for_maximum_confidence_non_llm_items():
     # A fit that could not certify the target error rate at any threshold
     # (e.g. too few calibration points for some source) must not silently

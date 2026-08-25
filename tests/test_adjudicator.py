@@ -410,6 +410,16 @@ def test_a_schema_invalid_batch_response_raises_adjudication_rejected_and_is_log
 # ---------------------------------------------------------------------------
 
 
+def test_findings_from_adjudication_run_emits_nothing_for_a_fully_rejected_residual():
+    result = AdjudicationResult(
+        residual_id="RES-BC-1", credit_ref=RecordRef(type=EntityType.BANK_CREDIT, id="BC-1"),
+        residual_paise=5_000, currency="INR", accepted_hypotheses=[], rejected_count=2,
+    )
+    run = AdjudicationRun(results=[result], skipped_no_evidence=[], api_call_count=1, residuals_submitted=1)
+
+    assert findings_from_adjudication_run(run, audit_run_id="RUN-1") == []
+
+
 def test_findings_from_adjudication_run_lane_is_always_propose_never_auto():
     result = AdjudicationResult(
         residual_id="RES-BC-1", credit_ref=RecordRef(type=EntityType.BANK_CREDIT, id="BC-1"),
@@ -487,10 +497,48 @@ def test_findings_from_adjudication_run_ids_are_deterministic_and_collision_free
 
     first = findings_from_adjudication_run(run, audit_run_id="RUN-X")
     ids = [f.id for f in first]
-    assert len(ids) == len(set(ids)) == 4  # 2 residuals x 2 accepted hypotheses each
+    assert len(ids) == len(set(ids)) == 2  # 2 residuals, one Finding each -- not one per hypothesis
 
     second = findings_from_adjudication_run(run, audit_run_id="RUN-X")
     assert [f.id for f in second] == ids
+
+
+def test_findings_from_adjudication_run_never_double_counts_a_residual_across_hypotheses():
+    """Regression test: emitting one Finding per accepted hypothesis would
+    let a single residual's amount be claimed multiple times the moment
+    anything sums amount_impact over the returned list -- the natural
+    thing a report does. Multiple accepted hypotheses must still produce
+    exactly one Finding, from the top-ranked (lowest rank) hypothesis."""
+    result = AdjudicationResult(
+        residual_id="RES-BC-1", credit_ref=RecordRef(type=EntityType.BANK_CREDIT, id="BC-1"),
+        residual_paise=5_000, currency="INR",
+        accepted_hypotheses=[
+            {
+                "discrepancy_class": DiscrepancyClass.ROUNDING_DRIFT,
+                "cited_evidence": [RecordRef(type=EntityType.PAYMENT, id="PAY-1")],
+                "rationale": "runner-up, listed second in the response",
+                "coverage_bps": 5_000,
+                "rank": 2,
+            },
+            {
+                "discrepancy_class": DiscrepancyClass.UNRECONCILED_RESIDUAL,
+                "cited_evidence": [RecordRef(type=EntityType.PAYMENT, id="PAY-2")],
+                "rationale": "top pick",
+                "coverage_bps": 10_000,
+                "rank": 1,
+            },
+        ],
+        rejected_count=0,
+    )
+    run = AdjudicationRun(results=[result], skipped_no_evidence=[], api_call_count=1, residuals_submitted=1)
+
+    findings = findings_from_adjudication_run(run, audit_run_id="RUN-1")
+
+    assert len(findings) == 1
+    assert sum((f.amount_impact for f in findings), start=Money(0)) == Money(5_000)
+    assert findings[0].discrepancy_class is DiscrepancyClass.UNRECONCILED_RESIDUAL  # rank 1, not list order
+    assert findings[0].confidence == 10_000
+    assert findings[0].evidence_ids == [RecordRef(type=EntityType.PAYMENT, id="PAY-2")]
 
 
 # ---------------------------------------------------------------------------
