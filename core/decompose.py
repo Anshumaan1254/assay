@@ -52,6 +52,7 @@ from scipy.optimize import linear_sum_assignment
 
 from core.conserve import money_of, signed_paise
 from core.contract import canonical_json, sha256_of
+from core.lanes import CalibrationArtifact, LaneAssignment, assign_lane_for_proof
 from core.ledger import Ledger
 from core.models import AssayModel, BankCredit, EntityType, RecordRef
 
@@ -212,7 +213,12 @@ class DecompositionProof(AssayModel):
 
     # Observed, not derived. Excluded from proof_hash so that two runs over
     # identical inputs still produce identical hashes (invariant 4).
-    TELEMETRY_FIELDS: ClassVar[frozenset[str]] = frozenset({"elapsed_ns"})
+    # lane_assignment joins elapsed_ns here for the same reason: it depends
+    # on an external, refittable CalibrationArtifact rather than on "why
+    # this credit is these transactions" -- the proof's own job -- so which
+    # artifact (or none) was supplied at decompose time must never change
+    # proof_hash.
+    TELEMETRY_FIELDS: ClassVar[frozenset[str]] = frozenset({"elapsed_ns", "lane_assignment"})
 
     credit_ref: RecordRef
     credit_paise: int
@@ -240,6 +246,11 @@ class DecompositionProof(AssayModel):
 
     elapsed_ns: int
     proof_hash: str
+
+    # None when decompose()/decompose_all() were called without a
+    # calibration argument -- the common, backward-compatible case. Set by
+    # core/lanes.py's assign_lane_for_proof() when one is supplied.
+    lane_assignment: LaneAssignment | None = None
 
 
 class ProofVerification(AssayModel):
@@ -762,6 +773,7 @@ def _build_proof(
     declined: Sequence[DecompositionReason],
     result: _TierResult,
     elapsed_ns: int,
+    calibration: CalibrationArtifact | None = None,
 ) -> DecompositionProof:
     if result.unit is not None:
         outcome = DecompositionOutcome.RESOLVED
@@ -807,6 +819,8 @@ def _build_proof(
         elapsed_ns=elapsed_ns,
         proof_hash="",
     )
+    if calibration is not None:
+        proof = proof.model_copy(update={"lane_assignment": assign_lane_for_proof(proof, calibration)})
     return proof.model_copy(update={"proof_hash": _hash_payload(proof)})
 
 
@@ -825,6 +839,7 @@ def decompose(
     split_batch_ids: frozenset[str] = frozenset(),
     shared_utrs: frozenset[str] = frozenset(),
     clock: Callable[[], int] = time.monotonic_ns,
+    calibration: CalibrationArtifact | None = None,
 ) -> DecompositionProof:
     """Decompose one credit through tiers 1 and 2.
 
@@ -835,6 +850,11 @@ def decompose(
     `merchant_id` is an explicit argument because BankCredit has no
     merchant_id field; the audit scope supplies it rather than this module
     guessing one out of the narration.
+
+    `calibration`, when supplied, stamps the resulting proof's
+    `lane_assignment` via core/lanes.py's assign_lane_for_proof(). Defaults
+    to None -- decompose() stays fully usable without ever loading a
+    calibration artifact, which is what every existing caller does today.
     """
     start_ns = clock()
     tiers: list[DecompositionTier] = [DecompositionTier.STRUCTURAL]
@@ -850,6 +870,7 @@ def decompose(
             declined=declined,
             result=structural,
             elapsed_ns=clock() - start_ns,
+            calibration=calibration,
         )
     if structural.reason in _TERMINAL_REASONS:
         return _build_proof(
@@ -860,6 +881,7 @@ def decompose(
             declined=declined,
             result=structural,
             elapsed_ns=clock() - start_ns,
+            calibration=calibration,
         )
     if structural.reason is not None:
         declined.append(structural.reason)
@@ -876,6 +898,7 @@ def decompose(
         declined=declined,
         result=subset,
         elapsed_ns=clock() - start_ns,
+        calibration=calibration,
     )
 
 
@@ -892,18 +915,25 @@ def decompose_all(
     merchant_id: str,
     budget: DecompositionBudget = DEFAULT_BUDGET,
     clock: Callable[[], int] = time.monotonic_ns,
+    calibration: CalibrationArtifact | None = None,
 ) -> list[DecompositionProof]:
     """Decompose a whole bank statement.
 
-    Ordering is the point. A structural sweep over every credit first claims
-    the records it can account for with certainty; only then does subset-sum
-    run, over the residue. Without that, a credit in the committed run would
-    face every payment in the window instead of a handful of unclaimed
-    batches, and the node budget would trip on all of them. Tier 3 runs last
-    over whatever is still unresolved, as one batched assignment.
+    Two full phases across every credit, not two tiers cascaded per credit.
+    A structural sweep over EVERY credit runs to completion first, claiming
+    every record it can account for with certainty; only then does
+    subset-sum run, over the residue, for whatever didn't resolve
+    structurally. Without that separation, a credit that falls to tier 2
+    early in id order could speculatively claim records that structurally
+    belong to a credit processed later -- pre-empting that later credit's
+    own certain UTR join with an earlier, weaker match, and reporting a
+    confident, fully-verifying clean result over the wrong records while
+    the real shortfall reappears, silently mis-signed, on the credit that
+    got bumped. Tier 3 runs last over whatever is still unresolved, as one
+    batched assignment.
 
-    Credits are processed in id order so the claim set evolves identically
-    on every run; results come back in input order.
+    Credits are processed in id order in every phase so the claim set
+    evolves identically on every run; results come back in input order.
     """
     ordered = sorted(credits, key=lambda c: c.id)
     utr_counts: dict[str, int] = {}
@@ -922,18 +952,49 @@ def decompose_all(
     )
 
     proofs: dict[str, DecompositionProof] = {}
+    declined_by_credit: dict[str, list[DecompositionReason]] = {}
     claimed: set[RecordRef] = set()
 
+    # Phase 1: structural, over every credit, to completion, before any
+    # credit is allowed to fall to tier 2.
     for credit in ordered:
-        proof = decompose(
+        start_ns = clock()
+        structural = _tier_structural(credit, ledger, frozenset(claimed), shared_utrs)
+        if structural.unit is not None or structural.reason in _TERMINAL_REASONS:
+            proof = _build_proof(
+                credit,
+                ledger,
+                tier=DecompositionTier.STRUCTURAL,
+                tiers_attempted=[DecompositionTier.STRUCTURAL],
+                declined=[],
+                result=structural,
+                elapsed_ns=clock() - start_ns,
+                calibration=calibration,
+            )
+            proofs[credit.id] = proof
+            claimed.update(term.ref for term in proof.terms)
+        else:
+            declined_by_credit[credit.id] = [structural.reason] if structural.reason is not None else []
+
+    # Phase 2: subset-sum, over every credit that didn't resolve
+    # structurally, against the pool left over after phase 1 claimed
+    # everything it could with certainty.
+    for credit in ordered:
+        if credit.id in proofs:
+            continue
+        start_ns = clock()
+        subset, _units = _tier_subset_sum(
+            credit, ledger, merchant_id, frozenset(claimed), split_batch_ids, budget, clock, start_ns
+        )
+        proof = _build_proof(
             credit,
             ledger,
-            merchant_id=merchant_id,
-            budget=budget,
-            claimed=frozenset(claimed),
-            split_batch_ids=split_batch_ids,
-            shared_utrs=shared_utrs,
-            clock=clock,
+            tier=DecompositionTier.SUBSET_SUM,
+            tiers_attempted=[DecompositionTier.STRUCTURAL, DecompositionTier.SUBSET_SUM],
+            declined=declined_by_credit[credit.id],
+            result=subset,
+            elapsed_ns=clock() - start_ns,
+            calibration=calibration,
         )
         proofs[credit.id] = proof
         claimed.update(term.ref for term in proof.terms)
@@ -968,6 +1029,7 @@ def decompose_all(
                 declined=declined,
                 result=result,
                 elapsed_ns=clock() - start_ns,
+                calibration=calibration,
             )
             proofs[credit.id] = proof
             claimed.update(term.ref for term in proof.terms)

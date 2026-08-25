@@ -39,6 +39,7 @@ from typing import Literal
 from core.contract import CompiledContract, FeeBreakdown
 from core.decompose import DecompositionOutcome, DecompositionProof
 from core.exceptions import DiscrepancyClass
+from core.lanes import CalibrationArtifact, assign_lane_for_verify_finding
 from core.ledger import Ledger
 from core.models import (
     AdjustmentKind,
@@ -200,7 +201,13 @@ def fee_tax_cells(proof: DecompositionProof, ledger: Ledger, contract: CompiledC
 
 
 def _fee_and_tax_findings(
-    proof: DecompositionProof, ledger: Ledger, contract: CompiledContract, ids: _IdSeq, audit_run_id: str
+    proof: DecompositionProof,
+    ledger: Ledger,
+    contract: CompiledContract,
+    ids: _IdSeq,
+    audit_run_id: str,
+    confidence_bps: int,
+    lane: Lane,
 ) -> list[Finding]:
     findings: list[Finding] = []
     for cell in fee_tax_cells(proof, ledger, contract):
@@ -233,8 +240,8 @@ def _fee_and_tax_findings(
                 severity=Severity.MAJOR,
                 amount_impact=Money(abs(delta), currency),
                 evidence_ids=cell.evidence_ids,
-                confidence=CONFIDENCE,
-                lane=Lane.PROPOSE,
+                confidence=confidence_bps,
+                lane=lane,
                 explanation=explanation,
             )
         )
@@ -265,6 +272,8 @@ def _chargeback_findings(
     ids: _IdSeq,
     audit_run_id: str,
     reversal_amounts: Counter[int],
+    confidence_bps: int,
+    lane: Lane,
 ) -> list[Finding]:
     chargeback_refs = sorted(
         {t.ref for t in proof.terms if t.ref.type is EntityType.CHARGEBACK}, key=lambda r: r.id
@@ -288,8 +297,8 @@ def _chargeback_findings(
                 severity=Severity.MAJOR,
                 amount_impact=cb.amount,
                 evidence_ids=[cb_ref],
-                confidence=CONFIDENCE,
-                lane=Lane.PROPOSE,
+                confidence=confidence_bps,
+                lane=lane,
                 explanation=(
                     f"chargeback {cb.id} is WON but no unmatched MANUAL_CREDIT adjustment of "
                     f"{cb.amount.to_rupees_str()} reverses it anywhere in the ledger"
@@ -306,6 +315,7 @@ def verify(
     *,
     audit_run_id: str,
     reversal_amounts: Counter[int] | None = None,
+    calibration: CalibrationArtifact | None = None,
 ) -> list[Finding]:
     """Independently recompute one proof's fee/tax lines and chargeback
     reversals; return every mismatch as a Finding.
@@ -320,25 +330,47 @@ def verify(
     verify_all() instead builds one pool and threads it through every proof
     in a run, so two proofs cannot each see -- and both silently accept --
     the same single real reversal as satisfying their own chargeback.
+
+    `calibration`, when supplied, replaces the uncalibrated placeholder
+    (confidence=CONFIDENCE, lane=Lane.PROPOSE) with core/lanes.py's actual
+    calibrated confidence/lane for this source. Defaults to None, so every
+    existing caller keeps the placeholder behaviour unless it opts in.
     """
     if proof.outcome is not DecompositionOutcome.RESOLVED:
         return []
     if reversal_amounts is None:
         reversal_amounts = _reversal_amount_pool(ledger)
+    if calibration is not None:
+        assignment = assign_lane_for_verify_finding(CONFIDENCE, calibration)
+        confidence_bps, lane = assignment.calibrated_confidence_bps, assignment.lane
+    else:
+        confidence_bps, lane = CONFIDENCE, Lane.PROPOSE
     ids = _IdSeq(audit_run_id, proof.credit_ref.id)
     return [
-        *_fee_and_tax_findings(proof, ledger, contract, ids, audit_run_id),
-        *_chargeback_findings(proof, ledger, ids, audit_run_id, reversal_amounts),
+        *_fee_and_tax_findings(proof, ledger, contract, ids, audit_run_id, confidence_bps, lane),
+        *_chargeback_findings(proof, ledger, ids, audit_run_id, reversal_amounts, confidence_bps, lane),
     ]
 
 
 def verify_all(
-    proofs: Iterable[DecompositionProof], ledger: Ledger, contract: CompiledContract, *, audit_run_id: str
+    proofs: Iterable[DecompositionProof],
+    ledger: Ledger,
+    contract: CompiledContract,
+    *,
+    audit_run_id: str,
+    calibration: CalibrationArtifact | None = None,
 ) -> list[Finding]:
     reversal_amounts = _reversal_amount_pool(ledger)
     findings: list[Finding] = []
     for proof in sorted(proofs, key=lambda p: p.credit_ref.id):
         findings.extend(
-            verify(proof, ledger, contract, audit_run_id=audit_run_id, reversal_amounts=reversal_amounts)
+            verify(
+                proof,
+                ledger,
+                contract,
+                audit_run_id=audit_run_id,
+                reversal_amounts=reversal_amounts,
+                calibration=calibration,
+            )
         )
     return findings

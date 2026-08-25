@@ -35,6 +35,15 @@ from core.decompose import (
     decompose_all,
     verify_proof,
 )
+from core.lanes import (
+    CalibrationArtifact,
+    IsotonicBreakpoint,
+    LaneThresholds,
+    SourceCalibration,
+    SourceKind,
+    artifact_content_hash,
+    assign_lane_for_proof,
+)
 from core.ledger import Ledger
 from core.models import (
     Adjustment,
@@ -632,6 +641,34 @@ def test_a_tied_assignment_is_ambiguous_not_an_arbitrary_pick():
     assert all(p.terms == [] for p in proofs)
 
 
+def test_a_lower_id_credits_subset_sum_never_preempts_a_higher_id_credits_structural_claim():
+    # decompose_all's own docstring: "A structural sweep over every credit
+    # first claims the records it can account for with certainty; only then
+    # does subset-sum run, over the residue." BC-1 has no UTR (a dropped
+    # UTR, D09's shape) and its amount coincidentally equals STL-B's net --
+    # not its own intended batch. BC-2 carries STL-B's real, intact UTR.
+    # If BC-1's tier-2 search runs before BC-2 ever gets its tier-1
+    # attempt, BC-1 speculatively claims STL-B out from under BC-2, which
+    # then can't reach its own batch structurally and reports a fabricated
+    # discrepancy on the wrong credit instead. Processing order is by
+    # credit id, and "BC-1" < "BC-2", so this is the exact ordering that
+    # must not matter.
+    a, _net_a = _make_batch("STL-A", "UTR-A", DAY, [100_000])
+    b, net_b = _make_batch("STL-B", "UTR-B", DAY, [99_500])
+    bc1 = _credit("BC-1", "", net_b, VALUE_DATE, narration="NEFT settlement (UTR dropped)")
+    bc2 = _credit("BC-2", "UTR-B", net_b, VALUE_DATE)
+    ledger = Ledger([*a, *b, bc1, bc2])
+
+    proofs = {p.credit_ref.id: p for p in decompose_all([bc1, bc2], ledger, merchant_id=MERCHANT)}
+
+    # BC-2 owns STL-B by an intact, unambiguous UTR join -- it must resolve
+    # structurally to its own batch, not be bumped to a worse tier because a
+    # lower-id credit got there first.
+    assert proofs["BC-2"].tier is DecompositionTier.STRUCTURAL
+    assert {t.ref.id for t in proofs["BC-2"].terms} == {"STL-B-PAY-0"}
+    assert proofs["BC-2"].residual_paise == 0
+
+
 def test_decompose_all_never_lets_two_credits_claim_the_same_record():
     a, net_a = _make_batch("STL-1", "UTR-1", DAY, [500_000], fees=[11_800])
     b, net_b = _make_batch("STL-2", "UTR-2", DAY, [300_000], fees=[7_080])
@@ -965,3 +1002,85 @@ def test_committed_run_is_byte_identical_across_two_decompositions():
     second = [p.proof_hash for p in decompose_all(credits, ledger, merchant_id=MERCHANT)]
 
     assert first == second
+
+
+# ---------------------------------------------------------------------------
+# Phase C: calibrated lane_assignment, wired via an optional calibration
+# artifact. Mirrors tests/test_lanes.py's own _artifact() builder.
+# ---------------------------------------------------------------------------
+
+_LANE_BREAKPOINTS = [
+    IsotonicBreakpoint(raw_bps=0, calibrated_bps=0),
+    IsotonicBreakpoint(raw_bps=10_000, calibrated_bps=9_500),
+]
+
+
+def _lane_artifact() -> CalibrationArtifact:
+    calibrations = [
+        SourceCalibration(source=source, breakpoints=_LANE_BREAKPOINTS, n_calibration_points=1_000, n_positive=900)
+        for source in SourceKind
+    ]
+    artifact = CalibrationArtifact(
+        schema_version=1,
+        fitted_at="2026-08-25T00:00:00+05:30",
+        seeds_used=[1, 2, 3],
+        profile="realistic",
+        calibrations=calibrations,
+        thresholds=LaneThresholds(
+            auto_min_calibrated_bps=9_000,
+            escalate_max_calibrated_bps=3_000,
+            auto_target_error_bps=50,
+            auto_confidence_level_bps=9_500,
+        ),
+        artifact_sha256="",
+    )
+    return artifact.model_copy(update={"artifact_sha256": artifact_content_hash(artifact)})
+
+
+def test_lane_assignment_is_none_when_no_calibration_given():
+    records, net = _make_batch("STL-1", "UTR-1", DAY, [500_000], fees=[11_800], taxes=[2_124])
+    credit = _credit("BC-1", "UTR-1", net, VALUE_DATE)
+    ledger = Ledger([*records, credit])
+
+    proof = decompose(credit, ledger, merchant_id=MERCHANT)
+
+    assert proof.lane_assignment is None
+
+
+def test_lane_assignment_is_populated_and_matches_assign_lane_for_proof_when_calibration_given():
+    records, net = _make_batch("STL-1", "UTR-1", DAY, [500_000], fees=[11_800], taxes=[2_124])
+    credit = _credit("BC-1", "UTR-1", net, VALUE_DATE)
+    ledger = Ledger([*records, credit])
+    artifact = _lane_artifact()
+
+    proof = decompose(credit, ledger, merchant_id=MERCHANT, calibration=artifact)
+
+    assert proof.lane_assignment is not None
+    assert proof.lane_assignment == assign_lane_for_proof(proof, artifact)
+
+
+def test_decompose_all_threads_calibration_to_every_proof():
+    first_records, first_net = _make_batch("STL-1", "UTR-1", DAY, [500_000], fees=[11_800], taxes=[2_124])
+    second_records, second_net = _make_batch("STL-2", "UTR-2", DAY, [300_000], fees=[7_080], taxes=[1_274])
+    first = _credit("BC-1", "UTR-1", first_net, VALUE_DATE)
+    second = _credit("BC-2", "UTR-2", second_net, VALUE_DATE)
+    ledger = Ledger([*first_records, *second_records, first, second])
+    artifact = _lane_artifact()
+
+    proofs = decompose_all([first, second], ledger, merchant_id=MERCHANT, calibration=artifact)
+
+    assert all(p.lane_assignment is not None for p in proofs)
+
+
+def test_proof_hash_is_identical_regardless_of_calibration_artifact_supplied():
+    records, net = _make_batch("STL-1", "UTR-1", DAY, [500_000], fees=[11_800], taxes=[2_124])
+    credit = _credit("BC-1", "UTR-1", net, VALUE_DATE)
+    ledger = Ledger([*records, credit])
+    artifact = _lane_artifact()
+
+    uncalibrated = decompose(credit, ledger, merchant_id=MERCHANT)
+    calibrated = decompose(credit, ledger, merchant_id=MERCHANT, calibration=artifact)
+
+    assert uncalibrated.proof_hash == calibrated.proof_hash
+    assert uncalibrated.lane_assignment is None
+    assert calibrated.lane_assignment is not None

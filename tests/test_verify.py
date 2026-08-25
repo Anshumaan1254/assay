@@ -41,6 +41,16 @@ from core.decompose import (
     decompose_all,
 )
 from core.exceptions import DiscrepancyClass
+from core.lanes import (
+    CalibrationArtifact,
+    IsotonicBreakpoint,
+    LaneThresholds,
+    SourceCalibration,
+    SourceKind,
+    artifact_content_hash,
+    assign_lane_for_verify_finding,
+    load_calibration,
+)
 from core.ledger import Ledger
 from core.models import (
     Adjustment,
@@ -61,7 +71,7 @@ from core.models import (
     TaxLine,
 )
 from core.money import Money
-from core.verify import UnsupportedTaxBase, fee_tax_cells, verify, verify_all
+from core.verify import CONFIDENCE, UnsupportedTaxBase, fee_tax_cells, verify, verify_all
 from datagen.config import GenerationConfig, load_profile
 from datagen.inject import apply_discrepancies
 from datagen.ratecard import default_rate_card, render_markdown
@@ -423,6 +433,11 @@ def test_unresolved_proofs_are_skipped_without_error():
 
 
 def test_every_finding_verify_emits_is_major_severity_propose_lane_and_full_confidence():
+    """calibration=None -- verify()'s default, backward-compatible path.
+    No calibration artifact loaded means no calibrated judgment is possible,
+    so this stays the old hardcoded MAJOR/PROPOSE/10_000 behaviour on
+    purpose. See the calibration-supplied tests below for the calibrated
+    path Phase C actually wires in."""
     contract = _two_tier_contract()
     payment = _payment(paise=500_000)
     fee_line = _fee_line(paise=9_000, rule_id="card.credit.tier1")
@@ -436,6 +451,116 @@ def test_every_finding_verify_emits_is_major_severity_propose_lane_and_full_conf
         assert finding.severity.value == "major"
         assert finding.lane.value == "propose"
         assert finding.confidence == 10_000
+
+
+# ---------------------------------------------------------------------------
+# Phase C: calibrated confidence/lane, wired via an optional calibration
+# artifact. Mirrors tests/test_lanes.py's own _artifact() builder.
+# ---------------------------------------------------------------------------
+
+_VERIFY_LANE_BREAKPOINTS = [
+    IsotonicBreakpoint(raw_bps=0, calibrated_bps=0),
+    IsotonicBreakpoint(raw_bps=10_000, calibrated_bps=7_000),
+]
+
+
+def _lane_artifact() -> CalibrationArtifact:
+    calibrations = [
+        SourceCalibration(
+            source=source, breakpoints=_VERIFY_LANE_BREAKPOINTS, n_calibration_points=1_000, n_positive=900
+        )
+        for source in SourceKind
+    ]
+    artifact = CalibrationArtifact(
+        schema_version=1,
+        fitted_at="2026-08-25T00:00:00+05:30",
+        seeds_used=[1, 2, 3],
+        profile="realistic",
+        calibrations=calibrations,
+        thresholds=LaneThresholds(
+            auto_min_calibrated_bps=9_000,
+            escalate_max_calibrated_bps=3_000,
+            auto_target_error_bps=50,
+            auto_confidence_level_bps=9_500,
+        ),
+        artifact_sha256="",
+    )
+    return artifact.model_copy(update={"artifact_sha256": artifact_content_hash(artifact)})
+
+
+def test_when_calibration_is_supplied_findings_use_assign_lane_for_verify_finding():
+    contract = _two_tier_contract()
+    payment = _payment(paise=500_000)
+    fee_line = _fee_line(paise=9_000, rule_id="card.credit.tier1")
+    tax_line = _tax_line(base_paise=9_000, paise=1_620)
+    ledger = Ledger([payment, fee_line, tax_line])
+    proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 9_000 - 1_620)
+    artifact = _lane_artifact()
+    expected = assign_lane_for_verify_finding(CONFIDENCE, artifact)
+
+    findings = verify(proof, ledger, contract, audit_run_id="RUN-1", calibration=artifact)
+
+    assert findings, "fixture must actually produce findings to test their shape"
+    for finding in findings:
+        assert finding.confidence == expected.calibrated_confidence_bps
+        assert finding.lane == expected.lane
+        assert finding.confidence != 10_000, "calibration must actually change the placeholder value"
+
+
+def test_chargeback_findings_are_also_calibrated_when_supplied():
+    payment = _payment(paise=500_000)
+    chargeback = _chargeback(paise=20_000, stage=ChargebackStage.WON)
+    ledger = Ledger([payment, chargeback])
+    proof = _proof(
+        [_term(payment), _term(chargeback)], credit_paise=500_000 - 20_000
+    )
+    artifact = _lane_artifact()
+    expected = assign_lane_for_verify_finding(CONFIDENCE, artifact)
+
+    findings = verify(proof, ledger, _two_tier_contract(), audit_run_id="RUN-1", calibration=artifact)
+
+    assert findings, "an unreversed WON chargeback must produce a finding"
+    assert findings[0].confidence == expected.calibrated_confidence_bps
+    assert findings[0].lane == expected.lane
+
+
+def test_the_real_committed_calibration_artifact_routes_verify_findings_to_propose():
+    """A regression guard against the actual shipped artifact, not just a
+    synthetic one -- verify_deterministic's raw 10_000 calibrates to 9981
+    bps per calibration/lane_calibration.v1.json, still short of the
+    committed (currently null/unreachable) AUTO threshold."""
+    artifact = load_calibration(REPO_ROOT / "calibration" / "lane_calibration.v1.json")
+    contract = _two_tier_contract()
+    payment = _payment(paise=500_000)
+    fee_line = _fee_line(paise=9_000, rule_id="card.credit.tier1")
+    tax_line = _tax_line(base_paise=9_000, paise=1_620)
+    ledger = Ledger([payment, fee_line, tax_line])
+    proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 9_000 - 1_620)
+
+    findings = verify(proof, ledger, contract, audit_run_id="RUN-1", calibration=artifact)
+
+    assert findings
+    for finding in findings:
+        assert finding.confidence == 9_981
+        assert finding.lane.value == "propose"
+
+
+def test_verify_all_threads_calibration_to_every_finding():
+    contract = _two_tier_contract()
+    payment = _payment(paise=500_000)
+    fee_line = _fee_line(paise=9_000, rule_id="card.credit.tier1")
+    tax_line = _tax_line(base_paise=9_000, paise=1_620)
+    ledger = Ledger([payment, fee_line, tax_line])
+    proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 9_000 - 1_620)
+    artifact = _lane_artifact()
+    expected = assign_lane_for_verify_finding(CONFIDENCE, artifact)
+
+    findings = verify_all([proof], ledger, contract, audit_run_id="RUN-1", calibration=artifact)
+
+    assert findings
+    for finding in findings:
+        assert finding.confidence == expected.calibrated_confidence_bps
+        assert finding.lane == expected.lane
 
 
 def test_finding_ids_are_unique_and_stable_across_a_run():
