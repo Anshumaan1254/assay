@@ -1059,3 +1059,55 @@ it by reading code, not just after.
 tests pass, guard on changed files passes, live clean-profile audit gives
 `unexplained=0`/`unclaimed=0`/`verify()=[]`, two independent runs over the
 same seed hash identical, full suite green.
+
+## 2026-08-25 16:11 — the first real calibration fit gave AUTO a threshold of 0
+
+**Symptom:** the first live run of `eval/calibrate_lanes.py` against 14
+synthetic seeds wrote `auto_min_calibrated_bps=0` to the calibration
+artifact — meaning every non-LLM item, regardless of its own calibrated
+confidence, would route to `AUTO`.
+
+**Diagnosis:** `derive_auto_threshold` pooled all 5 raw-confidence sources
+into one flat list before sweeping Clopper-Pearson bounds. `core/verify.py`
+contributed ~171,652 near-perfect cells (its raw confidence is a constant
+10,000, so isotonic regression collapses it to one point) that numerically
+dominated the pool. Even with `llm/adjudicator.py`'s 146 points at only 25%
+accuracy mixed in, the pooled failure rate still cleared the 0.5%-at-95%
+target — a bad minority source's risk statistically laundered through a
+good majority source's volume. Found by inspecting the fitted artifact's
+per-source `n`/`n_positive` after the first live run looked suspicious
+(`auto_min=0` is not a threshold, it's the absence of one).
+
+**First fix:** changed `derive_auto_threshold` to require every source's
+own Clopper-Pearson bound to hold independently at each candidate
+threshold (`dict[SourceKind, list[tuple[int, bool]]]` instead of one flat
+list), not a pooled bound.
+
+**Whether it worked:** partially. Re-fitting correctly rejected
+threshold=0, but surfaced a second bug: `fit_calibration_artifact` clamped
+the "unreachable" sentinel (10_001) down to 10_000 via `min(x, 10_000)` to
+satisfy `LaneThresholds.auto_min_calibrated_bps`'s `Field(ge=0, le=10_000)`
+— silently turning "no threshold could be certified" into "the threshold
+is exactly 10_000". `core/decompose.py`'s ASSIGNMENT-tier proofs (9 samples
+across 14 seeds, all correct, calibrating to exactly 10_000, but far too
+few to certify 0.5%/95%) would have reached `AUTO` anyway.
+
+**Final fix:** made `LaneThresholds.auto_min_calibrated_bps` genuinely
+nullable (`int | None`); `None` means AUTO is structurally unreachable, and
+`core/lanes.py::assign_lane` checks for it explicitly rather than comparing
+against a number that was never really 10,000.
+
+**Guard added:** `tests/test_eval_calibrate_lanes.py::test_derive_auto_threshold_is_not_diluted_by_a_much_larger_accurate_source`
+(reproduces the exact dilution scenario) and
+`::test_fit_calibration_artifact_reports_auto_unreachable_as_none_not_clamped`;
+`tests/test_lanes.py::test_auto_min_none_makes_auto_unreachable_even_for_maximum_confidence_non_llm_items`;
+`tests/test_eval_calibration.py::test_no_non_llm_proof_or_finding_reaches_auto_when_unreachable`
+validates the unreachable state end-to-end against held-out seeds (15-20)
+the fit never saw.
+
+The committed `calibration/lane_calibration.v1.json` now honestly reports
+`AUTO` as unreachable. This is the correct answer given current data, not
+a residual bug: tier-3 (ASSIGNMENT) proofs are rare — 9 samples in 14
+seeds — and getting enough of them to certify a 0.5%/95% guarantee would
+need far more synthetic seeds than this pass generated. No amount of
+pooling should have papered over that.

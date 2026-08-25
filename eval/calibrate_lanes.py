@@ -167,25 +167,52 @@ def _clopper_pearson_upper_bound(failures: int, trials: int, confidence_level: f
 
 
 def derive_auto_threshold(
-    calibrated_points: Sequence[tuple[int, bool]], *, target_error_bps: int, confidence_level_bps: int
+    calibrated_points_by_source: dict[SourceKind, list[tuple[int, bool]]],
+    *,
+    target_error_bps: int,
+    confidence_level_bps: int,
 ) -> int:
-    """The lowest calibrated-confidence threshold T such that, among
-    calibration points with calibrated_confidence >= T, the Clopper-Pearson
-    upper bound on the true error rate (at confidence_level_bps) is still
-    within target_error_bps. 10_001 (structurally unreachable) if no
-    threshold achieves it -- AUTO then correctly never fires rather than
-    being silently mis-calibrated."""
+    """The lowest calibrated-confidence threshold T such that, for EVERY
+    source with at least one point at or above T, that source's OWN
+    Clopper-Pearson upper bound on the true error rate (at
+    confidence_level_bps) is within target_error_bps.
+
+    Bounds are computed per source and never pooled: pooling would let one
+    high-volume, highly-accurate source's statistics numerically swamp a
+    low-volume source's poor accuracy at the same calibrated value,
+    certifying a threshold that is not actually safe for the low-volume
+    source -- e.g. core/verify.py's ~170k near-perfect cells would
+    statistically hide a handful of badly-miscalibrated
+    decompose_assignment proofs sharing the same calibrated bucket.
+    Requiring every source's own bound to hold is the conservative, correct
+    way to state one guarantee that covers all of them, including a source
+    with too few calibration points to ever certify the target on its own
+    -- which correctly makes AUTO unreachable rather than silently
+    laundering that source's risk through a bigger one's volume. 10_001
+    (structurally unreachable) if no threshold satisfies every source.
+    """
     target = target_error_bps / 10_000
     confidence_level = confidence_level_bps / 10_000
+    all_calibrated = {c for points in calibrated_points_by_source.values() for c, _ in points}
     best = 10_001
-    for threshold in sorted({calibrated for calibrated, _ in calibrated_points}):
-        subset = [label for calibrated, label in calibrated_points if calibrated >= threshold]
-        if not subset:
+    for threshold in sorted(all_calibrated):
+        if not all(
+            _source_bound_ok(points, threshold, target, confidence_level)
+            for points in calibrated_points_by_source.values()
+        ):
             continue
-        failures = sum(1 for label in subset if not label)
-        if _clopper_pearson_upper_bound(failures, len(subset), confidence_level) <= target:
-            best = min(best, threshold)
+        best = min(best, threshold)
     return best
+
+
+def _source_bound_ok(
+    points: Sequence[tuple[int, bool]], threshold: int, target: float, confidence_level: float
+) -> bool:
+    subset = [label for calibrated, label in points if calibrated >= threshold]
+    if not subset:
+        return True  # this source contributes nothing at this threshold -- no risk to certify
+    failures = sum(1 for label in subset if not label)
+    return _clopper_pearson_upper_bound(failures, len(subset), confidence_level) <= target
 
 
 def derive_escalate_threshold(calibrated_points: Sequence[tuple[int, bool]]) -> int:
@@ -217,12 +244,13 @@ def fit_calibration_artifact(
     confidence_level_bps: int = 9_500,
 ) -> CalibrationArtifact:
     """One isotonic calibration per source, then a single pair of lane
-    thresholds fit on the pooled calibrated-confidence scale -- pooled
-    because calibration is precisely what makes the sources comparable on
-    one 0-10_000 axis. is_llm_sourced (core/lanes.py::assign_lane) is what
-    keeps an LLM-sourced item out of AUTO regardless of the numeric
-    threshold, so pooling ADJUDICATOR_HYPOTHESIS points here does not
-    weaken the guarantee for anything that actually reaches AUTO.
+    thresholds fit on the calibrated-confidence scale -- one scale because
+    calibration is precisely what makes the sources comparable on one
+    0-10_000 axis. AUTO's threshold is derived per source (see
+    derive_auto_threshold's docstring for why pooling would be unsound);
+    ESCALATE's is a softer, non-guaranteed heuristic and stays pooled.
+    is_llm_sourced (core/lanes.py::assign_lane) additionally keeps any
+    LLM-sourced item out of AUTO regardless of the numeric threshold.
     """
     calibrations: list[SourceCalibration] = []
     for source in SourceKind:
@@ -247,7 +275,7 @@ def fit_calibration_artifact(
         profile=profile,
         calibrations=calibrations,
         thresholds=LaneThresholds(
-            auto_min_calibrated_bps=10_000,
+            auto_min_calibrated_bps=None,
             escalate_max_calibrated_bps=0,
             auto_target_error_bps=target_error_bps,
             auto_confidence_level_bps=confidence_level_bps,
@@ -255,12 +283,24 @@ def fit_calibration_artifact(
         artifact_sha256="",
     )
 
-    pooled = [
-        (calibrate_confidence(point.raw_bps, source, interim), point.label)
-        for source, points in points_by_source.items()
-        for point in points
-    ]
-    auto_min = min(derive_auto_threshold(pooled, target_error_bps=target_error_bps, confidence_level_bps=confidence_level_bps), 10_000)
+    calibrated_by_source: dict[SourceKind, list[tuple[int, bool]]] = {}
+    pooled: list[tuple[int, bool]] = []
+    for source, points in points_by_source.items():
+        if not points:
+            continue
+        calibrated = [(calibrate_confidence(point.raw_bps, source, interim), point.label) for point in points]
+        calibrated_by_source[source] = calibrated
+        pooled.extend(calibrated)
+
+    raw_auto_threshold = derive_auto_threshold(
+        calibrated_by_source, target_error_bps=target_error_bps, confidence_level_bps=confidence_level_bps
+    )
+    # > 10_000 is derive_auto_threshold's own "unreachable" sentinel -- kept
+    # as None here, never clamped into range. Clamping to 10_000 would
+    # silently turn "no threshold certifies the guarantee" into "the
+    # threshold is exactly 10_000", which is a different and more
+    # permissive claim than the fit actually supports.
+    auto_min = None if raw_auto_threshold > 10_000 else raw_auto_threshold
     escalate_max = derive_escalate_threshold(pooled)
 
     artifact = interim.model_copy(
@@ -318,10 +358,11 @@ def main() -> None:
     provider = CachedProvider(GeminiProvider())
     artifact = fit_from_seeds(CALIBRATION_SEEDS, provider)
     write_artifact(artifact)
+    auto_min = artifact.thresholds.auto_min_calibrated_bps
+    auto_desc = "UNREACHABLE (no threshold certified the target)" if auto_min is None else f">= {auto_min} bps"
     print(
         f"wrote {DEFAULT_ARTIFACT_PATH}: {len(artifact.calibrations)} source calibrations, "
-        f"AUTO >= {artifact.thresholds.auto_min_calibrated_bps} bps, "
-        f"ESCALATE <= {artifact.thresholds.escalate_max_calibrated_bps} bps"
+        f"AUTO {auto_desc}, ESCALATE <= {artifact.thresholds.escalate_max_calibrated_bps} bps"
     )
 
 

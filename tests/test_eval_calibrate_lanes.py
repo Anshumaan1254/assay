@@ -69,11 +69,13 @@ def test_derive_auto_threshold_achieves_the_target_error_rate_with_enough_clean_
     # 800 points at calibrated_bps=10_000, zero failures: Clopper-Pearson
     # upper bound at 95% confidence for k=0/n=800 is ~0.37%, comfortably
     # under the 0.5% target -- enough data to certify the guarantee, not
-    # just assert it.
+    # just assert it. All from one source: no cross-source dilution at play.
     clean = [(10_000, True) for _ in range(800)]
     noisy = [(2_000, False) for _ in range(50)] + [(2_000, True) for _ in range(50)]
 
-    threshold = derive_auto_threshold(clean + noisy, target_error_bps=50, confidence_level_bps=9_500)
+    threshold = derive_auto_threshold(
+        {SourceKind.VERIFY_DETERMINISTIC: clean + noisy}, target_error_bps=50, confidence_level_bps=9_500
+    )
 
     assert threshold <= 10_000
     # Applying the threshold to the noisy population must be excluded --
@@ -87,13 +89,50 @@ def test_derive_auto_threshold_is_unreachable_when_no_threshold_satisfies_the_ta
     # amount of data at this error rate can certify a 0.5% guarantee.
     mixed = [(t, label) for t in (0, 5_000, 10_000) for label in (True, False) for _ in range(200)]
 
-    threshold = derive_auto_threshold(mixed, target_error_bps=50, confidence_level_bps=9_500)
+    threshold = derive_auto_threshold(
+        {SourceKind.VERIFY_DETERMINISTIC: mixed}, target_error_bps=50, confidence_level_bps=9_500
+    )
 
     assert threshold > 10_000  # unreachable: AUTO correctly never fires
 
 
 def test_derive_auto_threshold_of_no_points_is_unreachable():
-    assert derive_auto_threshold([], target_error_bps=50, confidence_level_bps=9_500) > 10_000
+    assert derive_auto_threshold({}, target_error_bps=50, confidence_level_bps=9_500) > 10_000
+
+
+def test_derive_auto_threshold_is_not_diluted_by_a_much_larger_accurate_source():
+    # Regression test: a naive pooled bound would let this pass, because
+    # 5_000 near-perfect verify points statistically swamp 20 badly-wrong
+    # decompose points at the SAME calibrated value. The per-source bound
+    # must reject 9_000 outright -- decompose_assignment's own 50% failure
+    # rate can never certify a 0.5% guarantee, no matter how much unrelated
+    # volume sits at the same threshold.
+    huge_accurate = [(9_000, True) for _ in range(5_000)]
+    tiny_bad_minority = [(9_000, False) for _ in range(10)] + [(9_000, True) for _ in range(10)]
+
+    threshold = derive_auto_threshold(
+        {SourceKind.VERIFY_DETERMINISTIC: huge_accurate, SourceKind.DECOMPOSE_ASSIGNMENT: tiny_bad_minority},
+        target_error_bps=50,
+        confidence_level_bps=9_500,
+    )
+
+    assert threshold > 9_000
+
+
+def test_derive_auto_threshold_lets_a_source_with_no_points_above_threshold_pass_through():
+    # A source that simply never reaches a candidate threshold poses no
+    # risk there and must not block it -- only sources that actually
+    # contribute points at or above the threshold are checked.
+    high = [(10_000, True) for _ in range(800)]
+    low_only = [(1_000, False) for _ in range(5)]  # never reaches 10_000
+
+    threshold = derive_auto_threshold(
+        {SourceKind.VERIFY_DETERMINISTIC: high, SourceKind.DECOMPOSE_ASSIGNMENT: low_only},
+        target_error_bps=50,
+        confidence_level_bps=9_500,
+    )
+
+    assert threshold <= 10_000
 
 
 # ---------------------------------------------------------------------------
@@ -142,3 +181,16 @@ def test_fit_calibration_artifact_produces_a_valid_hash_verified_artifact():
         path.write_text(artifact.model_dump_json(), encoding="utf-8")
         loaded = load_calibration(path)
         assert loaded == artifact
+
+
+def test_fit_calibration_artifact_reports_auto_unreachable_as_none_not_clamped():
+    # Regression test for the clamping bug: a source too small to ever
+    # certify the target must make the artifact say AUTO is unreachable
+    # (None), never a numeric threshold that happens to equal 10_000.
+    points_by_source = {
+        SourceKind.DECOMPOSE_ASSIGNMENT: _points(6_000, True, 9),  # all correct, but n=9 can't certify 0.5%
+    }
+
+    artifact = fit_calibration_artifact(points_by_source, seeds_used=[1], profile="test")
+
+    assert artifact.thresholds.auto_min_calibrated_bps is None

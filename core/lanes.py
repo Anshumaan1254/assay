@@ -82,7 +82,13 @@ class SourceCalibration(AssayModel):
 
 
 class LaneThresholds(AssayModel):
-    auto_min_calibrated_bps: int = Field(ge=0, le=10_000)
+    # None means AUTO is unreachable: no calibrated-confidence value in the
+    # fitted data could certify the target error rate, for at least one
+    # raw-confidence source. Not a number to be silently clamped into
+    # [0, 10_000] -- a clamp would turn "no threshold satisfies the
+    # guarantee" into "the threshold is exactly 10_000", which is a
+    # different and more permissive claim than the fit actually supports.
+    auto_min_calibrated_bps: int | None = Field(default=None, ge=0, le=10_000)
     escalate_max_calibrated_bps: int = Field(ge=0, le=10_000)
     auto_target_error_bps: int = 50  # 0.5%
     auto_confidence_level_bps: int = 9_500  # 95%
@@ -173,18 +179,21 @@ def assign_lane(
 
     `is_llm_sourced=True` hard-caps the result at PROPOSE/ESCALATE -- AUTO
     is structurally unreachable for any LLM-sourced item, regardless of
-    calibrated confidence.
+    calibrated confidence. `artifact.thresholds.auto_min_calibrated_bps`
+    being `None` has the same effect for every item, LLM-sourced or not:
+    the fit could not certify the target error rate at any threshold, so
+    AUTO stays unreachable rather than a guess.
     """
     calibrated = calibrate_confidence(raw_confidence_bps, source, artifact)
     thresholds = artifact.thresholds
+    auto_min = thresholds.auto_min_calibrated_bps
 
-    if not is_llm_sourced and calibrated >= thresholds.auto_min_calibrated_bps:
+    if not is_llm_sourced and auto_min is not None and calibrated >= auto_min:
         return LaneAssignment(
             lane=Lane.AUTO,
             calibrated_confidence_bps=calibrated,
             source=source,
-            reason=f"calibrated confidence {calibrated} bps at or above the AUTO threshold "
-            f"{thresholds.auto_min_calibrated_bps} bps",
+            reason=f"calibrated confidence {calibrated} bps at or above the AUTO threshold {auto_min} bps",
         )
     if calibrated <= thresholds.escalate_max_calibrated_bps:
         return LaneAssignment(
@@ -194,11 +203,12 @@ def assign_lane(
             reason=f"calibrated confidence {calibrated} bps at or below the ESCALATE threshold "
             f"{thresholds.escalate_max_calibrated_bps} bps",
         )
-    reason = (
-        "llm-sourced: AUTO is structurally unreachable regardless of calibrated confidence"
-        if is_llm_sourced
-        else f"calibrated confidence {calibrated} bps is between the ESCALATE and AUTO thresholds"
-    )
+    if is_llm_sourced:
+        reason = "llm-sourced: AUTO is structurally unreachable regardless of calibrated confidence"
+    elif auto_min is None:
+        reason = f"calibrated confidence {calibrated} bps: AUTO is unreachable, no threshold was certified"
+    else:
+        reason = f"calibrated confidence {calibrated} bps is between the ESCALATE and AUTO thresholds"
     return LaneAssignment(lane=Lane.PROPOSE, calibrated_confidence_bps=calibrated, source=source, reason=reason)
 
 

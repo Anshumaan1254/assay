@@ -47,7 +47,7 @@ _DEFAULT_BREAKPOINTS = [
 
 def _artifact(
     breakpoints: list[IsotonicBreakpoint] | None = None,
-    auto_min: int = 8_000,
+    auto_min: int | None = 8_000,
     escalate_max: int = 3_000,
     sources: list[SourceKind] | None = None,
 ) -> CalibrationArtifact:
@@ -172,6 +172,19 @@ def test_mid_calibrated_confidence_routes_to_propose():
     result = assign_lane(5_000, SourceKind.VERIFY_DETERMINISTIC, is_llm_sourced=False, artifact=artifact)
     assert result.lane is Lane.PROPOSE
     assert result.calibrated_confidence_bps == 4_000
+
+
+def test_auto_min_none_makes_auto_unreachable_even_for_maximum_confidence_non_llm_items():
+    # A fit that could not certify the target error rate at any threshold
+    # (e.g. too few calibration points for some source) must not silently
+    # become "the threshold is 10_000" -- that would let through exactly
+    # the under-sampled source the fit failed to certify.
+    artifact = _artifact(auto_min=None, escalate_max=3_000)
+
+    result = assign_lane(10_000, SourceKind.DECOMPOSE_STRUCTURAL, is_llm_sourced=False, artifact=artifact)
+
+    assert result.lane is not Lane.AUTO
+    assert result.calibrated_confidence_bps == 9_000
 
 
 # ---------------------------------------------------------------------------
