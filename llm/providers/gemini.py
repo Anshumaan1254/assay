@@ -61,7 +61,7 @@ from google.genai import errors as genai_errors
 from google.genai import types
 from pydantic import BaseModel
 
-from llm.provider import ProviderUnavailable
+from llm.provider import ProviderUnavailable, TokenUsage
 
 _MODEL_HINTS = ("flash", "flash-lite")
 
@@ -202,15 +202,29 @@ class GeminiProvider:
         self._config = config or GeminiConfig.from_env()
         self._client = client or genai.Client(api_key=self._config.api_key)
         self._rate_limiter = RateLimiter(self._config.rpm)
+        self.reset_counters()
+
+    def reset_counters(self) -> None:
+        """Zero the per-run counters EVIDENCE.md §10 reports. Nothing in the
+        audit path calls this; eval/ does, between runs."""
+        self.live_calls = 0
+        self.rate_limited = 0
+        self.backoff_seconds = 0.0
+        self.prompt_tokens = 0
+        self.response_tokens = 0
+        self.total_tokens = 0
+        self.last_usage: TokenUsage | None = None
 
     def generate_structured(self, prompt: str, schema: type[BaseModel], model_hint: str) -> dict:
         model = self._config.model_for(model_hint)
         response_schema = to_gemini_schema(schema)
         last_error: Exception | None = None
+        self.last_usage = None
 
         for attempt in range(self._config.max_retries + 1):
             self._rate_limiter.wait()
             try:
+                self.live_calls += 1
                 response = self._client.models.generate_content(
                     model=model,
                     contents=prompt,
@@ -219,11 +233,14 @@ class GeminiProvider:
                         response_schema=response_schema,
                     ),
                 )
-                return self._decode(response, model)
+                decoded = self._decode(response, model)
+                self._record_usage(response)
+                return decoded
             except genai_errors.APIError as e:
                 last_error = e
                 if e.code != 429:
                     raise ProviderUnavailable(f"Gemini API error {e.code} ({e.status})") from e
+                self.rate_limited += 1
                 logger.warning("gemini_rate_limited", attempt=attempt, model=model, max_retries=self._config.max_retries)
                 if attempt >= self._config.max_retries:
                     break
@@ -232,6 +249,31 @@ class GeminiProvider:
         raise ProviderUnavailable(
             f"Gemini request still rate-limited after {self._config.max_retries} retries"
         ) from last_error
+
+    def _record_usage(self, response: object) -> None:
+        """Read the API's own token accounting off the response.
+
+        Read defensively via getattr: `usage_metadata` is telemetry, and a
+        missing or renamed field must cost a number in EVIDENCE.md, never a
+        successful audit. When it is absent, `last_usage` stays None and
+        CachedProvider falls back to a labelled estimate.
+        """
+        metadata = getattr(response, "usage_metadata", None)
+        if metadata is None:
+            return
+        prompt_tokens = int(getattr(metadata, "prompt_token_count", 0) or 0)
+        response_tokens = int(getattr(metadata, "candidates_token_count", 0) or 0)
+        total = int(getattr(metadata, "total_token_count", 0) or 0) or (prompt_tokens + response_tokens)
+        usage = TokenUsage(
+            prompt_tokens=prompt_tokens,
+            response_tokens=response_tokens,
+            total_tokens=total,
+            estimated=False,
+        )
+        self.last_usage = usage
+        self.prompt_tokens += usage.prompt_tokens
+        self.response_tokens += usage.response_tokens
+        self.total_tokens += usage.total_tokens
 
     @staticmethod
     def _decode(response: object, model: str) -> dict:
@@ -256,4 +298,5 @@ class GeminiProvider:
     def _sleep_with_backoff(self, attempt: int) -> None:
         delay = min(self._config.backoff_base_seconds * (2**attempt), self._config.backoff_max_seconds)
         jitter = random.uniform(0, delay * 0.25)
+        self.backoff_seconds += delay + jitter
         time.sleep(delay + jitter)

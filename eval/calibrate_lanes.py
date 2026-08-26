@@ -64,7 +64,12 @@ DEFAULT_ARTIFACT_PATH = Path("calibration/lane_calibration.v1.json")
 # their own Random -- offsetting the injection seed keeps the two streams
 # independent (matching tests/test_verify.py's own 42/43 pairing) while
 # staying a pure function of `seed`, so a re-fit reproduces the same points.
-_INJECTION_SEED_OFFSET = 500_000
+#
+# Public because eval/harness.py generates the same worlds for the eval
+# sweep and MUST derive its injection seed identically. A second copy of
+# this number would let the calibration split and the evaluation split
+# silently diverge, which is the one thing a held-out split cannot survive.
+INJECTION_SEED_OFFSET = 500_000
 
 
 @dataclass
@@ -90,7 +95,7 @@ def generate_seed_run(seed: int, *, profile_name: str = DEFAULT_PROFILE, month: 
     true_world = build_true_world(config, rate_card, Random(seed))
     profile = load_profile(profile_name)
     reported_world, discrepancies, _flags = apply_discrepancies(
-        true_world, rate_card, profile, Random(seed + _INJECTION_SEED_OFFSET)
+        true_world, rate_card, profile, Random(seed + INJECTION_SEED_OFFSET)
     )
 
     records = [

@@ -14,18 +14,34 @@ Scope, deliberately narrow:
   - Fee/tax recomputation, aggregated by fee_type per payment (not 1:1 line
     matching -- this is what makes a duplicate fee line and a wrong-tier fee
     fall out of the same code path with no special-casing).
-  - The one non-contract deterministic rule in scope: a WON chargeback needs
-    a MANUAL_CREDIT reversal somewhere in the ledger (not necessarily this
-    proof -- a reversal is booked on its resolution day, routinely a
-    different settlement cycle, and therefore a different credit/proof,
-    than the chargeback itself).
+  - Two non-contract deterministic rules, both matching by amount rather
+    than recomputing a "correct" value from anywhere, because both defects
+    are designed to leave no other trace:
+      - a WON chargeback needs a MANUAL_CREDIT reversal somewhere in the
+        ledger (not necessarily this proof -- a reversal is booked on its
+        resolution day, routinely a different settlement cycle, and
+        therefore a different credit/proof, than the chargeback itself).
+      - a residual whose magnitude exactly matches one of this proof's own
+        REFUND terms, in the direction of a shortfall, is a refund deducted
+        an extra time (D04's shape). This is NOT a per-line check: there is
+        no independently recomputable "correct" refund amount to diff a
+        reported one against the way FeeLine has a contract to recompute
+        from -- see `_refund_findings`'s own docstring for why amount-
+        matching is the only checkable signal here, and its deliberately
+        narrow scope (one unambiguous match only).
   - NOT in scope: MISSING_TRANSACTION and DUPLICATE_SETTLEMENT (run-level --
     need the union of every proof in a run, not one proof at a time).
-  - NOT in scope: REFUND_AMOUNT_MISMATCH as a per-line check -- there is no
-    independently recomputable "correct" refund amount in this data model
-    to diff against (Refund is a single record, not a claimed-vs-true pair
-    the way FeeLine/contract is). A refund-shaped discrepancy with no
-    backing record change shows up only as conserve.py's unexplained_paise.
+  - NOT in scope: a refund attributed to the wrong settlement batch
+    (D06's shape). Unlike D04, this leaves no residual at all -- both the
+    true and the wrong batch fully "verify" against their own (corrupted)
+    record sets, exactly the "clean report over the wrong records" failure
+    this codebase's decompose.py module docstring names as the thing tier-
+    ordering exists to prevent. A refund can also legitimately settle in a
+    LATER cycle than its own payment (refund_lag_days spans up to 14 days
+    in datagen/config.py), so "a refund's settlement must match its
+    payment's" is not a safe rule -- it would false-positive on ordinary
+    late refunds. No deterministic check is attempted; this class is not
+    detected today.
   - NOT in scope: fees attached to a non-Payment record (e.g. a dispute fee
     on a Chargeback) -- CompiledContract.fee_for() only prices Payments.
 """
@@ -53,6 +69,7 @@ from core.models import (
     Lane,
     Payment,
     RecordRef,
+    Refund,
     Severity,
     TaxLine,
 )
@@ -308,6 +325,67 @@ def _chargeback_findings(
     return findings
 
 
+def _refund_findings(
+    proof: DecompositionProof,
+    ledger: Ledger,
+    ids: _IdSeq,
+    audit_run_id: str,
+    confidence_bps: int,
+    lane: Lane,
+) -> list[Finding]:
+    """A residual whose magnitude exactly matches one of this proof's own
+    REFUND terms, in the direction of an extra deduction.
+
+    Not a per-line recomputation -- this module's docstring is explicit
+    that no independently "correct" refund amount exists to diff a reported
+    one against, the way a fee line has a contract to recompute it from.
+    What IS checkable is the same amount-matching pattern
+    `_chargeback_findings` above already uses for WON reversals, applied to
+    a different defect shape: datagen/inject.py's D04 deducts one refund
+    from a settlement an EXTRA time, with no ledger record to show for it
+    ("the ledger's Refund list is never duplicated" -- the injector's own
+    comment). That extra deduction has exactly one observable trace: the
+    credit comes up short by precisely that refund's own amount, so
+    `residual_paise == -refund.amount.paise`.
+
+    Scoped deliberately narrow. Only `residual_paise < 0` (a shortfall, D04's
+    actual direction) is considered -- the opposite direction plants no
+    known class and there is no basis here to guess what it would mean. And
+    only an UNAMBIGUOUS match counts: if two of the proof's own refunds
+    share the residual's exact magnitude, neither is reported, the same
+    ambiguity-beats-guessing discipline `core/decompose.py` already applies
+    to a subset-sum tie.
+    """
+    if proof.residual_paise >= 0:
+        return []
+    refund_refs = sorted(
+        {t.ref for t in proof.terms if t.ref.type is EntityType.REFUND}, key=lambda r: r.id
+    )
+    matches = [ref for ref in refund_refs if ledger.get(ref).amount.paise == -proof.residual_paise]
+    if len(matches) != 1:
+        return []
+
+    refund_ref = matches[0]
+    refund: Refund = ledger.get(refund_ref)
+    return [
+        Finding(
+            id=ids.next(),
+            audit_run_id=audit_run_id,
+            discrepancy_class=DiscrepancyClass.REFUND_AMOUNT_MISMATCH,
+            severity=Severity.MAJOR,
+            amount_impact=Money(refund.amount.paise, refund.amount.currency),
+            evidence_ids=[refund_ref],
+            confidence=confidence_bps,
+            lane=lane,
+            explanation=(
+                f"credit {proof.credit_ref.id} is short by {refund.amount.to_rupees_str()}, exactly "
+                f"refund {refund.id}'s own amount -- the settlement appears to have deducted this "
+                f"refund an additional time beyond what the ledger records"
+            ),
+        )
+    ]
+
+
 def verify(
     proof: DecompositionProof,
     ledger: Ledger,
@@ -317,8 +395,9 @@ def verify(
     reversal_amounts: Counter[int] | None = None,
     calibration: CalibrationArtifact | None = None,
 ) -> list[Finding]:
-    """Independently recompute one proof's fee/tax lines and chargeback
-    reversals; return every mismatch as a Finding.
+    """Independently recompute one proof's fee/tax lines, chargeback
+    reversals, and refund-duplicate-deduction shape; return every mismatch
+    as a Finding.
 
     Skips AMBIGUOUS/UNRESOLVED proofs: terms is empty by construction, so
     there is nothing to recompute against, and their full credit amount
@@ -349,6 +428,7 @@ def verify(
     return [
         *_fee_and_tax_findings(proof, ledger, contract, ids, audit_run_id, confidence_bps, lane),
         *_chargeback_findings(proof, ledger, ids, audit_run_id, reversal_amounts, confidence_bps, lane),
+        *_refund_findings(proof, ledger, ids, audit_run_id, confidence_bps, lane),
     ]
 
 

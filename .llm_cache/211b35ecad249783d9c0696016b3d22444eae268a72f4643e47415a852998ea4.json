@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000158",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual amount of 639914 paise matches payment PAY-000158, indicating this payment is the source of the unreconciled balance."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000158"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000687",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual amount of 46909 paise matches payment PAY-000687, indicating this payment is the source of the unreconciled balance."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000687"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000808",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual amount of 201893 paise matches payment PAY-000808, indicating this payment is the source of the unreconciled balance."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000808"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000839",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual amount of 167624 paise matches payment PAY-000839, indicating this payment is the source of the unreconciled balance."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000839"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000857",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual amount of 34177 paise matches payment PAY-000857, indicating this payment is the source of the unreconciled balance."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000857"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001187",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual amount of 87725 paise matches payment PAY-001187, indicating this payment is the source of the unreconciled balance."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001187"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001824",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual amount of 95630 paise matches payment PAY-001824, indicating this payment is the source of the unreconciled balance."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001824"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001885",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual amount of 27050 paise matches payment PAY-001885, indicating this payment is the source of the unreconciled balance."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001885"
+    }
+  ]
+}

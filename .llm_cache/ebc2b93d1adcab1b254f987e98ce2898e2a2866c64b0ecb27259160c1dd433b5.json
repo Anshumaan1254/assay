@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000666",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 15964 paise corresponds directly to the expected value of payment PAY-000666, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000666"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001075",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 23371 paise corresponds directly to the expected value of payment PAY-001075, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001075"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001423",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 44923 paise corresponds directly to the expected value of payment PAY-001423, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001423"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001518",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 48801 paise corresponds directly to the expected value of payment PAY-001518, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001518"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002554",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 17367 paise corresponds directly to the expected value of payment PAY-002554, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002554"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002636",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 475932 paise corresponds directly to the expected value of payment PAY-002636, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002636"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002670",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 26820 paise corresponds directly to the expected value of payment PAY-002670, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002670"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002785",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 177779 paise corresponds directly to the expected value of payment PAY-002785, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002785"
+    }
+  ]
+}

@@ -172,6 +172,17 @@ def _chargeback(id_="CB-1", paise=20_000, stage=ChargebackStage.WON, settlement_
     )
 
 
+def _refund(id_="REF-1", payment_id="PAY-1", paise=15_000, settlement_id="STL-1") -> Refund:
+    return Refund(
+        id=id_,
+        payment_id=payment_id,
+        amount=Money(paise),
+        is_partial=False,
+        created_at=CAPTURED_AT,
+        settlement_id=settlement_id,
+    )
+
+
 def _adjustment(id_="ADJ-1", kind=AdjustmentKind.MANUAL_CREDIT, paise=20_000, settlement_id="STL-2") -> Adjustment:
     return Adjustment(
         id=id_, kind=kind, amount=Money(paise), reason="chargeback reversal", created_at=CAPTURED_AT,
@@ -408,6 +419,114 @@ def test_a_lost_chargeback_needs_no_reversal():
     proof = _proof([_term(cb)], credit_paise=-20_000)
 
     assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+
+
+# ---------------------------------------------------------------------------
+# Refund duplicate-deduction check.
+#
+# There is no independently recomputable "correct" refund amount to diff a
+# reported one against -- a Refund is a single record, not a claimed-vs-true
+# pair the way FeeLine/contract is (this module's own docstring says so).
+# What IS checkable, in the same spirit as the chargeback-reversal
+# cross-check just above (match by amount, because the defect leaves no
+# other trace): datagen/inject.py's D04 deducts one refund from a
+# settlement an EXTRA time with no ledger record to show for it -- "the
+# ledger's Refund list is never duplicated", per the injector's own
+# comment -- so the credit comes up short by exactly that refund's own
+# amount, and residual_paise is exactly -(refund.amount.paise). A proof's
+# own REFUND terms are the only thing that can ever match this shape.
+# ---------------------------------------------------------------------------
+
+
+def test_a_residual_matching_one_of_the_proofs_own_refund_terms_is_a_refund_mismatch():
+    contract = _two_tier_contract()
+    refund = _refund(paise=15_000)
+    ledger = Ledger([refund])
+    proof = _proof([_term(refund)], credit_paise=-15_000 - 15_000)  # short by refund's own amount again
+
+    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+
+    assert len(findings) == 1
+    assert findings[0].discrepancy_class is DiscrepancyClass.REFUND_AMOUNT_MISMATCH
+    assert findings[0].amount_impact == Money(15_000)
+    assert findings[0].evidence_ids == [RecordRef(type=EntityType.REFUND, id="REF-1")]
+
+
+def test_a_zero_residual_produces_no_refund_finding():
+    contract = _two_tier_contract()
+    refund = _refund(paise=15_000)
+    ledger = Ledger([refund])
+    proof = _proof([_term(refund)], credit_paise=-15_000)  # exactly one deduction -- no residual
+
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+
+
+def test_a_residual_in_the_credits_favour_produces_no_refund_finding():
+    # The opposite direction from D04 (an UNDER-deduction, not an extra
+    # one). datagen plants no such class, and there is no basis here to
+    # guess what it would mean, so this stays an honest unexplained
+    # residual rather than a claim this check has no evidence for.
+    contract = _two_tier_contract()
+    refund = _refund(paise=15_000)
+    ledger = Ledger([refund])
+    proof = _proof([_term(refund)], credit_paise=-15_000 + 15_000)
+
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+
+
+def test_a_residual_matching_no_refund_terms_amount_produces_no_finding():
+    contract = _two_tier_contract()
+    refund = _refund(paise=15_000)
+    ledger = Ledger([refund])
+    proof = _proof([_term(refund)], credit_paise=-15_000 - 777)  # residual doesn't match any refund
+
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+
+
+def test_two_refunds_of_the_same_amount_produce_no_finding_rather_than_a_guess():
+    # Ambiguity beats guessing, the same discipline decompose.py already
+    # applies: if two refunds could equally explain the residual, neither
+    # is reported rather than picking one.
+    contract = _two_tier_contract()
+    r1 = _refund(id_="REF-1", paise=15_000)
+    r2 = _refund(id_="REF-2", paise=15_000)
+    ledger = Ledger([r1, r2])
+    proof = _proof([_term(r1), _term(r2)], credit_paise=-15_000 - 15_000 - 15_000)
+
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+
+
+def test_a_refund_finding_coexists_with_a_fee_mismatch_on_the_same_proof():
+    contract = _two_tier_contract()
+    payment = _payment(paise=500_000)
+    fee_line = _fee_line(paise=9_000, rule_id="card.credit.tier2")  # wrong tier: 8_000 is correct
+    tax_line = _tax_line(base_paise=8_000, paise=1_440)  # tax on the CORRECT fee -- isolates the fee delta
+    refund = _refund(paise=15_000)
+    ledger = Ledger([payment, fee_line, tax_line, refund])
+    proof = _proof(
+        [_term(payment), _term(fee_line), _term(tax_line), _term(refund)],
+        credit_paise=500_000 - 9_000 - 1_440 - 15_000 - 15_000,
+    )
+
+    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+
+    classes = {f.discrepancy_class for f in findings}
+    assert classes == {DiscrepancyClass.FEE_OVERCHARGE, DiscrepancyClass.REFUND_AMOUNT_MISMATCH}
+
+
+def test_refund_findings_are_also_calibrated_when_supplied():
+    contract = _two_tier_contract()
+    refund = _refund(paise=15_000)
+    ledger = Ledger([refund])
+    proof = _proof([_term(refund)], credit_paise=-15_000 - 15_000)
+    artifact = _lane_artifact()
+    expected = assign_lane_for_verify_finding(CONFIDENCE, artifact)
+
+    findings = verify(proof, ledger, contract, audit_run_id="RUN-1", calibration=artifact)
+
+    assert len(findings) == 1
+    assert findings[0].confidence == expected.calibrated_confidence_bps
+    assert findings[0].lane == expected.lane
 
 
 # ---------------------------------------------------------------------------

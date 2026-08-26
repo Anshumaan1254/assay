@@ -1,0 +1,34 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004146",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-004146 exists but its expected settlement amount of 27341 paise is entirely unexplained, suggesting it was missing from the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004146"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-005125",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-005125 exists but its expected settlement amount of 22666 paise is entirely unexplained, suggesting it was missing from the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-005125"
+    }
+  ]
+}

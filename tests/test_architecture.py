@@ -107,6 +107,154 @@ def test_dynamic_package_enumeration_catches_a_future_new_package(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# cli/'s MODULE-LEVEL import graph never reaches datagen, transitively.
+#
+# The per-file check above proves no file under cli/ writes `import
+# datagen`. It cannot see a path that goes cli -> eval -> datagen, and one
+# genuinely exists at runtime: `assay eval` is a real command and eval/ is
+# the package that reads ground truth. That command's import is written
+# INSIDE the function body on purpose, so importing `cli` never pulls
+# datagen into the process at all -- which is what this test pins.
+#
+# Deliberately import-graph-based rather than a grep: the property that
+# matters is "importing the product's CLI cannot load the answers", and
+# that is a statement about the graph, not about any one file's text.
+# ---------------------------------------------------------------------------
+
+
+def _module_level_imports(tree: ast.AST) -> set[str]:
+    """Dotted module names imported at module scope only.
+
+    Anything nested inside a function or class body is skipped: that is the
+    whole distinction this test exists to measure, and treating a
+    function-local import as equivalent would defeat it.
+
+    Names are kept dotted (`eval.determinism`, not `eval`) because the walk
+    below has to model what Python actually loads. Importing
+    `eval.determinism` executes `eval/__init__.py` and that one module --
+    it does NOT execute `eval/harness.py`. A package-granular walk would
+    report a leak through a module that was never imported, and a guard
+    test that cries wolf is a guard test somebody eventually deletes.
+    """
+    names: set[str] = set()
+    nodes = tree.body if isinstance(tree, ast.Module) else []
+    for node in nodes:
+        # `if TYPE_CHECKING:` and similar module-scope conditionals still
+        # count as module scope.
+        candidates = ast.walk(node) if isinstance(node, ast.If) else [node]
+        for inner in candidates:
+            if isinstance(inner, ast.Import):
+                names.update(alias.name for alias in inner.names)
+            elif isinstance(inner, ast.ImportFrom) and inner.level == 0 and inner.module:
+                names.add(inner.module)
+    return names
+
+
+def _module_path(dotted: str, root: Path) -> Path | None:
+    """The file `dotted` would load, if it is first-party."""
+    as_module = root / Path(*dotted.split(".")).with_suffix(".py")
+    if as_module.is_file():
+        return as_module
+    as_package = root / Path(*dotted.split(".")) / "__init__.py"
+    return as_package if as_package.is_file() else None
+
+
+def _packages_loaded_by(dotted: str, root: Path = REPO_ROOT) -> set[str]:
+    """Every first-party package a `import <dotted>` would actually load,
+    following module-level imports transitively.
+
+    Importing `a.b` also executes `a/__init__.py`, so each dotted name
+    contributes its own file and every parent package's `__init__.py`.
+    """
+    seen_modules: set[str] = set()
+    packages: set[str] = set()
+    frontier = [dotted]
+
+    while frontier:
+        name = frontier.pop()
+        if name in seen_modules:
+            continue
+        seen_modules.add(name)
+        packages.add(name.split(".")[0])
+
+        # The parent packages Python initialises on the way down.
+        parts = name.split(".")
+        for depth in range(1, len(parts)):
+            frontier.append(".".join(parts[:depth]))
+
+        path = _module_path(name, root)
+        if path is None:
+            continue
+        for imported in _module_level_imports(_parse(path)):
+            if _module_path(imported, root) is not None:
+                frontier.append(imported)
+    return packages
+
+
+def _cli_module_names() -> list[str]:
+    return [
+        ".".join(path.relative_to(REPO_ROOT).with_suffix("").parts).removesuffix(".__init__")
+        for path in _py_files(CLI_DIR)
+    ]
+
+
+def test_importing_the_product_cli_can_never_load_datagen():
+    """Invariant 5's real content, as a statement about the import graph:
+    loading the product's CLI must not be able to load the answers."""
+    for module in _cli_module_names():
+        loaded = _packages_loaded_by(module)
+        assert "datagen" not in loaded, (
+            f"importing {module} loads datagen/ through a module-level import chain "
+            f"(packages loaded: {sorted(loaded)}). The `assay eval` command must import "
+            "eval/ inside its function body, not at module scope -- invariant 5."
+        )
+
+
+def test_the_import_graph_walk_would_actually_catch_a_transitive_leak(tmp_path):
+    """Proves the mechanism, not just today's answer: a module that reaches
+    datagen only through an intermediate must still be caught."""
+    (tmp_path / "datagen").mkdir()
+    (tmp_path / "datagen" / "__init__.py").touch()
+    (tmp_path / "datagen" / "inject.py").touch()
+    (tmp_path / "middle").mkdir()
+    (tmp_path / "middle" / "__init__.py").touch()
+    (tmp_path / "middle" / "scorer.py").write_text(
+        "from datagen.inject import apply_discrepancies\n", encoding="utf-8"
+    )
+    (tmp_path / "front").mkdir()
+    (tmp_path / "front" / "__init__.py").write_text("from middle.scorer import x\n", encoding="utf-8")
+
+    assert "datagen" in _packages_loaded_by("front", root=tmp_path)
+
+
+def test_the_walk_does_not_blame_a_sibling_module_that_was_never_imported(tmp_path):
+    """The precision half. `import pkg.safe` must not be reported as
+    loading datagen just because `pkg.unsafe` sits next to it -- this is
+    exactly cli/audit.py importing eval.determinism while eval.harness
+    imports datagen."""
+    (tmp_path / "datagen").mkdir()
+    (tmp_path / "datagen" / "__init__.py").touch()
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "__init__.py").touch()
+    (tmp_path / "pkg" / "safe.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "pkg" / "unsafe.py").write_text("import datagen\n", encoding="utf-8")
+
+    assert "datagen" not in _packages_loaded_by("pkg.safe", root=tmp_path)
+    assert "datagen" in _packages_loaded_by("pkg.unsafe", root=tmp_path)
+
+
+def test_the_eval_command_exists_and_imports_lazily():
+    """The other half: the command really is registered, so the lazy
+    import is a deliberate arrangement rather than the command having
+    quietly been dropped."""
+    source = (CLI_DIR / "__init__.py").read_text(encoding="utf-8")
+    assert "def eval(" in source, "the `assay eval` command is gone"
+    assert "from eval.cli import run_eval" in source
+    module_level = _module_level_imports(_parse(CLI_DIR / "__init__.py"))
+    assert not any(name.split(".")[0] == "eval" for name in module_level)
+
+
+# ---------------------------------------------------------------------------
 # core/ has zero float literals or float() calls, anywhere
 # ---------------------------------------------------------------------------
 

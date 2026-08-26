@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000006",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained deficit of 94831 paise likely corresponds to an undocumented debit adjustment (ADJ-RH-000006) not recorded in the ledger."
+        }
+      ],
+      "residual_id": "RES-BC-000006"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000009",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unrecorded debit adjustment (ADJ-RH-000009) could explain the 30062 paise discrepancy."
+        }
+      ],
+      "residual_id": "RES-BC-000009"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000013",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The -124002 paise residual is likely due to an undocumented debit adjustment (ADJ-RH-000013)."
+        }
+      ],
+      "residual_id": "RES-BC-000013"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000018",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unexplained debit adjustment (ADJ-RH-000018) of 5060 paise accounts for the residual."
+        }
+      ],
+      "residual_id": "RES-BC-000018"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000020",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The residual of -40364 paise can be explained by an undocumented debit adjustment (ADJ-RH-000020)."
+        }
+      ],
+      "residual_id": "RES-BC-000020"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000021",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unrecorded debit adjustment (ADJ-RH-000021) likely caused the -104069 paise discrepancy."
+        }
+      ],
+      "residual_id": "RES-BC-000021"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000022",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The -9794 paise residual is likely from an undocumented debit adjustment (ADJ-RH-000022)."
+        }
+      ],
+      "residual_id": "RES-BC-000022"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000024",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An undocumented debit adjustment (ADJ-RH-000024) matches the -9027 paise unexplained amount."
+        }
+      ],
+      "residual_id": "RES-BC-000024"
+    }
+  ]
+}

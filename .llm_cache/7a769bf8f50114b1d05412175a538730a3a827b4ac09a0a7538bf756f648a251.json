@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000186",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unexplained credit matching the identified payment, indicating it is a missing transaction from reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000186"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000399",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unexplained credit matching the identified payment, indicating it is a missing transaction from reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000399"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000564",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unexplained credit matching the identified payment, indicating it is a missing transaction from reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000564"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000933",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unexplained credit matching the identified payment, indicating it is a missing transaction from reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000933"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002260",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unexplained credit matching the identified payment, indicating it is a missing transaction from reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002260"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003164",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unexplained credit matching the identified payment, indicating it is a missing transaction from reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003164"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003386",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unexplained credit matching the identified payment, indicating it is a missing transaction from reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003386"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003508",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents an unexplained credit matching the identified payment, indicating it is a missing transaction from reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003508"
+    }
+  ]
+}

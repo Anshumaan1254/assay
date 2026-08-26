@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002106",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002106, with an implied amount of 51954 paise, appears to be missing from settlement, matching the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002106"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002401",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002401, with an implied amount of 5210 paise, appears to be missing from settlement, matching the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002401"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002741",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002741, with an implied amount of 20840 paise, appears to be missing from settlement, matching the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002741"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002955",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002955, with an implied amount of 108658 paise, appears to be missing from settlement, matching the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002955"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002967",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002967, with an implied amount of 61607 paise, appears to be missing from settlement, matching the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002967"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003490",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-003490, with an implied amount of 18544 paise, appears to be missing from settlement, matching the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003490"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003957",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-003957, with an implied amount of 58602 paise, appears to be missing from settlement, matching the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003957"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004417",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-004417, with an implied amount of 348848 paise, appears to be missing from settlement, matching the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004417"
+    }
+  ]
+}

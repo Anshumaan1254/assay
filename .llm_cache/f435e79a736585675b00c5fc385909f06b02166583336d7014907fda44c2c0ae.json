@@ -1,0 +1,49 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001152",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual represents an unclaimed payment PAY-001152 with an unexplained amount of 192836 paise, indicating it has not been reconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001152"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001736",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The residual of 24144 paise corresponds to the unclaimed payment PAY-001736, which remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001736"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002348",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "Payment PAY-002348, with an amount of 55722 paise, is an unclaimed record and constitutes the entirety of this unreconciled residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002348"
+    }
+  ]
+}

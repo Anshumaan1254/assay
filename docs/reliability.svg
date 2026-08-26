@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" width="720" height="420" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">
+<rect width="720" height="420" fill="#ffffff"/>
+<text x="70" y="24" font-size="14" fill="#111111">Reliability: predicted confidence vs observed accuracy</text>
+<line x1="70.00" y1="40.00" x2="70.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="360.00" x2="690.00" y2="360.00" stroke="#eeeeee"/>
+<text x="70.00" y="376.00" text-anchor="middle" fill="#555555">0.0</text>
+<text x="62.00" y="364.00" text-anchor="end" fill="#555555">0.0</text>
+<line x1="132.00" y1="40.00" x2="132.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="328.00" x2="690.00" y2="328.00" stroke="#eeeeee"/>
+<line x1="194.00" y1="40.00" x2="194.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="296.00" x2="690.00" y2="296.00" stroke="#eeeeee"/>
+<text x="194.00" y="376.00" text-anchor="middle" fill="#555555">0.2</text>
+<text x="62.00" y="300.00" text-anchor="end" fill="#555555">0.2</text>
+<line x1="256.00" y1="40.00" x2="256.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="264.00" x2="690.00" y2="264.00" stroke="#eeeeee"/>
+<line x1="318.00" y1="40.00" x2="318.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="232.00" x2="690.00" y2="232.00" stroke="#eeeeee"/>
+<text x="318.00" y="376.00" text-anchor="middle" fill="#555555">0.4</text>
+<text x="62.00" y="236.00" text-anchor="end" fill="#555555">0.4</text>
+<line x1="380.00" y1="40.00" x2="380.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="200.00" x2="690.00" y2="200.00" stroke="#eeeeee"/>
+<line x1="442.00" y1="40.00" x2="442.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="168.00" x2="690.00" y2="168.00" stroke="#eeeeee"/>
+<text x="442.00" y="376.00" text-anchor="middle" fill="#555555">0.6</text>
+<text x="62.00" y="172.00" text-anchor="end" fill="#555555">0.6</text>
+<line x1="504.00" y1="40.00" x2="504.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="136.00" x2="690.00" y2="136.00" stroke="#eeeeee"/>
+<line x1="566.00" y1="40.00" x2="566.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="104.00" x2="690.00" y2="104.00" stroke="#eeeeee"/>
+<text x="566.00" y="376.00" text-anchor="middle" fill="#555555">0.8</text>
+<text x="62.00" y="108.00" text-anchor="end" fill="#555555">0.8</text>
+<line x1="628.00" y1="40.00" x2="628.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="72.00" x2="690.00" y2="72.00" stroke="#eeeeee"/>
+<line x1="690.00" y1="40.00" x2="690.00" y2="360.00" stroke="#eeeeee"/>
+<line x1="70.00" y1="40.00" x2="690.00" y2="40.00" stroke="#eeeeee"/>
+<text x="690.00" y="376.00" text-anchor="middle" fill="#555555">1.0</text>
+<text x="62.00" y="44.00" text-anchor="end" fill="#555555">1.0</text>
+<line x1="70.00" y1="360.00" x2="690.00" y2="40.00" stroke="#999999" stroke-dasharray="4 3"/>
+<text x="454.40" y="142.40" fill="#999999" transform="rotate(-32 454.40 142.40)">perfect calibration</text>
+<polyline points="442.00,40.00 566.00,40.00 690.00,40.88" fill="none" stroke="#1f4e8c" stroke-width="1" opacity="0.35"/>
+<circle cx="442.00" cy="40.00" r="9.86" fill="#1f4e8c" fill-opacity="0.75"/>
+<text x="442.00" y="25.14" text-anchor="middle" font-size="9" fill="#1f4e8c">n=33</text>
+<circle cx="566.00" cy="40.00" r="11.12" fill="#1f4e8c" fill-opacity="0.75"/>
+<text x="566.00" y="23.88" text-anchor="middle" font-size="9" fill="#1f4e8c">n=93</text>
+<circle cx="690.00" cy="40.88" r="18.00" fill="#1f4e8c" fill-opacity="0.75"/>
+<text x="690.00" y="17.88" text-anchor="end" font-size="9" fill="#1f4e8c">n=221,326</text>
+<rect x="70.00" y="40.00" width="620.00" height="320.00" fill="none" stroke="#bbbbbb"/>
+<text x="380.00" y="402" text-anchor="middle" fill="#333333">predicted confidence (raw, basis points / 10,000)</text>
+<text x="16" y="200.00" text-anchor="middle" fill="#333333" transform="rotate(-90 16 200.00)">observed accuracy</text>
+<text x="690.00" y="24" text-anchor="end" fill="#333333">ECE 0.0029  Brier 0.0028  n=221,452</text>
+</svg>

@@ -1,0 +1,164 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000030",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The adjustment ADJ-RH-000030 directly corresponds to the unexplained debit of 31803 paise, suggesting it was an undocumented or misapplied adjustment."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000003",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "The chargeback CB-000003 was settled for an amount 31803 paise higher than expected, causing the unexplained debit in the residual."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005808",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An overcharge related to fee line FEE-005808 could account for the unexpected debit of 31803 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000030"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000031",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The adjustment ADJ-RH-000031 is a strong candidate for the unexplained debit of 361455 paise, indicating it was not properly documented or reconciled."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000008",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "The chargeback CB-000008 was processed for an amount 361455 paise greater than anticipated, resulting in the unexplained debit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005969",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An overcharge on fee line FEE-005969 or a related fee could explain the unexpected debit of 361455 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000031"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000186",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-000186, for 114894 paise, was received but remains an unclaimed record, indicating a missing transaction in the reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000186"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000399",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-000399, for 471693 paise, was received but is an unclaimed record, suggesting it's a missing transaction from the expected settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000399"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000564",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-000564, amounting to 68186 paise, was received but is an unclaimed record, pointing to a missing transaction that was not reconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000564"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000933",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-000933, for 127071 paise, was received but remains an unclaimed record, indicating a missing transaction in the reconciliation process."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000933"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002260",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002260, for 279095 paise, was received but is an unclaimed record, signifying a missing transaction that needs to be accounted for."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002260"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003164",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-003164, for 35816 paise, was received but remains an unclaimed record, suggesting a missing transaction in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003164"
+    }
+  ]
+}

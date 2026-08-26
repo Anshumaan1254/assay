@@ -1,0 +1,109 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002908",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 19283 paise precisely matches payment PAY-002908, indicating it was not properly accounted for in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002908"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003384",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 38923 paise precisely matches payment PAY-003384, indicating it was not properly accounted for in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003384"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003593",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 466877 paise precisely matches payment PAY-003593, indicating it was not properly accounted for in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003593"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003595",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 10150 paise precisely matches payment PAY-003595, indicating it was not properly accounted for in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003595"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004658",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 74774 paise precisely matches payment PAY-004658, indicating it was not properly accounted for in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004658"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004931",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 28614 paise precisely matches payment PAY-004931, indicating it was not properly accounted for in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004931"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-005086",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 69177 paise precisely matches payment PAY-005086, indicating it was not properly accounted for in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-005086"
+    }
+  ]
+}

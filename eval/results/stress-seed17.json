@@ -1,0 +1,460 @@
+{
+  "profile": "stress",
+  "seed": 17,
+  "run_id": "stress-seed17",
+  "input_hashes": {
+    "ledger.json": "2a30b7a6e44e88ba5033734afc940648efb2bc03df2925aa56fbb8d2e6d78ccc",
+    "settlement_report.json": "1725ae60339ee6c3d6a16dff881e63473a478b121d2ae44d01ee979864a56791",
+    "bank_statement.json": "1a92b0c719ef85b3e6c114b236debf3cb84c2c894ac2c0ccae89b4e003dad221",
+    "rate_card.md": "8ea5fbc5df5f0ecd9ea4d59d3918b338e06b9d8eccd84467d27cfcad3d4d3d63"
+  },
+  "input_hash": "21072cabfa38f957a2fcea0d72be4bc68d68e08360229b5a5d0dcc5fc496c93b",
+  "report_hash": "b6a01190ee8963ddebb007a5d21f4dc321627683578f5349624252865558185b",
+  "contract_version": "rc-bac663f10b17",
+  "calibration_sha256": "bbfefb7533f3e42004dafa41e038fb4cf96f12c49f33c931cacf26535da4703d",
+  "record_count": 17889,
+  "payment_count": 5200,
+  "detection": {
+    "code_rows": [
+      {
+        "code": "D01",
+        "classes": [
+          "fee_undercharge"
+        ],
+        "support": 20,
+        "true_positives": 20,
+        "false_negatives": 0,
+        "planted_paise": 3667,
+        "detected_paise": 3667
+      },
+      {
+        "code": "D02",
+        "classes": [
+          "tax_miscalculation"
+        ],
+        "support": 15,
+        "true_positives": 15,
+        "false_negatives": 0,
+        "planted_paise": 264083,
+        "detected_paise": 264083
+      },
+      {
+        "code": "D03",
+        "classes": [
+          "fee_overcharge"
+        ],
+        "support": 2,
+        "true_positives": 2,
+        "false_negatives": 0,
+        "planted_paise": 1705,
+        "detected_paise": 1705
+      },
+      {
+        "code": "D04",
+        "classes": [
+          "refund_amount_mismatch"
+        ],
+        "support": 15,
+        "true_positives": 9,
+        "false_negatives": 6,
+        "planted_paise": 1189622,
+        "detected_paise": 894815
+      },
+      {
+        "code": "D05",
+        "classes": [
+          "chargeback_amount_mismatch"
+        ],
+        "support": 1,
+        "true_positives": 1,
+        "false_negatives": 0,
+        "planted_paise": 80792,
+        "detected_paise": 80792
+      },
+      {
+        "code": "D06",
+        "classes": [
+          "refund_amount_mismatch"
+        ],
+        "support": 15,
+        "true_positives": 0,
+        "false_negatives": 15,
+        "planted_paise": 2505100,
+        "detected_paise": 0
+      },
+      {
+        "code": "D07",
+        "classes": [
+          "rounding_drift"
+        ],
+        "support": 8,
+        "true_positives": 0,
+        "false_negatives": 8,
+        "planted_paise": 8,
+        "detected_paise": 0
+      },
+      {
+        "code": "D08",
+        "classes": [
+          "missing_transaction"
+        ],
+        "support": 15,
+        "true_positives": 15,
+        "false_negatives": 0,
+        "planted_paise": 1153144,
+        "detected_paise": 1153144
+      },
+      {
+        "code": "D09",
+        "classes": [
+          "data_quality_flag"
+        ],
+        "support": 15,
+        "true_positives": 0,
+        "false_negatives": 15,
+        "planted_paise": 0,
+        "detected_paise": 0
+      },
+      {
+        "code": "D10",
+        "classes": [
+          "fee_overcharge",
+          "fee_undercharge"
+        ],
+        "support": 15,
+        "true_positives": 15,
+        "false_negatives": 0,
+        "planted_paise": 1607,
+        "detected_paise": 1607
+      },
+      {
+        "code": "D11",
+        "classes": [
+          "fee_overcharge"
+        ],
+        "support": 15,
+        "true_positives": 15,
+        "false_negatives": 0,
+        "planted_paise": 5664,
+        "detected_paise": 5664
+      },
+      {
+        "code": "D12",
+        "classes": [
+          "fee_overcharge"
+        ],
+        "support": 15,
+        "true_positives": 15,
+        "false_negatives": 0,
+        "planted_paise": 48334,
+        "detected_paise": 48334
+      }
+    ],
+    "class_rows": [
+      {
+        "discrepancy_class": "fee_overcharge",
+        "support": 72,
+        "true_positives": 36,
+        "false_positives": 0,
+        "false_negatives": 36
+      },
+      {
+        "discrepancy_class": "fee_undercharge",
+        "support": 62,
+        "true_positives": 31,
+        "false_positives": 0,
+        "false_negatives": 31
+      },
+      {
+        "discrepancy_class": "tax_miscalculation",
+        "support": 15,
+        "true_positives": 15,
+        "false_positives": 75,
+        "false_negatives": 0
+      },
+      {
+        "discrepancy_class": "missing_transaction",
+        "support": 15,
+        "true_positives": 15,
+        "false_positives": 0,
+        "false_negatives": 0
+      },
+      {
+        "discrepancy_class": "duplicate_settlement",
+        "support": 0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0
+      },
+      {
+        "discrepancy_class": "refund_amount_mismatch",
+        "support": 30,
+        "true_positives": 9,
+        "false_positives": 0,
+        "false_negatives": 21
+      },
+      {
+        "discrepancy_class": "chargeback_amount_mismatch",
+        "support": 1,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0
+      },
+      {
+        "discrepancy_class": "unreleased_reserve",
+        "support": 0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0
+      },
+      {
+        "discrepancy_class": "undocumented_adjustment",
+        "support": 0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0
+      },
+      {
+        "discrepancy_class": "fx_markup_variance",
+        "support": 0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0
+      },
+      {
+        "discrepancy_class": "rounding_drift",
+        "support": 16,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 16
+      },
+      {
+        "discrepancy_class": "unreconciled_residual",
+        "support": 0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0
+      }
+    ],
+    "macro": {
+      "precision": 0.738095238095238,
+      "recall": 0.6142857142857142,
+      "f1": 0.5829408686551544
+    },
+    "micro": {
+      "precision": 0.5879120879120879,
+      "recall": 0.5071090047393365,
+      "f1": 0.5445292620865141
+    },
+    "findings_total": 182,
+    "true_positive_findings": 107,
+    "misclassified_findings": 75,
+    "false_positive_findings": 0,
+    "false_positive_paise": 0,
+    "misclassified_paise": 9311,
+    "planted_paise": 5253726,
+    "detected_paise": 2453811,
+    "false_positive_by_class": {},
+    "false_positive_paise_by_class": {},
+    "false_positive_from_adjudicator": 0,
+    "false_positive_paise_from_adjudicator": 0,
+    "confusion": {
+      "chargeback_amount_mismatch": {
+        "chargeback_amount_mismatch": 1
+      },
+      "data_quality_flag": {
+        "not_detected": 15
+      },
+      "fee_overcharge": {
+        "fee_overcharge": 36,
+        "tax_miscalculation": 36
+      },
+      "fee_undercharge": {
+        "fee_undercharge": 31,
+        "tax_miscalculation": 31
+      },
+      "missing_transaction": {
+        "missing_transaction": 15
+      },
+      "refund_amount_mismatch": {
+        "refund_amount_mismatch": 9,
+        "not_detected": 21
+      },
+      "rounding_drift": {
+        "tax_miscalculation": 8,
+        "not_detected": 8
+      },
+      "tax_miscalculation": {
+        "tax_miscalculation": 15
+      }
+    }
+  },
+  "decomposition": {
+    "credits": 31,
+    "by_tier": {
+      "structural": 16,
+      "subset_sum": 11,
+      "assignment": 4
+    },
+    "resolved_by_tier": {
+      "structural": 16,
+      "subset_sum": 11,
+      "assignment": 4
+    },
+    "ambiguous": 0,
+    "unresolved": 0,
+    "unresolved_reasons": {}
+  },
+  "conservation": {
+    "total_unexplained_paise": -1189622,
+    "unclaimed_paise": 1165414,
+    "total_unaccounted_paise": -24208,
+    "settled_gross_paise": 649297865
+  },
+  "lanes": {
+    "by_lane": {
+      "auto": 0,
+      "propose": 182,
+      "escalate": 0
+    },
+    "paise_by_lane": {
+      "auto": 0,
+      "propose": 2466089,
+      "escalate": 0
+    }
+  },
+  "calibration": {
+    "bins": [
+      {
+        "bin_lo_bps": 0,
+        "bin_hi_bps": 1000,
+        "count": 0,
+        "sum_confidence_bps": 0,
+        "positives": 0,
+        "sum_squared_error": 0.0
+      },
+      {
+        "bin_lo_bps": 1000,
+        "bin_hi_bps": 2000,
+        "count": 0,
+        "sum_confidence_bps": 0,
+        "positives": 0,
+        "sum_squared_error": 0.0
+      },
+      {
+        "bin_lo_bps": 2000,
+        "bin_hi_bps": 3000,
+        "count": 0,
+        "sum_confidence_bps": 0,
+        "positives": 0,
+        "sum_squared_error": 0.0
+      },
+      {
+        "bin_lo_bps": 3000,
+        "bin_hi_bps": 4000,
+        "count": 0,
+        "sum_confidence_bps": 0,
+        "positives": 0,
+        "sum_squared_error": 0.0
+      },
+      {
+        "bin_lo_bps": 4000,
+        "bin_hi_bps": 5000,
+        "count": 0,
+        "sum_confidence_bps": 0,
+        "positives": 0,
+        "sum_squared_error": 0.0
+      },
+      {
+        "bin_lo_bps": 5000,
+        "bin_hi_bps": 6000,
+        "count": 0,
+        "sum_confidence_bps": 0,
+        "positives": 0,
+        "sum_squared_error": 0.0
+      },
+      {
+        "bin_lo_bps": 6000,
+        "bin_hi_bps": 7000,
+        "count": 4,
+        "sum_confidence_bps": 24000,
+        "positives": 4,
+        "sum_squared_error": 0.6400000000000001
+      },
+      {
+        "bin_lo_bps": 7000,
+        "bin_hi_bps": 8000,
+        "count": 0,
+        "sum_confidence_bps": 0,
+        "positives": 0,
+        "sum_squared_error": 0.0
+      },
+      {
+        "bin_lo_bps": 8000,
+        "bin_hi_bps": 9000,
+        "count": 11,
+        "sum_confidence_bps": 88000,
+        "positives": 11,
+        "sum_squared_error": 0.4399999999999998
+      },
+      {
+        "bin_lo_bps": 9000,
+        "bin_hi_bps": 10000,
+        "count": 12349,
+        "sum_confidence_bps": 123490000,
+        "positives": 12274,
+        "sum_squared_error": 75.0
+      }
+    ],
+    "by_source": {},
+    "source_totals": {
+      "decompose_structural": [
+        16,
+        16
+      ],
+      "decompose_subset_sum": [
+        11,
+        11
+      ],
+      "decompose_assignment": [
+        4,
+        4
+      ],
+      "verify_deterministic": [
+        12318,
+        12243
+      ],
+      "adjudicator_hypothesis": [
+        15,
+        15
+      ]
+    }
+  },
+  "llm": {
+    "calls": 3,
+    "cache_hits": 1,
+    "cache_misses": 2,
+    "live_calls": 2,
+    "rate_limited": 0,
+    "backoff_seconds": 0.0,
+    "prompt_tokens": 2417,
+    "response_tokens": 3565,
+    "total_tokens": 9064,
+    "estimated_token_calls": 1,
+    "sources": [
+      "CachedProvider",
+      "GeminiProvider"
+    ]
+  },
+  "findings_total": 182,
+  "clusters_total": 45,
+  "adjudication_degraded": false,
+  "adjudication_degraded_reason": null,
+  "residuals_submitted": 15,
+  "adjudication_api_calls": 2,
+  "citations_total": 15,
+  "citations_rejected_nonexistent": 0,
+  "citations_rejected_not_in_pool": 0,
+  "records_touching_a_model": 15,
+  "wall_clock_ns": 28078000000
+}

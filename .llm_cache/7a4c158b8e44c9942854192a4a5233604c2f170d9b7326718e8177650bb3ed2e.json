@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002502",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 22833 paise corresponds exactly to the unclaimed payment PAY-002502, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002502"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002505",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 98933 paise corresponds exactly to the unclaimed payment PAY-002505, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002505"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002849",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 14390 paise corresponds exactly to the unclaimed payment PAY-002849, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002849"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003130",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 866827 paise corresponds exactly to the unclaimed payment PAY-003130, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003130"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003193",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 115868 paise corresponds exactly to the unclaimed payment PAY-003193, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003193"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003198",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 190759 paise corresponds exactly to the unclaimed payment PAY-003198, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003198"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003476",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 55268 paise corresponds exactly to the unclaimed payment PAY-003476, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003476"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003764",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount of 73554 paise corresponds exactly to the unclaimed payment PAY-003764, suggesting it was not included in settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003764"
+    }
+  ]
+}

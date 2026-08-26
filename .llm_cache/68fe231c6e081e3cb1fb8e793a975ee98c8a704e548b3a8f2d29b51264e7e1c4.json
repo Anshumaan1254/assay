@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000010",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -34800 paise is likely caused by an undocumented adjustment ADJ-RH-000010, whose ID directly corresponds to the residual ID, suggesting it represents an unrecorded debit."
+        }
+      ],
+      "residual_id": "RES-BC-000010"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000011",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -25962 paise is likely caused by an undocumented adjustment ADJ-RH-000011, whose ID directly corresponds to the residual ID, suggesting it represents an unrecorded debit."
+        }
+      ],
+      "residual_id": "RES-BC-000011"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000012",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -136877 paise is likely caused by an undocumented adjustment ADJ-RH-000012, whose ID directly corresponds to the residual ID, suggesting it represents an unrecorded debit."
+        }
+      ],
+      "residual_id": "RES-BC-000012"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000016",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -55161 paise is likely caused by an undocumented adjustment ADJ-RH-000016, whose ID directly corresponds to the residual ID, suggesting it represents an unrecorded debit."
+        }
+      ],
+      "residual_id": "RES-BC-000016"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000019",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -90649 paise is likely caused by an undocumented adjustment ADJ-RH-000019, whose ID directly corresponds to the residual ID, suggesting it represents an unrecorded debit."
+        }
+      ],
+      "residual_id": "RES-BC-000019"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000022",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -248268 paise is likely caused by an undocumented adjustment ADJ-RH-000022, whose ID directly corresponds to the residual ID, suggesting it represents an unrecorded debit."
+        }
+      ],
+      "residual_id": "RES-BC-000022"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000028",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -221685 paise is likely caused by an undocumented adjustment ADJ-RH-000028, whose ID directly corresponds to the residual ID, suggesting it represents an unrecorded debit."
+        }
+      ],
+      "residual_id": "RES-BC-000028"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000029",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -25785 paise is likely caused by an undocumented adjustment ADJ-RH-000029, whose ID directly corresponds to the residual ID, suggesting it represents an unrecorded debit."
+        }
+      ],
+      "residual_id": "RES-BC-000029"
+    }
+  ]
+}

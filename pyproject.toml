@@ -28,6 +28,13 @@ dependencies = [
     # Clopper-Pearson bound behind the AUTO-lane coverage guarantee. Never
     # imported from core/ or llm/ -- fitting is eval/'s job alone.
     "scikit-learn",
+    # eval/diagram.py only, and optional even there: EVIDENCE.md embeds a
+    # hand-built, byte-deterministic SVG of the reliability diagram, and
+    # matplotlib additionally renders the same numbers as a PNG for
+    # contexts that will not display SVG. write_png() returns None rather
+    # than raising if it is absent, so a missing renderer can never fail a
+    # `make evidence` run. Never imported from core/ or llm/.
+    "matplotlib",
 ]
 
 [project.scripts]

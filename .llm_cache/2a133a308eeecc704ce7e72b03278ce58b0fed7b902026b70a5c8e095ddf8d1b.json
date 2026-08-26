@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004790",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-004790, which is the specified record type for this unclaimed residual and matches the unexplained 4900 paise, appears to be entirely missing from the settlement process."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004790"
+    }
+  ]
+}

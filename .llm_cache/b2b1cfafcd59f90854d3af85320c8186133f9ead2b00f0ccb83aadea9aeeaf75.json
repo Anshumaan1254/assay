@@ -1,0 +1,109 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002169",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual's unexplained amount corresponds precisely to payment PAY-002169, indicating this payment was not fully accounted for in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002169"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002822",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual's unexplained amount corresponds precisely to payment PAY-002822, indicating this payment was not fully accounted for in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002822"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003240",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual's unexplained amount corresponds precisely to payment PAY-003240, indicating this payment was not fully accounted for in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003240"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003328",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual's unexplained amount corresponds precisely to payment PAY-003328, indicating this payment was not fully accounted for in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003328"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003998",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual's unexplained amount corresponds precisely to payment PAY-003998, indicating this payment was not fully accounted for in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003998"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004595",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual's unexplained amount corresponds precisely to payment PAY-004595, indicating this payment was not fully accounted for in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004595"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004813",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual's unexplained amount corresponds precisely to payment PAY-004813, indicating this payment was not fully accounted for in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004813"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000024",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An adjustment (ADJ-RH-000024) of 26770 paise was not correctly recognized or applied in the settlement, leading to the observed deficit in the bank credit."
+        }
+      ],
+      "residual_id": "RES-BC-000024"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000028",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An adjustment (ADJ-RH-000028) of 178764 paise was not correctly recognized or applied in the settlement, leading to the observed deficit in the bank credit."
+        }
+      ],
+      "residual_id": "RES-BC-000028"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000029",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An adjustment (ADJ-RH-000029) of 25664 paise was not correctly recognized or applied in the settlement, leading to the observed deficit in the bank credit."
+        }
+      ],
+      "residual_id": "RES-BC-000029"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001152",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-001152 for 192836 paise was received but could not be matched to a corresponding transaction in the system."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001152"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001736",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-001736 for 24144 paise was received but could not be matched to a corresponding transaction in the system."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001736"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002348",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-002348 for 55722 paise was received but could not be matched to a corresponding transaction in the system."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002348"
+    }
+  ]
+}

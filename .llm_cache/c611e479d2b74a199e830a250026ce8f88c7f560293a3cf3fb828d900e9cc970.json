@@ -1,0 +1,49 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001166",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained residual amount corresponds to the full value of payment PAY-001166, suggesting it was a missing transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001166"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002698",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual represents the exact value of payment PAY-002698, indicating it was a missing transaction in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002698"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003065",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount matches the value of payment PAY-003065, suggesting it was a missing transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003065"
+    }
+  ]
+}

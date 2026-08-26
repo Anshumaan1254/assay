@@ -1,0 +1,94 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000010",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -865900 paise could be directly caused by the undocumented adjustment record ADJ-RH-000010, which was not properly accounted for."
+        }
+      ],
+      "residual_id": "RES-BC-000010"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000020",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -297930 paise could be directly caused by the undocumented adjustment record ADJ-RH-000020, which was not properly accounted for."
+        }
+      ],
+      "residual_id": "RES-BC-000020"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000028",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The unexplained amount of -234323 paise could be directly caused by the undocumented adjustment record ADJ-RH-000028, which was not properly accounted for."
+        }
+      ],
+      "residual_id": "RES-BC-000028"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000340",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The positive unexplained amount of 83665 paise exactly matches the value of payment PAY-000340, indicating it is an unclaimed transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000340"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000604",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The positive unexplained amount of 267296 paise exactly matches the value of payment PAY-000604, indicating it is an unclaimed transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000604"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004471",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The positive unexplained amount of 60064 paise exactly matches the value of payment PAY-004471, indicating it is an unclaimed transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004471"
+    }
+  ]
+}

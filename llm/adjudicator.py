@@ -43,6 +43,7 @@ needs.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from enum import StrEnum
 
 import structlog
@@ -97,22 +98,50 @@ class ResidualBuildResult(BaseModel):
     skipped_no_evidence: list[RecordRef]
 
 
-def _decomposition_evidence_pool(proof: DecompositionProof) -> list[RecordRef]:
+def _decomposition_evidence_pool(proof: DecompositionProof, claimed: frozenset[RecordRef]) -> list[RecordRef]:
+    """Candidate records the model may cite to explain this proof's own
+    residual.
+
+    A RESOLVED proof's own terms are never offered, and that is not a
+    filter -- it is definitional. `residual_paise` is `credit_paise -
+    sum(term.signed_paise)`: exactly the part the proof's own terms do NOT
+    explain. A term already inside that sum cannot also be evidence for the
+    part outside it; citing one back would be circular. This is precisely
+    what let the adjudicator cite an already-claimed adjustment (fully
+    counted in some OTHER proof already) as a 100%-confidence explanation
+    for an unrelated residual -- the record was real and the citation
+    passed the reference check, but the "explanation" double-counted money
+    already accounted for elsewhere.
+
+    `claimed` generalizes the same rule to AMBIGUOUS proofs: a competing
+    candidate decompose.py considered but did not claim for THIS credit may
+    have gone on to be claimed by a DIFFERENT proof in the same run. If so,
+    it is exactly as accounted-for as a RESOLVED proof's own term, and
+    excluded the same way. A candidate genuinely unclaimed by anything is
+    unaffected -- that is exactly the case this evidence pool exists for.
+
+    No RESOLVED proof ever has anything left to offer here: with its own
+    terms excluded, nothing else is known to be relevant to its residual.
+    `residuals_from_run` reports that case as `skipped_no_evidence` rather
+    than sending the model a pool it can never validly cite -- the honest
+    answer for a residual with no known cause (e.g. an unbacked delta, by
+    injection design reproducible from no record at all) is "we don't
+    know", not a guess dressed up as high confidence.
+    """
     if proof.outcome is DecompositionOutcome.RESOLVED:
-        refs = [term.ref for term in proof.terms]
-    elif proof.outcome is DecompositionOutcome.AMBIGUOUS:
+        return []
+    if proof.outcome is DecompositionOutcome.AMBIGUOUS:
         seen: set[RecordRef] = set()
         refs = []
         for candidate in proof.competing:
             for ref in candidate.refs:
-                if ref not in seen:
+                if ref not in seen and ref not in claimed:
                     seen.add(ref)
                     refs.append(ref)
-    else:
-        refs = []
-    if not refs:
-        return []
-    return sorted(set(refs), key=lambda r: (r.type.value, r.id))[:MAX_EVIDENCE_POOL]
+        if not refs:
+            return []
+        return sorted(set(refs), key=lambda r: (r.type.value, r.id))[:MAX_EVIDENCE_POOL]
+    return []
 
 
 def _unclaimed_evidence_pool(ledger: Ledger, ref: RecordRef) -> list[RecordRef]:
@@ -137,6 +166,12 @@ def residuals_from_run(
     itself -- no new orchestration, exactly like parse_rate_card takes a
     plain `document: str` rather than fetching one."""
     proof_by_credit_ref = {proof.credit_ref: proof for proof in proofs}
+    # Every record any proof in this run has already claimed -- the same
+    # definition core.conserve.unclaimed_records uses for its complement.
+    # Computed once, up front: a record claimed by proof X is exactly as
+    # fully accounted for when investigating proof Y's residual as when
+    # investigating its own, so this must not be recomputed per-proof.
+    claimed = frozenset(term.ref for proof in proofs for term in proof.terms)
     cases: list[ResidualCase] = []
     skipped: list[RecordRef] = []
 
@@ -146,7 +181,7 @@ def residuals_from_run(
         proof = proof_by_credit_ref.get(report.credit_ref)
         if proof is None:
             raise ValueError(f"{report.credit_ref.id}: no matching proof was supplied")
-        pool = _decomposition_evidence_pool(proof)
+        pool = _decomposition_evidence_pool(proof, claimed)
         if not pool:
             # Nothing to cite: forcing a call would either invite a
             # hallucinated citation or a free-text non-answer. Reported so
@@ -254,16 +289,25 @@ def build_prompt(batch: Sequence[ResidualCase]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _coverage_bps(valid_cited: Sequence[RecordRef], residual_paise: int, ledger: Ledger) -> int:
-    """How much of `residual_paise` the hypothesis's OWN valid citations
+def _coverage_bps(cited: Sequence[RecordRef], residual_paise: int, ledger: Ledger) -> int:
+    """How much of `residual_paise` the hypothesis's OWN citations
     arithmetically explain, via signed_paise -- computed here, never by the
     model. 0 when unsupported or wrong-signed; otherwise capped at 10_000.
+
+    A ref the ledger cannot resolve contributes 0 rather than raising. That
+    case cannot occur on the audit path, where the reference check has
+    already removed it -- but this function must not depend on its caller
+    having done that. It is the last thing standing between a model's
+    citation and a number, and the eval ablation that trusts citations
+    calls it with exactly the refs the checker would have removed.
     """
     if residual_paise == 0:
         return 0
     explained = 0
-    for ref in valid_cited:
+    for ref in cited:
         record = ledger.get(ref)
+        if record is None:
+            continue  # unresolvable citation: no arithmetic weight, ever
         try:
             explained += signed_paise(record)
         except ValueError:
@@ -302,6 +346,32 @@ class AdjudicationRun(BaseModel):
     api_call_count: int
     residuals_submitted: int
 
+    # Reference-check accounting (invariant 6). `citations_rejected_nonexistent`
+    # is the count of record ids the model cited that do not exist in the
+    # ledger at all -- fabrications, caught. It is reported in EVIDENCE.md
+    # §10 and is the number the "without the reference checker" ablation
+    # exists to put a price on. Defaulted so every existing construction of
+    # this model stays valid.
+    citations_total: int = 0
+    citations_rejected_nonexistent: int = 0
+    citations_rejected_not_in_pool: int = 0
+    hypotheses_total: int = 0
+    reference_checking_enabled: bool = True
+
+
+@dataclass
+class _CitationTally:
+    """Running counts across a whole adjudication run. Mutable and threaded
+    through rather than returned and summed, because the counts have to
+    survive a hypothesis being discarded entirely -- a fabricated id caught
+    on a hypothesis that then produced nothing is exactly the event
+    EVIDENCE.md §10 wants counted."""
+
+    total: int = 0
+    nonexistent: int = 0
+    not_in_pool: int = 0
+    hypotheses: int = 0
+
 
 def _citation_rejection_reason(ref: RecordRef, pool: frozenset[RecordRef], ledger: Ledger) -> str | None:
     if not ledger.exists(ref):
@@ -317,19 +387,36 @@ def _process_hypothesis(
     pool: frozenset[RecordRef],
     ledger: Ledger,
     rank: int,
+    tally: _CitationTally,
+    check_references: bool,
 ) -> AdjudicatedHypothesis | None:
+    """`check_references=False` exists for one caller only: eval/ablate.py's
+    "without the reference checker" ablation, which measures what a report
+    would contain if the model's citations were trusted. It is never used
+    by the audit path, and `coverage_bps` on a trusted-but-nonexistent
+    citation is still computed in Python (a ref the ledger cannot resolve
+    contributes 0), so even the ablated path never lets a model produce an
+    amount.
+    """
+    tally.hypotheses += 1
     valid: list[RecordRef] = []
     for ref in candidate.cited_evidence:
+        tally.total += 1
         reason = _citation_rejection_reason(ref, pool, ledger)
         if reason is not None:
-            logger.warning(
-                "adjudication_hypothesis_rejected",
-                residual_id=case.residual_id,
-                discrepancy_class=candidate.discrepancy_class.value,
-                cited_ref=f"{ref.type.value}:{ref.id}",
-                invalid_reason=reason,
-            )
-            continue
+            if ledger.exists(ref):
+                tally.not_in_pool += 1
+            else:
+                tally.nonexistent += 1
+            if check_references:
+                logger.warning(
+                    "adjudication_hypothesis_rejected",
+                    residual_id=case.residual_id,
+                    discrepancy_class=candidate.discrepancy_class.value,
+                    cited_ref=f"{ref.type.value}:{ref.id}",
+                    invalid_reason=reason,
+                )
+                continue
         valid.append(ref)
     if not valid:
         return None
@@ -350,6 +437,7 @@ def adjudicate_residuals(
     model_hint: str = DEFAULT_MODEL_HINT,
     batch_size: int = ADJUDICATION_BATCH_SIZE,
     skipped_no_evidence: Sequence[RecordRef] = (),
+    check_references: bool = True,
 ) -> AdjudicationRun:
     """Adjudicate every case with a non-empty evidence pool, batching
     `batch_size` residuals per `generate_structured` call.
@@ -358,6 +446,11 @@ def adjudicate_residuals(
     means no hypotheses, never a guessed one. A schema-invalid batch
     response raises `AdjudicationRejected` and also aborts the run -- no
     partial-batch repair.
+
+    `check_references=False` disables invariant 6's reference check. It is
+    for eval/ablate.py alone -- the ablation that prices what the checker is
+    worth -- and the resulting run is flagged `reference_checking_enabled=False`
+    so nothing downstream can mistake it for an audit.
     """
     sendable: list[ResidualCase] = []
     skipped: list[RecordRef] = list(skipped_no_evidence)
@@ -371,6 +464,7 @@ def adjudicate_residuals(
 
     results: list[AdjudicationResult] = []
     api_call_count = 0
+    tally = _CitationTally()
 
     for start in range(0, len(sendable), batch_size):
         batch = sendable[start : start + batch_size]
@@ -401,7 +495,9 @@ def adjudicate_residuals(
             rejected_count = 0
             if hypotheses is not None:
                 for rank, candidate in enumerate(hypotheses.hypotheses, start=1):
-                    processed = _process_hypothesis(candidate, case, pool, ledger, rank)
+                    processed = _process_hypothesis(
+                        candidate, case, pool, ledger, rank, tally, check_references
+                    )
                     if processed is None:
                         rejected_count += 1
                     else:
@@ -422,6 +518,11 @@ def adjudicate_residuals(
         skipped_no_evidence=sorted(skipped, key=lambda r: (r.type.value, r.id)),
         api_call_count=api_call_count,
         residuals_submitted=len(sendable),
+        citations_total=tally.total,
+        citations_rejected_nonexistent=tally.nonexistent,
+        citations_rejected_not_in_pool=tally.not_in_pool,
+        hypotheses_total=tally.hypotheses,
+        reference_checking_enabled=check_references,
     )
 
 

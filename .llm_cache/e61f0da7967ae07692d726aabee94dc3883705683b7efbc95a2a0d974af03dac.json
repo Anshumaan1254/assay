@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000395",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount is directly attributed to the value of payment PAY-000395, indicating this payment remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000395"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000818",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount is directly attributed to the value of payment PAY-000818, indicating this payment remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000818"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000943",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount is directly attributed to the value of payment PAY-000943, indicating this payment remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000943"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002159",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount is directly attributed to the value of payment PAY-002159, indicating this payment remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002159"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002251",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount is directly attributed to the value of payment PAY-002251, indicating this payment remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002251"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002502",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount is directly attributed to the value of payment PAY-002502, indicating this payment remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002502"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002505",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount is directly attributed to the value of payment PAY-002505, indicating this payment remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002505"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002849",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The residual amount is directly attributed to the value of payment PAY-002849, indicating this payment remains unreconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002849"
+    }
+  ]
+}

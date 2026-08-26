@@ -1,0 +1,145 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005606",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005607",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005608",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The overall fees debited by the bank appear to be 19873 paise higher than anticipated based on the documented fee lines, indicating an overcharge."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000029",
+              "type": "adjustment"
+            },
+            {
+              "id": "ADJ-RR-000017",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unrecorded debit adjustment of 19873 paise might have been applied by the bank, or a credit adjustment of the same amount was expected but not received, leading to the discrepancy."
+        }
+      ],
+      "residual_id": "RES-BC-000029"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000001",
+              "type": "chargeback"
+            },
+            {
+              "id": "CB-000005",
+              "type": "chargeback"
+            },
+            {
+              "id": "CB-000006",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "The discrepancy of -81628 paise could result from an incorrect amount processed for one or more chargebacks, causing a larger debit than anticipated."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005918",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005919",
+              "type": "fee_line"
+            },
+            {
+              "id": "FEE-005920",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The bank appears to have debited 81628 paise more than expected in fees, indicating an overcharge impacting the listed fee lines."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-CBR-000001",
+              "type": "adjustment"
+            },
+            {
+              "id": "ADJ-GW-000003",
+              "type": "adjustment"
+            },
+            {
+              "id": "ADJ-RH-000031",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unrecorded adjustment causing a debit of 81628 paise by the bank, or a missing expected credit, could explain the residual."
+        }
+      ],
+      "residual_id": "RES-BC-000031"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000031",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-000031 for 279980 paise was expected to be credited by the bank but could not be matched, indicating a missing transaction in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000031"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002582",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002582 for 145835 paise was expected to be settled by the bank but remains unmatched, suggesting a missing transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002582"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002633",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002633 for 25322 paise was expected but not found in the bank's records, indicating a missing transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002633"
+    }
+  ]
+}

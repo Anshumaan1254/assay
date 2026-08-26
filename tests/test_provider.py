@@ -430,3 +430,74 @@ def test_an_explicit_cache_dir_still_wins_over_the_environment(monkeypatch, tmp_
 
     assert len(list((tmp_path / "explicit").glob("*.json"))) == 1
     assert not (tmp_path / "ignored").exists()
+
+
+# ---------------------------------------------------------------------------
+# Gemini telemetry counters (EVIDENCE.md §10)
+#
+# These are observations, not control flow: a counter must never change what
+# a call returns, and a missing usage_metadata field must cost a number in
+# the report rather than a working audit.
+# ---------------------------------------------------------------------------
+
+
+class FakeUsage:
+    def __init__(self, prompt: int, candidates: int, total: int | None = None):
+        self.prompt_token_count = prompt
+        self.candidates_token_count = candidates
+        self.total_token_count = total if total is not None else prompt + candidates
+
+
+class FakeGenerateResultWithUsage(FakeGenerateResult):
+    def __init__(self, text: str | None, usage=None):
+        super().__init__(text)
+        self.usage_metadata = usage
+
+
+def test_gemini_records_the_apis_own_token_accounting():
+    client = FakeClient([FakeGenerateResultWithUsage('{"value": "x"}', FakeUsage(100, 25))])
+    provider = GeminiProvider(config=make_config(), client=client)
+
+    provider.generate_structured("prompt", DummySchema, "flash")
+
+    assert provider.last_usage.prompt_tokens == 100
+    assert provider.last_usage.response_tokens == 25
+    assert provider.last_usage.total_tokens == 125
+    assert provider.last_usage.estimated is False
+    assert provider.live_calls == 1
+
+
+def test_a_response_without_usage_metadata_still_succeeds_and_reports_no_usage():
+    client = FakeClient([FakeGenerateResultWithUsage('{"value": "x"}', None)])
+    provider = GeminiProvider(config=make_config(), client=client)
+
+    assert provider.generate_structured("prompt", DummySchema, "flash") == {"value": "x"}
+    assert provider.last_usage is None
+    assert provider.total_tokens == 0
+
+
+def test_gemini_counts_every_429_and_the_time_spent_backing_off(monkeypatch):
+    slept: list[float] = []
+    monkeypatch.setattr("llm.providers.gemini.time.sleep", slept.append)
+    monkeypatch.setattr("llm.providers.gemini.random.uniform", lambda a, b: 0.0)
+
+    responses = [make_client_error(429), make_client_error(429), FakeGenerateResultWithUsage('{"value": "x"}')]
+    provider = GeminiProvider(config=make_config(backoff_base_seconds=1.0), client=FakeClient(responses))
+
+    provider.generate_structured("prompt", DummySchema, "flash")
+
+    assert provider.rate_limited == 2
+    assert provider.live_calls == 3, "each attempt is a call that reached the network"
+    assert provider.backoff_seconds == sum(slept) == 3.0  # 1s + 2s
+
+
+def test_reset_counters_clears_gemini_telemetry():
+    client = FakeClient([FakeGenerateResultWithUsage('{"value": "x"}', FakeUsage(10, 5))])
+    provider = GeminiProvider(config=make_config(), client=client)
+    provider.generate_structured("prompt", DummySchema, "flash")
+
+    provider.reset_counters()
+
+    assert provider.live_calls == 0
+    assert provider.total_tokens == 0
+    assert provider.last_usage is None

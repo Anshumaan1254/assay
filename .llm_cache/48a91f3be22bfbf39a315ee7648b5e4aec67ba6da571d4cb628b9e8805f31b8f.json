@@ -1,0 +1,134 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000013",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An unexpected debit of 67072 paise, matching the residual, is attributed to an undocumented adjustment, possibly ADJ-RH-000013."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-001739",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An overcharge in fees totaling 67072 paise, potentially related to fee line FEE-001739, explains the negative residual."
+        }
+      ],
+      "residual_id": "RES-BC-000013"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000028",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An undocumented debit adjustment of 4327 paise, matching the residual, is suggested by ADJ-RH-000028."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005498",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "A fee overcharge of 4327 paise, possibly associated with fee line FEE-005498, led to the negative unexplained amount."
+        }
+      ],
+      "residual_id": "RES-BC-000028"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000003",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "A chargeback amount was debited by 22822 paise more than recorded, matching the residual. CB-000003 is a potential related chargeback."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000031",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An undocumented debit adjustment of 22822 paise, corresponding to ADJ-RH-000031, explains the negative residual."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005980",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An overcharge in fees by 22822 paise, potentially involving fee line FEE-005980, is a possible explanation for the discrepancy."
+        }
+      ],
+      "residual_id": "RES-BC-000031"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001638",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-001638 for 21766 paise was not reconciled with a corresponding settlement entry, indicating a missing transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001638"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002200",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-002200 for 142553 paise remains unreconciled, indicating a missing transaction in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002200"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004561",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-004561 for 147288 paise was not found in the settlement, pointing to a missing transaction."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004561"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000125",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 47410 paise corresponds exactly to the value of the unclaimed payment PAY-000125."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000125"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002710",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 63566 paise corresponds exactly to the value of the unclaimed payment PAY-002710."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002710"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-005159",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 16011 paise corresponds exactly to the value of the unclaimed payment PAY-005159."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-005159"
+    }
+  ]
+}

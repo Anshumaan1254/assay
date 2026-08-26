@@ -602,7 +602,20 @@ def test_a_changed_input_misses_the_cache(tmp_path: Path):
 # ---------------------------------------------------------------------------
 
 
-def test_residuals_from_run_builds_one_case_per_nonzero_conservation_residual():
+def test_a_resolved_proofs_own_terms_are_never_offered_as_evidence_for_its_own_residual():
+    """The bug this replaces: `residual_paise` is DEFINED as `credit_paise
+    - sum(term.signed_paise)` -- the part the proof's own terms do NOT
+    explain. Offering those same terms back as candidate evidence for the
+    residual is circular: they are already fully counted in the sum the
+    residual is the leftover of, so citing one cannot explain money that
+    sum failed to. This is exactly what let the adjudicator cite an
+    already-claimed adjustment (already summed into some proof) as a
+    100%-confidence explanation for an unrelated residual.
+
+    Because a RESOLVED proof's own terms are its ONLY conceivable evidence
+    here (nothing else is even offered), this residual is honestly reported
+    as unexplainable -- `skipped_no_evidence` -- rather than sent to a model
+    with nothing valid to cite."""
     payment = _payment(paise=500_000)
     fee = _fee_line(paise=9_000)
     ledger = Ledger([payment, fee])
@@ -615,12 +628,60 @@ def test_residuals_from_run_builds_one_case_per_nonzero_conservation_residual():
 
     build = residuals_from_run([proof], [report], ledger)
 
-    assert len(build.cases) == 1
-    case = build.cases[0]
-    assert case.kind is ResidualKind.DECOMPOSITION_RESIDUAL
-    assert case.residual_paise == report.unexplained_paise
-    assert set(case.evidence_pool) == {t.ref for t in resolved_terms}
-    assert build.skipped_no_evidence == []
+    assert build.cases == []
+    assert build.skipped_no_evidence == [proof.credit_ref]
+
+
+def test_an_ambiguous_proofs_competing_candidate_already_claimed_by_another_proof_is_excluded():
+    """A competing candidate is a record decompose.py CONSIDERED for this
+    credit but did not ultimately claim (terms=[] for AMBIGUOUS). If some
+    OTHER proof in the same run went on to claim it, it is now fully
+    accounted for elsewhere in the conservation identity, and citing it here
+    would double-count that money -- the same circularity as the RESOLVED
+    case above, just reached through a different proof."""
+    claimed_elsewhere = RecordRef(type=EntityType.PAYMENT, id="PAY-1")
+    genuinely_unclaimed = RecordRef(type=EntityType.PAYMENT, id="PAY-2")
+    ledger = Ledger([_payment(id_="PAY-1"), _payment(id_="PAY-2")])
+
+    resolved = _proof(
+        [ProofTerm(ref=claimed_elsewhere, signed_paise=500_000)], credit_paise=500_000, credit_id="BC-1"
+    )
+    ambiguous = _proof(
+        [],
+        credit_paise=500_000,
+        credit_id="BC-2",
+        outcome=DecompositionOutcome.AMBIGUOUS,
+        competing=[
+            CandidateSet(refs=[claimed_elsewhere], sum_paise=500_000),
+            CandidateSet(refs=[genuinely_unclaimed], sum_paise=500_000),
+        ],
+    )
+    reports = [_report(resolved), _report(ambiguous)]
+
+    build = residuals_from_run([resolved, ambiguous], reports, ledger)
+
+    ambiguous_case = next(c for c in build.cases if c.credit_ref == ambiguous.credit_ref)
+    assert set(ambiguous_case.evidence_pool) == {genuinely_unclaimed}
+
+
+def test_an_ambiguous_proofs_competing_candidates_not_claimed_by_anything_are_unaffected():
+    """Regression: the exclusion is specifically about records claimed
+    elsewhere, not a blanket restriction on ambiguous evidence pools --
+    genuinely unclaimed competing candidates are exactly what this path
+    exists to let the model reason about."""
+    a = RecordRef(type=EntityType.PAYMENT, id="PAY-1")
+    b = RecordRef(type=EntityType.PAYMENT, id="PAY-2")
+    ledger = Ledger([_payment(id_="PAY-1"), _payment(id_="PAY-2")])
+    proof = _proof(
+        [],
+        credit_paise=500_000,
+        outcome=DecompositionOutcome.AMBIGUOUS,
+        competing=[CandidateSet(refs=[a], sum_paise=500_000), CandidateSet(refs=[b], sum_paise=500_000)],
+    )
+
+    build = residuals_from_run([proof], [_report(proof)], ledger)
+
+    assert set(build.cases[0].evidence_pool) == {a, b}
 
 
 def test_residuals_from_run_builds_one_case_per_unclaimed_record():
@@ -647,3 +708,113 @@ def test_residuals_from_run_reports_empty_pool_residuals_as_skipped_not_dropped_
 
     assert build.cases == []
     assert build.skipped_no_evidence == [proof.credit_ref]
+
+
+# ---------------------------------------------------------------------------
+# Reference-check accounting (EVIDENCE.md §10) and the ablation switch.
+#
+# `citations_rejected_nonexistent` is the count of fabricated record ids the
+# checker caught. It is the single number that says what invariant 6 is
+# worth, so it must be counted even when the hypothesis carrying it was
+# discarded outright -- a fabrication that produced nothing still happened.
+# ---------------------------------------------------------------------------
+
+
+def _pool_case(residual_paise: int = 500_000) -> ResidualCase:
+    return ResidualCase(
+        residual_id="RES-BC-1",
+        credit_ref=RecordRef(type=EntityType.BANK_CREDIT, id="BC-1"),
+        residual_paise=residual_paise,
+        currency="INR",
+        kind=ResidualKind.DECOMPOSITION_RESIDUAL,
+        evidence_pool=[RecordRef(type=EntityType.PAYMENT, id="PAY-1")],
+        context={},
+    )
+
+
+def test_a_fabricated_id_is_counted_even_though_its_hypothesis_produced_nothing():
+    ledger = Ledger([_payment()])
+    fabricated = RecordRef(type=EntityType.PAYMENT, id="PAY-DOES-NOT-EXIST")
+    provider = RecordingProvider(
+        _batch_response("RES-BC-1", [_hypothesis_dict("unreconciled_residual", [fabricated])])
+    )
+
+    run = adjudicate_residuals([_pool_case()], ledger, provider)
+
+    assert run.citations_total == 1
+    assert run.citations_rejected_nonexistent == 1
+    assert run.citations_rejected_not_in_pool == 0
+    assert run.hypotheses_total == 1
+    assert run.results[0].accepted_hypotheses == []
+
+
+def test_a_real_but_unshown_record_counts_separately_from_a_fabricated_one():
+    """Two different failures. One is the model inventing a record; the
+    other is it reaching for a real record it was never shown. EVIDENCE.md
+    reports them apart because they say different things about the model."""
+    ledger = Ledger([_payment(), _payment(id_="PAY-2")])
+    not_shown = RecordRef(type=EntityType.PAYMENT, id="PAY-2")
+    fabricated = RecordRef(type=EntityType.PAYMENT, id="PAY-NOPE")
+    provider = RecordingProvider(
+        _batch_response(
+            "RES-BC-1",
+            [_hypothesis_dict("unreconciled_residual", [not_shown, fabricated])],
+        )
+    )
+
+    run = adjudicate_residuals([_pool_case()], ledger, provider)
+
+    assert run.citations_total == 2
+    assert run.citations_rejected_nonexistent == 1
+    assert run.citations_rejected_not_in_pool == 1
+
+
+def test_a_valid_citation_is_counted_but_not_rejected():
+    ledger = Ledger([_payment()])
+    valid = RecordRef(type=EntityType.PAYMENT, id="PAY-1")
+    provider = RecordingProvider(
+        _batch_response("RES-BC-1", [_hypothesis_dict("unreconciled_residual", [valid])])
+    )
+
+    run = adjudicate_residuals([_pool_case()], ledger, provider)
+
+    assert run.citations_total == 1
+    assert run.citations_rejected_nonexistent == 0
+    assert run.citations_rejected_not_in_pool == 0
+    assert run.reference_checking_enabled is True
+    assert len(run.results[0].accepted_hypotheses) == 1
+
+
+def test_disabling_the_reference_checker_lets_a_fabricated_citation_through():
+    """The ablation's whole point: this is what a report would contain if
+    the model's citations were trusted. The run is flagged so nothing
+    downstream can mistake it for an audit."""
+    ledger = Ledger([_payment()])
+    fabricated = RecordRef(type=EntityType.PAYMENT, id="PAY-DOES-NOT-EXIST")
+    provider = RecordingProvider(
+        _batch_response("RES-BC-1", [_hypothesis_dict("unreconciled_residual", [fabricated])])
+    )
+
+    run = adjudicate_residuals([_pool_case()], ledger, provider, check_references=False)
+
+    assert run.reference_checking_enabled is False
+    assert run.citations_rejected_nonexistent == 1, "still counted -- the ablation measures, it does not hide"
+    accepted = run.results[0].accepted_hypotheses
+    assert len(accepted) == 1
+    assert accepted[0].cited_evidence == [fabricated]
+
+
+def test_even_an_unchecked_fabricated_citation_cannot_produce_an_amount():
+    """Invariant 2 holds in the ablated path too. `coverage_bps` is computed
+    in Python from what the ledger can actually resolve, and a fabricated
+    ref resolves to nothing, so it contributes zero -- the model never gets
+    to supply a number, checker or no checker."""
+    ledger = Ledger([_payment()])
+    fabricated = RecordRef(type=EntityType.PAYMENT, id="PAY-DOES-NOT-EXIST")
+    provider = RecordingProvider(
+        _batch_response("RES-BC-1", [_hypothesis_dict("unreconciled_residual", [fabricated])])
+    )
+
+    run = adjudicate_residuals([_pool_case()], ledger, provider, check_references=False)
+
+    assert run.results[0].accepted_hypotheses[0].coverage_bps == 0

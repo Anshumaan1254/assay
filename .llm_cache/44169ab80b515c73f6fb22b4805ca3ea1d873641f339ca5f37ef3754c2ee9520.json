@@ -1,0 +1,49 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000065",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 79599 paise matches the value of payment PAY-000065, suggesting this transaction was not reconciled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000065"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000359",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 12668 paise matches the value of payment PAY-000359, indicating it was not properly settled."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000359"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000855",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained amount of 85599 paise aligns with the value of payment PAY-000855, suggesting this payment was missing from reconciliation."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000855"
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -32,6 +33,82 @@ def _callback() -> None:
     CLAUDE.md names this command by), so this callback exists purely to
     keep `explain` a required, named subcommand instead of collapsing.
     """
+
+
+@app.command()
+def audit(
+    run_dir: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
+        DEFAULT_RUN_DIR,
+        help="Directory holding ledger.json/settlement_report.json/bank_statement.json/rate_card.md.",
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Emit the full report as canonical JSON."),
+    adjudicate: bool = typer.Option(
+        True, "--adjudicate/--no-adjudicate", help="Ask the model about residuals deterministic matching left."
+    ),
+) -> None:
+    """Audit one settlement run end to end and print what it concluded.
+
+    Takes a run directory, not a profile name. Resolving a profile name
+    would mean generating data, which would mean `cli/` importing
+    `datagen/` -- invariant 5. Generate first with
+    `python -m datagen.cli generate --profile clean --seed 42`, then point
+    this at `runs/clean-seed42`.
+    """
+    from cli.audit import run_audit
+
+    report = run_audit(
+        run_dir,
+        default_provider(),
+        calibration=load_calibration_artifact(),
+        adjudicate=adjudicate,
+    )
+
+    if as_json:
+        typer.echo(json.dumps(report.hash_payload(), indent=2, sort_keys=True))
+        return
+
+    for line in report.summary_lines():
+        typer.echo(line)
+    if report.clusters:
+        typer.echo("")
+        typer.echo("Top exceptions by money:")
+        for cluster in report.clusters[:10]:
+            typer.echo(
+                f"  {cluster.total_impact.to_rupees_str():>14}  {cluster.discrepancy_class.value:<28}"
+                f"  {cluster.count:>3} finding(s)  [{cluster.rule_id or 'no rule resolved'}]"
+            )
+
+
+@app.command()
+def eval(
+    profiles: str = typer.Option("clean,realistic,stress", "--profiles", help="Comma-separated profile names."),
+    seeds: str = typer.Option("", "--seeds", help="Comma-separated seeds; defaults to the held-out split."),
+    out: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
+        Path("eval/results"), "--out", help="Where raw per-run results are written."
+    ),
+    evidence: bool = typer.Option(False, "--evidence", help="Regenerate EVIDENCE.md in place."),
+    ablate: bool = typer.Option(True, "--ablate/--no-ablate", help="Run the ablation study."),
+) -> None:
+    """Score the engine against planted ground truth and write eval/results/.
+
+    The import below is deliberately inside this function. `eval/` reads
+    `datagen/` ground truth, and a module-level import here would put a
+    path from the product's CLI package to the answers -- which invariant
+    5 exists to prevent, and which tests/test_architecture.py asserts
+    against by walking `cli/`'s module-level import graph.
+    """
+    from eval.cli import run_eval
+    from eval.harness import SWEEP_SEEDS
+
+    seed_list = [int(s) for s in seeds.split(",") if s.strip()] or list(SWEEP_SEEDS)
+    run_eval(
+        profiles=[p.strip() for p in profiles.split(",") if p.strip()],
+        seeds=seed_list,
+        out=out,
+        write_evidence=evidence,
+        ablate=ablate,
+        echo=typer.echo,
+    )
 
 
 @app.command()

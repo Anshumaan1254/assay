@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000009",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Adjustment ADJ-RH-000009 perfectly accounts for the unexplained amount of -368174 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000009"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000011",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Adjustment ADJ-RH-000011 perfectly accounts for the unexplained amount of -45267 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000011"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000012",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Adjustment ADJ-RH-000012 perfectly accounts for the unexplained amount of -102986 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000012"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000018",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Adjustment ADJ-RH-000018 perfectly accounts for the unexplained amount of -6619 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000018"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000019",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Adjustment ADJ-RH-000019 perfectly accounts for the unexplained amount of -52349 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000019"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000021",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Adjustment ADJ-RH-000021 perfectly accounts for the unexplained amount of -48878 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000021"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000024",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Adjustment ADJ-RH-000024 perfectly accounts for the unexplained amount of -5486 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000024"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000026",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "Adjustment ADJ-RH-000026 perfectly accounts for the unexplained amount of -93133 paise."
+        }
+      ],
+      "residual_id": "RES-BC-000026"
+    }
+  ]
+}

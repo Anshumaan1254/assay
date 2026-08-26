@@ -1,0 +1,144 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-GW-000001",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The bank credit is 34800 paise lower than expected, likely due to an unrecorded debit adjustment. This adjustment could be ADJ-GW-000001, representing an undocumented debit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-001369",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An overcharge of 34800 paise in fees may have been applied by the bank that was not expected or recorded, explaining the deficit in the bank credit. FEE-001369 is a potential candidate for this unrecorded fee."
+        }
+      ],
+      "residual_id": "RES-BC-000010"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-GW-000008",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "The bank credit is 25785 paise lower than expected, suggesting an unrecorded debit adjustment. ADJ-GW-000008 could be this adjustment."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005654",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "An overcharge of 25785 paise in fees by the bank could explain the reduced bank credit. FEE-005654 is a potential candidate for this unrecorded fee."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000005",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "A chargeback of 25785 paise may have been processed by the bank but not accurately recorded or matched, leading to the unexplained residual."
+        }
+      ],
+      "residual_id": "RES-BC-000029"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-RH-000030",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "A debit adjustment of 31803 paise, possibly represented by ADJ-RH-000030, was applied by the bank but not accounted for, resulting in a lower bank credit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005808",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "fee_overcharge",
+          "rationale": "The unexplained deficit of 31803 paise in the bank credit could be due to an unrecorded fee overcharge, with FEE-005808 as a potential candidate."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000003",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "chargeback_amount_mismatch",
+          "rationale": "A chargeback of 31803 paise might have occurred and reduced the bank credit, but was not fully reconciled, as potentially represented by CB-000003."
+        }
+      ],
+      "residual_id": "RES-BC-000030"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001166",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "A payment of 290830 paise, represented by PAY-001166, was recorded in our system but not found to be settled in any bank credit, resulting in this unclaimed residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001166"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002698",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "Payment PAY-002698 for 12080 paise was recorded in the ledger but remains unmatched to a corresponding bank settlement, causing this residual."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002698"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003065",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-003065, amounting to 517021 paise, exists in our records but has not been reconciled against any bank credit, thus it remains unclaimed."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003065"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003386",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The unexplained amount of 19655 paise directly corresponds to payment PAY-003386, indicating it is an unreconciled payment."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003386"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003508",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The unexplained amount of 179655 paise directly corresponds to payment PAY-003508, indicating it is an unreconciled payment."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003508"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003729",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The unexplained amount of 30922 paise directly corresponds to payment PAY-003729, indicating it is an unreconciled payment."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003729"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-003945",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The unexplained amount of 475112 paise directly corresponds to payment PAY-003945, indicating it is an unreconciled payment."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-003945"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004109",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The unexplained amount of 508478 paise directly corresponds to payment PAY-004109, indicating it is an unreconciled payment."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004109"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004450",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The unexplained amount of 113994 paise directly corresponds to payment PAY-004450, indicating it is an unreconciled payment."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004450"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004460",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The unexplained amount of 680296 paise directly corresponds to payment PAY-004460, indicating it is an unreconciled payment."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004460"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004499",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "unreconciled_residual",
+          "rationale": "The unexplained amount of 49367 paise directly corresponds to payment PAY-004499, indicating it is an unreconciled payment."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004499"
+    }
+  ]
+}

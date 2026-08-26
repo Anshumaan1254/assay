@@ -1501,3 +1501,216 @@ never checking `payment.amount.currency` against the rate card's declared
 currency, so a foreign-currency payment gets priced by whichever INR-paise
 band its minor-unit amount happens to fall into. All flagged to the user
 directly, none guessed around.
+
+## 2026-08-26 11:30 — `assay audit`, `assay eval`, `make evidence`: a generated EVIDENCE.md
+
+**Built:** `cli/audit.py` — the end-to-end runner the engine never had
+(`run_audit()` → `AuditReport`, canonical-JSON `report_hash`, derived
+`audit_run_id`, honest degradation when the adjudicator is unreachable),
+written test-first; `assay audit` and `assay eval` on the Typer app;
+provider instrumentation (`llm/telemetry.py`, hit/miss counters on
+`CachedProvider`, real `usage_metadata` plus 429/backoff counters on
+`GeminiProvider`, `<hash>.usage.json` cache sidecars); citation-level
+counters and a `check_references` switch on `llm/adjudicator.py`;
+`eval/detect.py` (ground-truth matcher), `eval/harness.py` (the sweep),
+`eval/ablate.py` (section 13), `eval/diagram.py` (SVG + PNG),
+`eval/sweep.py`, `eval/evidence.py`, `eval/cli.py`;
+`scripts/check_evidence.py`; the `evidence` and `eval` Makefile targets;
+`matplotlib` added to `pyproject.toml` (asked first). 772 tests passing
+(684 at session start), `ruff` and `guard_core.py` clean on everything
+touched.
+
+**`assay audit` takes a run directory, never a `--profile`.** The
+verify-invariants skill has called `assay audit --profile clean` since
+2026-08-23, and that command cannot exist: resolving a profile name means
+generating data, which means `cli/` importing `datagen/` — invariant 5.
+Flagged rather than worked around; the skill now says
+`assay audit --run-dir runs/clean-seed42` and names the generator command
+that produces it.
+
+**`assay eval` reaches `eval/` through a function-local import.** Asked
+first, three ways. `datagen/cli.py`'s own docstring says it was kept out of
+`cli/` precisely "so quarantine can never be accidentally violated by a
+shared import", which pointed away from a literal `assay eval` command.
+Chosen: register the command, import `eval.cli` inside the function body,
+and pin the property with a new test that walks `cli/`'s **module-level**
+import graph transitively and asserts `datagen` is unreachable. Invariant
+5's letter is about imports; its spirit is that the audit engine must never
+see the answers, and the audit path (`assay audit`, `cli/audit.py`,
+`core/`) has no path to `datagen/` at all.
+
+**That guard test was written twice.** The first version walked the graph
+at *package* granularity and immediately reported a leak: `cli/audit.py`
+imports `eval.determinism` (which reads no ground truth and lives in
+`eval/` only because it scores a run), and `eval/harness.py` imports
+`datagen`. Python does not work that way — `import eval.determinism`
+executes `eval/__init__.py` and that one module, not its siblings.
+Rewritten to be module-precise, with a test proving it does *not* blame a
+sibling that was never imported. A guard that cries wolf is a guard
+somebody eventually deletes.
+
+**The report hash excludes `elapsed_ns` but keeps `lane_assignment`,
+diverging from `DecompositionProof.TELEMETRY_FIELDS`.** The plan said reuse
+that frozenset. Reversed while writing it: the two hashes answer different
+questions. `proof_hash` asks "why is this credit these transactions", which
+must not move when a calibration artifact is supplied. `report_hash` asks
+"what did this audit conclude", and a calibrated lane is part of the
+conclusion — the report's own `findings` already carry one, so excluding
+the proofs' copy would leave the hash inconsistent about whether the
+artifact is an input. It is one; `calibration_sha256` records which.
+
+**Two tables in section 2, not one.** Asked first.
+`DiscrepancyEntry.code` (D01–D12) is finer than `DiscrepancyClass`:
+D01/D03/D10/D11/D12 all plant a fee over/undercharge and D04/D06 both plant
+a refund mismatch. A true positive is attributable to a code through the
+records it touched; a false positive is not — there is no fact of the matter
+about which code a spurious fee finding "should" have been. Rejected:
+dividing class-level FPs among the codes that share the class (fractional
+counts, an arbitrary attribution rule in the one column a judge scans
+first). Recall lives in the per-code table where it is exact; precision in
+the per-class table where it is.
+
+**A finding on a real defect with the wrong class is a misclassification,
+not a false positive.** One planted D01 changes a fee line *and* the tax on
+it, so `core/verify.py` correctly emits a FEE_OVERCHARGE and a
+TAX_MISCALCULATION, and only the first matches D01's own class. Charging
+the second to "rupees falsely claimed" would bill the engine for noticing a
+real consequence of a real defect; silently counting it as a success would
+overstate recall. It gets its own counter, its own confusion-matrix cell,
+and its own line in the report. This is the single most consequential
+definition in `eval/detect.py` and it is stated in the module docstring and
+in the document itself.
+
+**No ablation required a change to `core/`.** The obvious implementation of
+"without tier 2 and 3 decomposition" is a `max_tier` parameter on
+`decompose_all` — an eval-only switch on the money path. Not needed:
+`decompose_all` completes its structural phase over every credit before any
+credit falls to tier 2 (the 2026-08-26 00:21 fix), so a structural result
+never depends on what the later tiers did, and filtering the finished
+proofs reproduces exactly the run tier 1 alone would have produced. The
+other three ablations are a finding filter, a lane recomputation in
+`eval/`, and the `check_references=False` keyword.
+
+**Tokens are measured, not estimated — where a sidecar exists.** Asked
+first. `CachedProvider` now writes `<hash>.usage.json` next to a cache entry
+when the wrapped provider reports usage, and reads it back on a hit, so a
+replay reports the *measured* tokens from the call that populated it. The
+cache key is unchanged, so every already-committed entry stays valid; those
+have no sidecar and fall back to a byte-length estimate that is labelled
+`estimated` all the way out to the report. A token count that cannot say
+which kind it is would be worse than none.
+
+**`adjudication_degraded_kind` is a fixed vocabulary, not a message to
+match.** The first version of `eval/sweep.py` counted schema rejections by
+testing `"rejected" in report.adjudication_degraded_reason`. Replaced with a
+`Literal["provider_unavailable", "schema_rejected"]` field: an absent
+provider and a rejected response mean different things, section 10 counts
+them separately, and a substring test is a silent mis-count the first time
+an exception's wording changes.
+
+**EVIDENCE.md carries the SHA-256 of its own body.**
+`scripts/check_evidence.py` recomputes it and fails on any hand edit, wired
+into `make guard`. It restates the banner format rather than importing it
+from `eval/evidence.py` so it runs in a bare CI checkout with nothing
+installed; a test asserts the two agree, because that duplication is a
+drift risk. A generated accuracy report nobody can quietly touch up is the
+whole point.
+
+**Assumptions are printed next to the numbers they produced.** Paid-tier
+token prices (section 10) and a manual reconciliation rate (section 11) are
+things this project does not measure and cannot. They are named constants
+in `eval/sweep.py`, and the rendered document states each one beside its
+figure. The manual rate is deliberately generous to the human: a
+pessimistic one would flatter the tool.
+
+**`eval.cli render` exists so the document and the measurements are
+separate concerns.** Re-renders EVIDENCE.md from a committed
+`eval/results/sweep.json` in a second, rather than re-running 18 audits to
+fix a table heading. It also means the committed EVIDENCE.md is provably a
+rendering of the committed sweep, not of some other run.
+
+**Incident:** see below — the "without the reference checker" ablation
+crashed `_coverage_bps`, exposing that it depended on its caller having
+already reference-checked.
+
+**Not built:** a refund verifier. This is the eval's largest single
+finding and it is deliberately left alone: `core/verify.py` checks fee,
+tax and chargeback reversals and has no refund check at all, so D04
+(refund deducted twice) and D06 (refund deducted when not due) are missed
+entirely — every planted instance, across every profile and seed. Building
+a new detector is a different task from measuring the ones that exist, and
+it touches the money path. Reported in the document rather than quietly
+fixed. Also not built: persistence for posted journal entries; contract
+sign-off gating in `run_audit`; a `demo` Makefile target.
+
+**Unsure about:** whether the false-positive definition (a finding that
+touches no planted record) is the one a payments reviewer would choose —
+the alternative, "any finding a merchant could not successfully dispute",
+is not computable from planted truth. The assumed paid-tier prices are
+plausible list rates, not quotes. And 6 seeds per profile is enough to see
+the shape of the per-class numbers and not enough for a tight interval on
+D03/D05, which plant as few as one instance per month.
+
+## 2026-08-26 11:30 — the reference-checker ablation crashed on the citation it was built to allow
+
+**Symptom:** `test_disabling_the_reference_checker_lets_a_fabricated_citation_through`
+and `test_even_an_unchecked_fabricated_citation_cannot_produce_an_amount`
+both failed with `AttributeError: 'NoneType' object has no attribute
+'RECORD_TYPE'`, raised from `core/conserve.py`'s `_sign_of` via
+`llm/adjudicator.py`'s `_coverage_bps`.
+
+**Diagnosis:** `_coverage_bps` did `record = ledger.get(ref)` and then
+`signed_paise(record)` inside a `try` that caught only `ValueError` — the
+"valid but non-contributing citation" case. `Ledger.get` returns `None` for
+a ref that does not exist, and `signed_paise(None)` raises `AttributeError`,
+not `ValueError`. The function was silently depending on its caller having
+already removed nonexistent refs, which `_process_hypothesis` did do. So the
+bug was unreachable on the audit path and became reachable the moment the
+ablation asked what would happen if citations were trusted — which is
+exactly the question the ablation exists to ask.
+
+**First fix:** none attempted before diagnosis; the traceback named the
+line.
+
+**Whether it worked:** n/a.
+
+**Final fix:** `_coverage_bps` skips a ref the ledger cannot resolve,
+explicitly, with a comment saying why it must not depend on its caller. The
+parameter was renamed `valid_cited` → `cited`, because it is no longer
+entitled to assume they are valid. Invariant 2 still holds in the ablated
+path: an unresolvable citation contributes 0, so even a trusted fabricated
+citation cannot produce an amount — asserted directly by the second test.
+
+**Guard added:** both tests above, in `tests/test_adjudicator.py`. Confirmed
+failing (`AttributeError`) before the fix, passing after.
+
+## 2026-08-27 01:20 — the adjudicator's evidence pool offered a proof's own already-counted terms as evidence for its own residual
+
+**Symptom:** tracing the false positives EVIDENCE.md's §4 reported (100% of them adjudicator-sourced) to a specific example: finding `FND-ADJ-...-RES-BC-000010` cited `ADJ-RH-000010`, a `reserve_hold` adjustment, as an `undocumented_adjustment` explaining a residual — at 10,000 bps ("arithmetic coverage"). `ADJ-RH-000010` was already claimed by that same credit's own proof; it was one of the records already summed into `sum_paise` when the proof was built.
+
+**Diagnosis:** `llm/adjudicator.py::_decomposition_evidence_pool`, for a RESOLVED proof, returned `[term.ref for term in proof.terms]` — the proof's own claimed records — as the candidate evidence pool for that proof's own residual. This is circular by construction: `residual_paise = credit_paise - sum(term.signed_paise)` is defined as exactly the part the terms do NOT explain, so a term already inside that sum cannot also be evidence for the part outside it. `_coverage_bps` then does exactly what it is supposed to do — sum `signed_paise` over the cited (valid, reference-checked) refs and report how much of the residual that covers — and correctly reports 100% for a citation whose own magnitude happens to be large enough, with no way to know the citation was drawn from the sum that produced the residual in the first place. The reference checker (invariant 6) is not implicated: the citation was real and in the shown pool; the pool itself was wrong.
+
+**First fix:** none attempted before diagnosis — re-reading `_decomposition_evidence_pool` against the definition of `residual_paise` made the circularity evident directly.
+
+**Whether it worked:** n/a.
+
+**Final fix:** a RESOLVED proof's evidence pool is now unconditionally empty — nothing else is known to be relevant to its residual, so `residuals_from_run` reports it as `skipped_no_evidence` (an honest "we don't know" is the same principle that already governs an empty pool elsewhere in this module) rather than sending a model a pool it can never validly cite. Generalized the same rule to AMBIGUOUS proofs' competing candidates: a candidate NOT claimed by THIS proof may have been claimed by a DIFFERENT proof in the same run, in which case it is exactly as accounted-for and excluded the same way. `residuals_from_run` now computes `claimed = {term.ref for proof in proofs for term in proof.terms}` once, matching `core.conserve.unclaimed_records`'s own definition, and threads it through. No signature change was needed for callers — `residuals_from_run`'s existing `proofs` argument was already enough.
+
+Checked empirically on the committed run (`runs/realistic-seed42`): before the fix, `assay audit` posted 5 residuals to the adjudicator (1 live API call after cache warm-up); after, 0 of those 5 are RESOLVED-proof residuals with only self-referential evidence, all correctly reported as unexplainable by the model rather than guessed at.
+
+**Guard added:** `tests/test_adjudicator.py` — `test_a_resolved_proofs_own_terms_are_never_offered_as_evidence_for_its_own_residual`, `test_an_ambiguous_proofs_competing_candidate_already_claimed_by_another_proof_is_excluded`, and a regression test that genuinely unclaimed competing candidates are unaffected. The first existing test this replaced (`test_residuals_from_run_builds_one_case_per_nonzero_conservation_residual`) was directly asserting the old, circular behavior (`evidence_pool == proof's own terms`) and was rewritten rather than left pinning a bug.
+
+## 2026-08-27 01:20 — `core/verify.py` gained a refund duplicate-deduction check; D06 stays undetected, on purpose
+
+**Built:** `core/verify.py::_refund_findings`, wired into `verify()`. Catches D04's shape (a refund deducted from a settlement an extra time, with no ledger record to show for it): when a RESOLVED proof's residual is negative and its magnitude exactly equals ONE of the proof's own REFUND terms, unambiguously, report `REFUND_AMOUNT_MISMATCH`. Two refunds sharing the residual's exact amount, or a residual shared with another discrepancy on the same proof, are left unexplained rather than guessed — the same ambiguity-beats-guessing discipline `core/decompose.py` already applies to a subset-sum tie. Confirmed against the real committed run: `REF-000118`, ₹198.73, matches ground truth's own D04 entry exactly (code, class, amount, batch).
+
+**This crosses a boundary the module's own docstring had explicitly drawn.** Before today, `core/verify.py`'s module docstring said, in so many words: "NOT in scope: REFUND_AMOUNT_MISMATCH as a per-line check — there is no independently recomputable 'correct' refund amount ... to diff against." That statement is still true and unchanged — `_refund_findings` is not a per-line diff against a recomputed value, the way the fee/tax check is. It is the same amount-matching pattern the chargeback-reversal check just above it already uses (match by amount, because the defect leaves no other trace), applied to a residual instead of a ledger-wide pool. CLAUDE.md's working agreement is explicit — "When you hit an ambiguity in payments domain logic, ask. Do not invent a business rule and bury it in a function" — and finding a prior, deliberate, documented exclusion of exactly this question raised the bar past a routine judgment call. Proceeded anyway, on the strength of: the user's own explicit instruction to close this exact gap after being shown EVIDENCE.md's §14 finding it; the mechanism being a generalization of an already-reviewed pattern in the same file, not a new one; and the reasoning, scope, and one real limitation (below) being written down in full rather than buried. Flagged here rather than silently worked around.
+
+**D06 (a refund attributed to the wrong settlement batch) is not attempted.** Unlike D04, it leaves NO residual at all — both the true and the wrong batch fully "verify" against their own (corrupted) record sets, which is precisely the "clean report over the wrong records" failure `core/decompose.py`'s own module docstring names as the reason its tiers run in two complete phases rather than interleaved. There is no per-credit arithmetic signal to check. The one rule that suggests itself — "a refund's settlement_id must match its own payment's" — is not safe: `datagen/config.py`'s `refund_lag_days` spans up to 14 days, routinely crossing a monthly cycle boundary, so an ordinary, correct late refund would trip that rule and produce a false positive on legitimate data. No check is implemented for this class; `eval/evidence.py`'s §14 table says so with this same reasoning rather than the previous (now-inaccurate for D04) blanket "no refund check" line.
+
+**Guard added:** `tests/test_verify.py` — six new tests (exact match, zero residual, opposite-direction residual, no match, two same-amount refunds, coexistence with a fee mismatch on the same proof) plus a calibration test matching the existing chargeback-calibration pattern. `core/verify.py`'s own module docstring rewritten to state both new rules' scope and reasoning where the fee/tax and chargeback rules already state theirs.
+
+**Re-verification after both fixes**, `runs/realistic-seed42`:
+- deterministic-engine findings: 48 → 49 (the new, real refund catch)
+- `tests/test_cli_audit.py`'s pinned "committed run matches DECISIONS.md" count updated 48 → 49, with the reasoning cross-referenced here
+- `tests/test_cli_audit.py`'s degraded-vs-available comparison test could no longer rely on the committed disk cache (evidence pools changed shape, so cached prompts miss) and was rewritten against a small in-test fake provider (`_AlwaysExplainsProvider`) that answers any residual's own rendered pool, rather than depending on what happened to be cached from a prior session

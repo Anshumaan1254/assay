@@ -1,0 +1,164 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000004",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "A chargeback of 171923 paise (CB-000004) was not reconciled, leading to a deficit in the bank credit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-CBR-000003",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An adjustment (ADJ-CBR-000003) for -171923 paise was not recorded or matched, resulting in the residual."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005837",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "A fee of 171923 paise (FEE-005837) was processed but not properly reconciled in the settlement."
+        }
+      ],
+      "residual_id": "RES-BC-000030"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "CB-000002",
+              "type": "chargeback"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "A chargeback of 294807 paise (CB-000002) was not accounted for, causing the settlement deficit."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "ADJ-CBR-000001",
+              "type": "adjustment"
+            }
+          ],
+          "discrepancy_class": "undocumented_adjustment",
+          "rationale": "An adjustment (ADJ-CBR-000001) for -294807 paise was not matched in the settlement."
+        },
+        {
+          "cited_evidence": [
+            {
+              "id": "FEE-005997",
+              "type": "fee_line"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "A fee of 294807 paise (FEE-005997) was processed but not properly reconciled in the settlement."
+        }
+      ],
+      "residual_id": "RES-BC-000031"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000054",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-000054, for 54205 paise, was not reconciled in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000054"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000258",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-000258, for 24278 paise, was not reconciled in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000258"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-000298",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-000298, for 139111 paise, was not reconciled in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-000298"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001254",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-001254, for 221048 paise, was not reconciled in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001254"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-001350",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-001350, for 32233 paise, was not reconciled in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-001350"
+    },
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-002062",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The payment PAY-002062, for 15376 paise, was not reconciled in the bank settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-002062"
+    }
+  ]
+}

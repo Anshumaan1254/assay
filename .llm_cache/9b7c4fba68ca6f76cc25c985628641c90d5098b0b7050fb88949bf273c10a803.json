@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "hypotheses": [
+        {
+          "cited_evidence": [
+            {
+              "id": "PAY-004652",
+              "type": "payment"
+            }
+          ],
+          "discrepancy_class": "missing_transaction",
+          "rationale": "The unexplained credit of 115520 paise strongly suggests that payment PAY-004652 was not properly accounted for in the settlement."
+        }
+      ],
+      "residual_id": "RES-UNCLAIMED-PAY-004652"
+    }
+  ]
+}
