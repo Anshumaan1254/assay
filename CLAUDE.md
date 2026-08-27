@@ -111,6 +111,8 @@ assay/
   datagen/       synthetic generator + planted truth. QUARANTINED.
   eval/          metrics harness. Only module allowed to read ground truth.
   chaos/         failure injection scenarios
+  store/         checkpoint/resume + durable AUTO-lane journal (SQLModel/SQLite)
+  ingest/        real gateway API -> a run directory. Mirror of datagen/.
   cli/           typer app
   site/          landing page, added 2 Sep
 tests/

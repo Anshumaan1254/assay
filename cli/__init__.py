@@ -53,15 +53,27 @@ def audit(
     `datagen/` -- invariant 5. Generate first with
     `python -m datagen.cli generate --profile clean --seed 42`, then point
     this at `runs/clean-seed42`.
-    """
-    from cli.audit import run_audit
 
-    report = run_audit(
-        run_dir,
-        default_provider(),
-        calibration=load_calibration_artifact(),
-        adjudicate=adjudicate,
-    )
+    Resumable: a process killed mid-audit can be re-run with the exact same
+    arguments and will pick up from its last durable checkpoint rather than
+    redoing completed work or double-posting -- see store/resumable.py.
+    """
+    from eval.determinism import NonDeterministicRun
+    from store.resumable import CheckpointConflict, resume_or_run
+
+    try:
+        report = resume_or_run(
+            run_dir,
+            default_provider(),
+            calibration=load_calibration_artifact(),
+            adjudicate=adjudicate,
+        )
+    except (NonDeterministicRun, CheckpointConflict, ValueError) as error:
+        # A refusal to score/resume is correct, intentional behaviour here
+        # (see each exception's own docstring) -- only the presentation
+        # changes, from a raw traceback to a clean, actionable message.
+        typer.echo(f"assay audit: refused -- {error}", err=True)
+        raise typer.Exit(code=1) from None
 
     if as_json:
         typer.echo(json.dumps(report.hash_payload(), indent=2, sort_keys=True))
@@ -77,6 +89,46 @@ def audit(
                 f"  {cluster.total_impact.to_rupees_str():>14}  {cluster.discrepancy_class.value:<28}"
                 f"  {cluster.count:>3} finding(s)  [{cluster.rule_id or 'no rule resolved'}]"
             )
+
+
+@app.command()
+def fetch(
+    year: int = typer.Option(..., help="Four-digit year of the settlement month."),
+    month: int = typer.Option(..., min=1, max=12, help="Month, 1-12."),
+    day: int | None = typer.Option(None, min=1, max=31, help="Restrict to one day of that month."),
+    merchant_id: str = typer.Option(..., help="Your merchant id, as it should appear on every record."),
+    mcc: str = typer.Option(..., help="Your merchant category code. Razorpay's API does not report it."),
+    rate_card: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
+        ..., help="Your negotiated rate card, as markdown. No gateway exposes this as data."
+    ),
+    out: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
+        ..., help="Run directory to write, ready for `assay audit --run-dir`."
+    ),
+) -> None:
+    """Fetch one month of real Razorpay settlements into a run directory.
+
+    Unlike `datagen`, this is importable from `cli/` -- `ingest/` reads a
+    gateway's API, not planted ground truth, so invariant 5 does not apply
+    to it. The import stays inside the function only to keep `assay
+    audit`'s startup free of an HTTP stack it never uses.
+    """
+    from ingest.cli import fetch_run
+    from ingest.razorpay import RazorpayUnavailable
+
+    try:
+        report = fetch_run(
+            year=year, month=month, day=day, merchant_id=merchant_id,
+            mcc=mcc, rate_card=rate_card, out_dir=out,
+        )
+    except RazorpayUnavailable as error:
+        typer.echo(f"assay fetch: refused -- {error}", err=True)
+        raise typer.Exit(code=1) from None
+
+    typer.echo(f"wrote {out}")
+    typer.echo(f"  mapped records:   {report.mapped_count}")
+    typer.echo(f"  bank credits:     {len(report.bank_credits)}")
+    typer.echo(f"  quarantined:      {len(report.quarantined)}")
+    typer.echo(f"next: assay audit --run-dir {out}")
 
 
 @app.command()

@@ -1,0 +1,23 @@
+{
+  "run_id": "clean-seed42",
+  "seed": 42,
+  "profile": "clean",
+  "generated_at": "2026-08-26T10:38:08.849283+05:30",
+  "silent_corruption": null,
+  "discrepancies": [],
+  "data_quality_flags": [],
+  "counts": {
+    "D01": 0,
+    "D02": 0,
+    "D03": 0,
+    "D04": 0,
+    "D05": 0,
+    "D06": 0,
+    "D07": 0,
+    "D08": 0,
+    "D09": 0,
+    "D10": 0,
+    "D11": 0,
+    "D12": 0
+  }
+}
