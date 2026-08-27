@@ -1,6 +1,6 @@
 PYTHON ?= D:/CondaEnvs/ai/python.exe
 
-.PHONY: install test lint guard demo evidence eval
+.PHONY: install test lint guard demo evidence eval chaos
 
 install:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -29,3 +29,11 @@ evidence:
 
 demo:
 	@echo "demo: not implemented yet"
+
+# Runs every failure-injection scenario and prints a pass/fail table read
+# back from the structured incident log each scenario writes -- see
+# chaos/incident.py. Real subprocess kills (C02) make this slower than the
+# rest of the suite; --timeout is generous rather than tight.
+chaos:
+	$(PYTHON) -m pytest chaos/ -q --timeout=600
+	$(PYTHON) scripts/chaos_report.py

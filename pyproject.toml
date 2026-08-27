@@ -49,7 +49,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["core", "llm", "datagen", "eval", "chaos", "cli"]
+packages = ["core", "llm", "datagen", "eval", "chaos", "cli", "store"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
