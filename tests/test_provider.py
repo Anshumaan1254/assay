@@ -104,6 +104,25 @@ def test_cache_miss_calls_inner_and_persists_to_disk(tmp_path):
     assert json.loads(cached_files[0].read_text()) == {"value": "hello"}
 
 
+def test_a_truncated_cache_entry_degrades_to_a_refetch_not_a_crash(tmp_path):
+    # The shape of a process killed mid-write to the committed .llm_cache/:
+    # the file exists but its content is torn. Must cost one re-fetch,
+    # never a raw JSONDecodeError leaking out of a cache hit.
+    inner = FakeProvider({"value": "fresh"})
+    provider = CachedProvider(inner, cache_dir=tmp_path)
+    provider.generate_structured("prompt", DummySchema, "flash")
+    assert inner.calls == 1
+
+    cache_file = next(tmp_path.glob("*.json"))
+    cache_file.write_text('{"value": "fre', encoding="utf-8")  # torn mid-write
+
+    result = provider.generate_structured("prompt", DummySchema, "flash")
+
+    assert result == {"value": "fresh"}
+    assert inner.calls == 2, "a corrupt entry must be treated as a miss, re-fetching from the inner provider"
+    assert json.loads(cache_file.read_text()) == {"value": "fresh"}, "the cache should self-heal on refetch"
+
+
 def test_cache_key_differs_by_prompt(tmp_path):
     inner = FakeProvider({"value": "hello"})
     provider = CachedProvider(inner, cache_dir=tmp_path)
@@ -478,8 +497,8 @@ def test_a_response_without_usage_metadata_still_succeeds_and_reports_no_usage()
 
 def test_gemini_counts_every_429_and_the_time_spent_backing_off(monkeypatch):
     slept: list[float] = []
-    monkeypatch.setattr("llm.providers.gemini.time.sleep", slept.append)
-    monkeypatch.setattr("llm.providers.gemini.random.uniform", lambda a, b: 0.0)
+    monkeypatch.setattr("llm.providers.backoff.time.sleep", slept.append)
+    monkeypatch.setattr("llm.providers.backoff.random.uniform", lambda a, b: 0.0)
 
     responses = [make_client_error(429), make_client_error(429), FakeGenerateResultWithUsage('{"value": "x"}')]
     provider = GeminiProvider(config=make_config(backoff_base_seconds=1.0), client=FakeClient(responses))

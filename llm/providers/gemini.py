@@ -51,7 +51,6 @@ from __future__ import annotations
 
 import json
 import os
-import random
 import time
 
 import structlog
@@ -61,7 +60,8 @@ from google.genai import errors as genai_errors
 from google.genai import types
 from pydantic import BaseModel
 
-from llm.provider import ProviderUnavailable, TokenUsage
+from llm.provider import MalformedResponse, ProviderUnavailable, TokenUsage
+from llm.providers.backoff import sleep_with_backoff
 
 _MODEL_HINTS = ("flash", "flash-lite")
 
@@ -282,21 +282,20 @@ class GeminiProvider:
         structured response, whatever the request asked for."""
         text = getattr(response, "text", None)
         if not text:
-            raise ProviderUnavailable(f"{model} returned an empty response")
+            raise MalformedResponse(f"{model} returned an empty response")
         try:
             decoded = json.loads(text)
         except json.JSONDecodeError as e:
-            raise ProviderUnavailable(
+            raise MalformedResponse(
                 f"{model} returned a response that is not valid JSON despite constrained decoding"
             ) from e
         if not isinstance(decoded, dict):
-            raise ProviderUnavailable(
+            raise MalformedResponse(
                 f"{model} returned a JSON {type(decoded).__name__}, not an object"
             )
         return decoded
 
     def _sleep_with_backoff(self, attempt: int) -> None:
-        delay = min(self._config.backoff_base_seconds * (2**attempt), self._config.backoff_max_seconds)
-        jitter = random.uniform(0, delay * 0.25)
-        self.backoff_seconds += delay + jitter
-        time.sleep(delay + jitter)
+        self.backoff_seconds += sleep_with_backoff(
+            attempt, self._config.backoff_base_seconds, self._config.backoff_max_seconds
+        )

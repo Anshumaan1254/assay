@@ -32,12 +32,13 @@ from llm.contract_parser import compile_rate_card
 from llm.provider import LLMProvider
 from llm.providers.cached import CachedProvider
 from llm.providers.gemini import GeminiProvider
+from llm.providers.retrying import RetryingProvider
 
 DEFAULT_RUN_DIR = Path("runs/realistic-seed42")
 
 
 def default_provider() -> LLMProvider:
-    return CachedProvider(GeminiProvider())
+    return CachedProvider(RetryingProvider(GeminiProvider()))
 
 
 def load_bank_credits(run_dir: Path) -> list[BankCredit]:

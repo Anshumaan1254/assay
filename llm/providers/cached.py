@@ -30,6 +30,7 @@ import json
 import os
 from pathlib import Path
 
+import structlog
 from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError
 
@@ -37,6 +38,8 @@ from llm.provider import TokenUsage, estimate_usage
 
 FALLBACK_CACHE_DIR = Path(".llm_cache")
 USAGE_SUFFIX = ".usage.json"
+
+logger = structlog.get_logger(__name__)
 
 
 def default_cache_dir() -> Path:
@@ -70,9 +73,19 @@ class CachedProvider:
         cache_file = self._cache_dir / f"{key}.json"
         if cache_file.exists():
             payload = cache_file.read_text(encoding="utf-8")
-            self.hits += 1
-            self._record(self._usage_for_hit(key, prompt, payload))
-            return json.loads(payload)
+            try:
+                decoded = json.loads(payload)
+            except json.JSONDecodeError:
+                # A truncated/corrupted cache entry -- most plausibly a
+                # process killed mid-write to it -- costs one re-fetch,
+                # never a crash. The committed .llm_cache/ is meant to be
+                # replayable forever; a torn file there must not become a
+                # landmine for the next run that happens to hit it.
+                logger.warning("corrupt_cache_entry_refetching", key=key)
+            else:
+                self.hits += 1
+                self._record(self._usage_for_hit(key, prompt, payload))
+                return decoded
 
         # Counted before the call, not after. A request that reaches the
         # network and then fails -- a 429 that outlives its retries, say --

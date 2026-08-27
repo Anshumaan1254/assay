@@ -21,6 +21,19 @@ class ProviderUnavailable(Exception):
     """
 
 
+class MalformedResponse(ProviderUnavailable):
+    """The provider answered, but the response body itself was unusable --
+    empty, not valid JSON, or JSON that wasn't an object -- as opposed to a
+    rate limit or a missing API key. IS-A ProviderUnavailable, so every
+    existing `except ProviderUnavailable` catch site and every existing
+    `pytest.raises(ProviderUnavailable, ...)` keeps working unchanged; this
+    subclass exists only so a retry wrapper can catch *this* failure mode
+    specifically, without also intercepting (and re-retrying on top of) a
+    429-exhaustion GeminiProvider has already decided is not worth retrying
+    again for an unrelated reason.
+    """
+
+
 class TokenUsage(BaseModel):
     """What one call cost, in tokens.
 

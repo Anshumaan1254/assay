@@ -25,6 +25,7 @@ from core.contract import (
     ContractIncomplete,
     ContractNotSignedOff,
     ContractSignOff,
+    CorruptContractArtifact,
     DormantClause,
     FeeRule,
     InvalidSupersession,
@@ -39,6 +40,7 @@ from core.contract import (
     record_signoff,
     render_schedule,
     require_signoff,
+    signoff_path,
 )
 from core.models import IST, CardType, FeeType, Network, Payment, PaymentMethod
 from core.money import Money
@@ -825,6 +827,17 @@ def test_round_trips_through_disk(tmp_path, contract):
     assert reloaded.fee_for(p, BEFORE_REVISION).total_fee == contract.fee_for(p, BEFORE_REVISION).total_fee
 
 
+def test_a_truncated_compiled_contract_file_is_a_named_failure_not_a_raw_parse_error(tmp_path, contract):
+    # The shape of a process killed mid-write to a compiled contract file:
+    # the file exists but its content is torn.
+    path = tmp_path / "contract.json"
+    contract.save(path)
+    path.write_text(path.read_text(encoding="utf-8")[:20], encoding="utf-8")
+
+    with pytest.raises(CorruptContractArtifact):
+        CompiledContract.load(path)
+
+
 def test_canonical_json_is_byte_stable(contract):
     assert contract.canonical_json() == CompiledContract.from_parse(reference_parse()).canonical_json()
 
@@ -886,6 +899,20 @@ def test_replay_finds_the_existing_signoff_without_re_prompting(tmp_path, contra
     rebuilt = CompiledContract.from_parse(reference_parse())
 
     assert load_signoff(rebuilt, tmp_path) is not None
+
+
+def test_a_truncated_signoff_file_is_treated_as_no_signoff_not_a_crash(tmp_path, contract):
+    # Same "or None" contract this function already has for a missing or
+    # stale sign-off, extended to a corrupted one -- a process killed
+    # mid-write to it is indistinguishable from "never approved", and the
+    # honest response is to re-prompt a human, not to crash.
+    record_signoff(contract, tmp_path, signed_off_by="anshumaan", signed_off_at=AT_REVISION)
+    path = signoff_path(contract, tmp_path)
+    path.write_text(path.read_text(encoding="utf-8")[:10], encoding="utf-8")
+
+    assert load_signoff(contract, tmp_path) is None
+    with pytest.raises(ContractNotSignedOff):
+        require_signoff(contract, tmp_path)
 
 
 # --------------------------------------------------------------------

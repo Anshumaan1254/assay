@@ -45,7 +45,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from pathlib import Path
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, ValidationError, field_validator, model_validator
 
 from core.models import (
     IST,
@@ -97,6 +97,15 @@ class NoApplicableRule(ContractError):
 
 class ContractNotSignedOff(ContractError):
     """The schedule has no human sign-off, or has changed since it got one."""
+
+
+class CorruptContractArtifact(ContractError):
+    """A compiled-contract file on disk exists but can't be parsed -- most
+    plausibly a process killed mid-write to it. A named, reported failure
+    here, rather than a raw ValidationError/JSONDecodeError leaking out of
+    a file read: this is the same "never guess, never crash uninformatively"
+    discipline NoApplicableRule/ContractIncomplete already apply, extended
+    to a corrupted artifact rather than an incomplete rate card."""
 
 
 # ---------------------------------------------------------------------
@@ -657,7 +666,14 @@ class CompiledContract:
 
     @classmethod
     def load(cls, path: Path | str) -> CompiledContract:
-        document = ContractDocument.model_validate_json(Path(path).read_text(encoding="utf-8"))
+        path = Path(path)
+        try:
+            document = ContractDocument.model_validate_json(path.read_text(encoding="utf-8"))
+        except ValidationError as error:
+            raise CorruptContractArtifact(
+                f"{path}: could not be parsed as a compiled contract -- possibly a process was "
+                f"killed mid-write to it: {error}"
+            ) from error
         return cls(document.parse, rounding=document.rounding, source_sha256=document.source_sha256)
 
     def save(self, path: Path | str) -> None:
@@ -1000,7 +1016,16 @@ def load_signoff(contract: CompiledContract, directory: Path | str) -> ContractS
     path = signoff_path(contract, directory)
     if not path.exists():
         return None
-    signoff = ContractSignOff.model_validate_json(path.read_text(encoding="utf-8"))
+    try:
+        signoff = ContractSignOff.model_validate_json(path.read_text(encoding="utf-8"))
+    except ValidationError:
+        # A corrupted sign-off (e.g. a process killed mid-write to it) is
+        # not a valid sign-off for this schedule -- same "or None" contract
+        # this function already has for a missing or stale one. Falling
+        # through to require_signoff() re-prompts a human rather than
+        # crashing, which is the honest response to "we can't tell if this
+        # was ever approved."
+        return None
     if signoff.schedule_sha256 != contract.schedule_sha256:
         return None
     if signoff.rendered_sha256 != sha256_of(render_schedule(contract)):
