@@ -398,7 +398,8 @@ def _collect_points(
     truth = ground_truth.discrepancies
     points = label_proofs(report.proofs, truth, seed)
     for proof in report.proofs:
-        points.extend(label_verify_cells(fee_tax_cells(proof, ledger, contract), truth, seed))
+        cells, _gaps = fee_tax_cells(proof, ledger, contract)
+        points.extend(label_verify_cells(cells, truth, seed))
     if report.adjudication is not None:
         points.extend(label_adjudicated_hypotheses(report.adjudication, truth, seed))
     return points

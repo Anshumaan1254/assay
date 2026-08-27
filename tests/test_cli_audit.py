@@ -32,6 +32,7 @@ import pytest
 from cli.audit import AuditReport, run_audit
 from cli.loaders import load_ledger
 from core.conserve import total_unexplained_paise, unclaimed_paise
+from core.decompose import DecompositionOutcome, ProofIntegrityViolation
 from core.models import Lane
 from datagen.config import GenerationConfig, load_profile
 from datagen.inject import apply_discrepancies
@@ -322,7 +323,7 @@ def test_rerunning_an_audit_over_its_own_prior_output_posts_no_new_journal_entri
 
 @pytest.mark.timeout(300)
 def test_only_auto_lane_findings_ever_post(committed_report):
-    posted_finding_ids = {entry.id.removeprefix("JNL-") for entry in committed_report.journal_entries}
+    posted_finding_ids = {entry.id.removeprefix("JNL-").rsplit("::", 1)[0] for entry in committed_report.journal_entries}
     auto_finding_ids = {f.id for f in committed_report.findings if f.lane is Lane.AUTO}
     assert posted_finding_ids == auto_finding_ids
 
@@ -457,3 +458,30 @@ def test_a_schema_invalid_response_degrades_as_schema_rejected_not_as_unavailabl
     assert report.adjudication_degraded is True
     assert report.adjudication_degraded_kind == "schema_rejected"
     assert report.findings == [], "a clean run still has no findings; the degradation adds none"
+
+
+@pytest.mark.timeout(300)
+def test_a_tampered_proof_aborts_the_run_rather_than_reporting_a_wrong_number(clean_run_dir, monkeypatch):
+    # decompose.py's own verify_proof() independently re-derives every term
+    # from the ledger and already has full unit coverage; this test proves
+    # only that run_audit() actually calls it. A term whose signed_paise no
+    # longer matches its cited record is exactly the shape a doubled
+    # citation or a hand-edited proof would produce -- run_audit must abort
+    # rather than build a report on top of it.
+    import cli.audit
+
+    real_decompose_all = cli.audit.decompose_all
+
+    def _tamper(*args, **kwargs):
+        proofs = real_decompose_all(*args, **kwargs)
+        resolved = next(p for p in proofs if p.outcome is DecompositionOutcome.RESOLVED and p.terms)
+        tampered_term = resolved.terms[0].model_copy(
+            update={"signed_paise": resolved.terms[0].signed_paise + 1}
+        )
+        tampered = resolved.model_copy(update={"terms": [tampered_term, *resolved.terms[1:]]})
+        return [tampered if p.credit_ref == resolved.credit_ref else p for p in proofs]
+
+    monkeypatch.setattr(cli.audit, "decompose_all", _tamper)
+
+    with pytest.raises(ProofIntegrityViolation):
+        run_audit(clean_run_dir, _offline_provider(), merchant_id=MERCHANT)

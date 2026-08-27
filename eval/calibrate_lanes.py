@@ -112,7 +112,7 @@ def generate_seed_run(seed: int, *, profile_name: str = DEFAULT_PROFILE, month: 
 def collect_deterministic_points(run: SeedRun, contract: CompiledContract) -> list[LabeledPoint]:
     points = label_proofs(run.proofs, run.ground_truth, run.seed)
     for proof in run.proofs:
-        cells = fee_tax_cells(proof, run.ledger, contract)
+        cells, _gaps = fee_tax_cells(proof, run.ledger, contract)
         points.extend(label_verify_cells(cells, run.ground_truth, run.seed))
     return points
 

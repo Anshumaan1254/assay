@@ -9,10 +9,11 @@ component for the money it was explaining. Both are pinned below.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
+from core.contract import AppliesWhen, CompiledContract, FeeRule, RateCardParse
 from core.decompose import (
     DecompositionOutcome,
     DecompositionProof,
@@ -25,6 +26,8 @@ from core.ledger import Ledger
 from core.models import (
     CardType,
     EntityType,
+    FeeLine,
+    FeeType,
     Finding,
     Lane,
     Network,
@@ -37,6 +40,7 @@ from core.money import Money
 from eval.ablate import (
     FIXED_AUTO_THRESHOLD_BPS,
     structural_only,
+    structural_only_findings,
     structural_only_unexplained_paise,
     with_fixed_threshold,
     without_adjudicator,
@@ -139,6 +143,54 @@ def test_the_fixed_threshold_ablation_does_not_keep_the_llm_auto_exemption():
     ablated would make the comparison meaningless."""
     adjudicated = _finding("FND-ADJ-AUD-1-RES-BC-1", 10_000)
     assert with_fixed_threshold([adjudicated])[0].lane is Lane.AUTO
+
+
+def _contract() -> CompiledContract:
+    rule = FeeRule(
+        rule_id="card.credit",
+        fee_type=FeeType.MDR,
+        effective_from=date(2026, 7, 1),
+        applies_when=AppliesWhen(method=PaymentMethod.CARD, card_type=CardType.CREDIT),
+        rate_bps=180,
+        taxes=[],
+        source_quote="test",
+    )
+    return CompiledContract.from_parse(RateCardParse(merchant_id="MERCH-0001", rules=[rule]))
+
+
+def test_structural_only_findings_returns_a_plain_finding_list_not_a_tuple():
+    # Regression: core.verify.verify_all() now returns (findings, gaps).
+    # list() on that 2-tuple silently produces [findings_list, gaps_list]
+    # instead of a list of Finding objects -- syntactically iterable, so it
+    # doesn't fail here, but crashes the first caller that reads .id off an
+    # element (eval/detect.py's sort does exactly that).
+    payment = _payment(paise=500_000)  # correct MDR at 180bps = 9_000
+    fee_line = FeeLine(
+        id="FEE-1",
+        applies_to_id="PAY-1",
+        applies_to_type=EntityType.PAYMENT,
+        fee_type=FeeType.MDR,
+        computed_amount=Money(9_500),  # reported 500 paise too high
+        rule_id="card.credit",
+    )
+    ledger = Ledger([payment, fee_line])
+    proof = _proof(
+        "BC-1",
+        DecompositionTier.STRUCTURAL,
+        DecompositionOutcome.RESOLVED,
+        credit_paise=500_000 - 9_500,
+        terms=[
+            ProofTerm(ref=RecordRef(type=EntityType.PAYMENT, id="PAY-1"), signed_paise=500_000),
+            ProofTerm(ref=RecordRef(type=EntityType.FEE_LINE, id="FEE-1"), signed_paise=-9_500),
+        ],
+    )
+
+    findings = structural_only_findings([proof], ledger, _contract(), audit_run_id="AUD-TEST")
+
+    assert all(isinstance(f, Finding) for f in findings)
+    assert len(findings) == 1
+    assert findings[0].discrepancy_class is DiscrepancyClass.FEE_OVERCHARGE
+    assert findings[0].amount_impact == Money(500)
 
 
 # ---------------------------------------------------------------------------

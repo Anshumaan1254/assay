@@ -144,7 +144,8 @@ def structural_only_findings(
     proofs: Sequence[DecompositionProof], ledger: Ledger, contract: CompiledContract, audit_run_id: str
 ) -> list[Finding]:
     kept = structural_only(proofs)
-    return list(verify_all(kept, ledger, contract, audit_run_id=audit_run_id))
+    findings, _gaps = verify_all(kept, ledger, contract, audit_run_id=audit_run_id)
+    return list(findings)
 
 
 def structural_only_unexplained_paise(

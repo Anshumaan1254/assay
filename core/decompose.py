@@ -1060,6 +1060,15 @@ def _assignment_pool(
 # --------------------------------------------------------------------------
 
 
+class ProofIntegrityViolation(Exception):
+    """Raised when verify_proof() finds a proof that does not check out
+    against the ledger it was supposedly derived from -- a doubled
+    citation, a tampered term, a hash mismatch. This is not a business
+    exception like NoApplicableRule: it means the engine's own arithmetic
+    cannot be trusted for this credit, so the run aborts rather than
+    reporting a number built on it."""
+
+
 def verify_proof(proof: DecompositionProof, ledger: Ledger) -> ProofVerification:
     """Re-derive a proof from the ledger alone.
 

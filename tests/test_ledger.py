@@ -14,7 +14,7 @@ applies_to_fee_id.
 
 from datetime import UTC, date, datetime
 
-from core.ledger import Ledger, journal_entries_for_auto_findings
+from core.ledger import DuplicateRecordError, Ledger, journal_entries_for_auto_findings
 from core.models import (
     BankCredit,
     BatchStatus,
@@ -343,6 +343,46 @@ def test_iter_yields_every_ref_sorted():
 
 
 # ---------------------------------------------------------------------------
+# Duplicate-record ingestion -- a settlement file handed to the loader twice
+# must not silently corrupt the join indexes (last-write-wins in _by_ref
+# while every index still double-appends), and two DIFFERENT records
+# sharing an id must never be resolved by guessing which one is real.
+# ---------------------------------------------------------------------------
+
+
+def test_an_identical_duplicate_record_is_deduped_not_double_indexed(capsys):
+    payment = _payment("pay_1", settlement_id="batch_1")
+    ledger = Ledger([payment, payment.model_copy()])
+
+    assert len(ledger) == 1
+    assert ledger.by_settlement("batch_1") == [RecordRef(type=EntityType.PAYMENT, id="pay_1")]
+    assert ledger.by_type(EntityType.PAYMENT) == [RecordRef(type=EntityType.PAYMENT, id="pay_1")]
+    logged = capsys.readouterr().out
+    assert "duplicate_record_ingested" in logged
+
+
+def test_an_identical_duplicate_fee_line_does_not_get_cited_twice():
+    # The shape of the real bug this guards: a duplicated FeeLine reaching
+    # decompose.py via fee_lines_for() twice would double-count its amount
+    # in a proof's sum_paise. Deduping at ingestion is what makes that
+    # structurally impossible without any change in core/decompose.py.
+    fee = _fee_line("fee_1", "pay_1")
+    ledger = Ledger([_payment("pay_1"), fee, fee.model_copy()])
+    assert ledger.fee_lines_for(RecordRef(type=EntityType.PAYMENT, id="pay_1")) == [
+        RecordRef(type=EntityType.FEE_LINE, id="fee_1")
+    ]
+
+
+def test_two_records_sharing_an_id_with_conflicting_content_raises():
+    conflicting = _payment("pay_1", settlement_id="batch_1").model_copy(update={"amount": Money(9_999)})
+    try:
+        Ledger([_payment("pay_1", settlement_id="batch_1"), conflicting])
+        assert False, "expected DuplicateRecordError"
+    except DuplicateRecordError as error:
+        assert "pay_1" in str(error)
+
+
+# ---------------------------------------------------------------------------
 # journal_entries_for_auto_findings -- AUTO-lane double-entry posting.
 # Pure function: findings + input_hash + already-posted entries in, new
 # JournalEntry rows out. No I/O here -- persistence is a caller's job.
@@ -393,7 +433,8 @@ def test_an_escalate_lane_finding_never_posts():
 def test_non_auto_lane_findings_never_post_even_if_caller_forgot_to_filter():
     findings = [_finding("FND-1", lane=Lane.AUTO), _finding("FND-2", lane=Lane.PROPOSE)]
     entries = journal_entries_for_auto_findings(findings, input_hash="HASH-1", posted_at=POSTED_AT)
-    assert [e.id for e in entries] == ["JNL-FND-1"]
+    assert len(entries) == 1
+    assert entries[0].id.startswith("JNL-FND-1::")
 
 
 def test_a_duplicate_finding_id_within_one_call_does_not_double_post():
@@ -439,4 +480,21 @@ def test_two_different_input_hashes_do_not_collide_on_idempotency_key():
 def test_entries_are_sorted_by_finding_id_for_determinism():
     findings = [_finding("FND-2", lane=Lane.AUTO), _finding("FND-1", lane=Lane.AUTO)]
     entries = journal_entries_for_auto_findings(findings, input_hash="HASH-1", posted_at=POSTED_AT)
-    assert [e.id for e in entries] == ["JNL-FND-1", "JNL-FND-2"]
+    ids = [e.id for e in entries]
+    assert ids[0].startswith("JNL-FND-1::")
+    assert ids[1].startswith("JNL-FND-2::")
+
+
+def test_two_different_input_hashes_never_collide_on_journal_entry_id():
+    # The DECISIONS.md-flagged gap: JournalEntry.id used to be f"JNL-{finding.id}"
+    # alone, so two runs over a corrected settlement file (different
+    # input_hash, same finding.id) produced two rows sharing an id but
+    # disagreeing idempotency_key -- a primary-key collision on two
+    # genuinely different postings. The id must now vary exactly when the
+    # idempotency key varies.
+    finding = _finding(lane=Lane.AUTO)
+    run1 = journal_entries_for_auto_findings([finding], input_hash="HASH-1", posted_at=POSTED_AT)
+    run2 = journal_entries_for_auto_findings(
+        [finding], input_hash="HASH-2", already_posted=run1, posted_at=POSTED_AT
+    )
+    assert run1[0].id != run2[0].id

@@ -76,13 +76,20 @@ from core.conserve import (
     unclaimed_records,
 )
 from core.contract import CompiledContract, canonical_json, sha256_of
-from core.decompose import DecompositionOutcome, DecompositionProof, DecompositionTier, decompose_all
+from core.decompose import (
+    DecompositionOutcome,
+    DecompositionProof,
+    DecompositionTier,
+    ProofIntegrityViolation,
+    decompose_all,
+    verify_proof,
+)
 from core.exceptions import Cluster, DisputePacket, build_dispute_packet, cluster_findings
 from core.lanes import CalibrationArtifact
 from core.ledger import Ledger, journal_entries_for_auto_findings
 from core.models import IST, AssayModel, AuditRun, Finding, JournalEntry, RecordRef
 from core.money import Money
-from core.verify import verify_all
+from core.verify import ContractGap, verify_all
 from eval.determinism import ReproducibilityReport, assert_reproducible
 from llm.adjudicator import (
     AdjudicationRejected,
@@ -129,6 +136,7 @@ class AuditReport(AssayModel):
     total_unaccounted_paise: int
 
     findings: list[Finding]
+    contract_gaps: list[ContractGap]
     clusters: list[Cluster]
     dispute_packets: list[DisputePacket]
     journal_entries: list[JournalEntry]
@@ -194,6 +202,7 @@ class AuditReport(AssayModel):
             f"  subset-sum:     {tiers.count(DecompositionTier.SUBSET_SUM)}",
             f"  assignment:     {tiers.count(DecompositionTier.ASSIGNMENT)}",
             f"findings:         {len(self.findings)} in {len(self.clusters)} clusters",
+            f"contract gaps:    {len(self.contract_gaps)}",
             f"unexplained:      {Money(self.total_unexplained_paise).to_rupees_str()}",
             f"unclaimed:        {Money(self.unclaimed_paise).to_rupees_str()}",
             f"total unaccounted:{Money(self.total_unaccounted_paise).to_rupees_str()}",
@@ -237,6 +246,44 @@ def _read_seed(run_dir: Path) -> int:
         return int(json.loads(manifest.read_text(encoding="utf-8")).get("seed", 0))
     except (ValueError, TypeError):
         return 0
+
+
+def decompose_phase(
+    credits: list,
+    ledger: Ledger,
+    *,
+    merchant_id: str,
+    calibration: CalibrationArtifact | None = None,
+) -> tuple[list[DecompositionProof], ReproducibilityReport]:
+    """decompose_all() + this run's two integrity gates, as one reusable
+    unit. Pulled out of run_audit()'s body so store/resumable.py's
+    checkpoint/resume orchestration can call exactly this -- and skip it on
+    a resume -- without duplicating the sequencing or risking the two
+    copies drifting apart.
+    """
+    proofs = decompose_all(credits, ledger, merchant_id=merchant_id, calibration=calibration)
+    _assert_proof_integrity(proofs, ledger)
+    reproducibility = assert_reproducible(proofs)
+    return proofs, reproducibility
+
+
+def _assert_proof_integrity(proofs: list[DecompositionProof], ledger: Ledger) -> None:
+    """Re-activate decompose.py's own tamper/duplicate-citation check on
+    every proof this run produced. `verify_proof` is fully independent --
+    it recomputes each term from the ledger alone -- and already has its
+    own tests; this is the one line that wires it into production instead
+    of leaving it dead code walked only by tests and eval/determinism.py's
+    docstring. Belt-and-suspenders alongside Ledger's own duplicate-record
+    rejection: this catches a doubled citation from any future code path
+    that builds a proof without going through a clean Ledger.
+    """
+    for proof in proofs:
+        result = verify_proof(proof, ledger)
+        if not result.ok:
+            raise ProofIntegrityViolation(
+                f"{proof.credit_ref.id}: proof failed independent verification: "
+                f"{'; '.join(result.failures)}"
+            )
 
 
 def _adjudicate(
@@ -314,13 +361,15 @@ def run_audit(
             )
         contract = load_contract(run_dir, provider)
 
-    proofs = decompose_all(credits, ledger, merchant_id=merchant_id, calibration=calibration)
-    reproducibility = assert_reproducible(proofs)
+    proofs, reproducibility = decompose_phase(credits, ledger, merchant_id=merchant_id, calibration=calibration)
 
     conservation = conserve_all(proofs, ledger)
     unclaimed = unclaimed_records(ledger, proofs)
 
-    findings = list(verify_all(proofs, ledger, contract, audit_run_id=audit_run_id, calibration=calibration))
+    findings, contract_gaps = verify_all(
+        proofs, ledger, contract, audit_run_id=audit_run_id, calibration=calibration
+    )
+    findings = list(findings)
 
     adjudication: AdjudicationRun | None = None
     degraded_kind: str | None = None
@@ -360,6 +409,7 @@ def run_audit(
         unclaimed_paise=unclaimed_total,
         total_unaccounted_paise=unexplained + unclaimed_total,
         findings=findings,
+        contract_gaps=contract_gaps,
         clusters=clusters,
         dispute_packets=packets,
         journal_entries=journal_entries,

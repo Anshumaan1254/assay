@@ -32,12 +32,27 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from datetime import datetime
 
+import structlog
+
 from core.contract import sha256_of
 from core.models import AssayModel, EntityType, Finding, JournalEntry, Lane, RecordRef
+
+logger = structlog.get_logger(__name__)
 
 
 def _sort_key(ref: RecordRef) -> tuple[str, str]:
     return (ref.type.value, ref.id)
+
+
+class DuplicateRecordError(Exception):
+    """Raised when the same (type, id) appears twice in the input with
+    conflicting content -- e.g. two different settlement files each
+    claiming a fee line 'fee_1' with a different amount. Which copy is
+    correct cannot be guessed, so ingestion refuses outright rather than
+    resolving it by last-write-wins, the way a naive dict assignment would.
+
+    A duplicate with IDENTICAL content (the same file handed to the loader
+    twice) is not an error -- see Ledger.__init__."""
 
 
 class Ledger:
@@ -51,6 +66,19 @@ class Ledger:
 
         for record in records:
             ref = RecordRef(type=record.RECORD_TYPE, id=record.id)
+            existing = self._by_ref.get(ref)
+            if existing is not None:
+                if existing == record:
+                    # Benign re-ingestion -- e.g. a settlement file handed
+                    # to the loader twice. Skip it entirely: every index
+                    # below was already populated from the first copy, and
+                    # touching them again would double-append regardless of
+                    # the content being identical.
+                    logger.warning("duplicate_record_ingested", ref_type=ref.type.value, ref_id=ref.id)
+                    continue
+                raise DuplicateRecordError(
+                    f"{ref.type.value} {ref.id} appears twice in the input with conflicting content"
+                )
             self._by_ref[ref] = record
             self._by_type[record.RECORD_TYPE].append(ref)
 
@@ -176,7 +204,12 @@ def journal_entries_for_auto_findings(
         posted_keys.add(key)
         entries.append(
             JournalEntry(
-                id=f"JNL-{finding.id}",
+                # The id must vary exactly when idempotency_key does. Two
+                # runs over a *corrected* settlement file share finding.id
+                # but differ in input_hash -- id=f"JNL-{finding.id}" alone
+                # would collide across two genuinely different postings
+                # while idempotency_key correctly told them apart.
+                id=f"JNL-{finding.id}::{key[:8]}",
                 debit_account=f"{_DEBIT_ACCOUNT_PREFIX}:{finding.discrepancy_class.value}",
                 credit_account=_CREDIT_ACCOUNT,
                 amount=finding.amount_impact,

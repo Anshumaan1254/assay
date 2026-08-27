@@ -262,7 +262,7 @@ def test_a_fee_charged_at_the_wrong_mdr_tier_leaves_zero_unexplained_but_verify_
     report = conserve(proof, ledger)
     assert report.unexplained_paise == 0  # conserve.py alone: structurally cannot see this is wrong
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-D01-TEST")
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-D01-TEST")
     by_class = {f.discrepancy_class: f for f in findings}
     assert by_class[DiscrepancyClass.FEE_OVERCHARGE].amount_impact == Money(1_000)  # 9_000 - 8_000
     assert by_class[DiscrepancyClass.TAX_MISCALCULATION].amount_impact == Money(180)  # 1_620 - 1_440
@@ -277,7 +277,7 @@ def test_a_settlement_that_matches_the_contract_produces_no_findings():
     ledger = Ledger([payment, fee_line, tax_line])
     proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 8_000 - 1_440)
 
-    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == ([], [])
 
 
 def test_fee_tax_cells_includes_matched_cells_that_verify_does_not_turn_into_findings():
@@ -292,11 +292,60 @@ def test_fee_tax_cells_includes_matched_cells_that_verify_does_not_turn_into_fin
     ledger = Ledger([payment, fee_line, tax_line])
     proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 8_000 - 1_440)
 
-    cells = fee_tax_cells(proof, ledger, contract)
+    cells, _gaps = fee_tax_cells(proof, ledger, contract)
 
     assert cells, "the fixture must actually produce cells to test their shape"
     assert all(cell.reported_paise == cell.recomputed_paise for cell in cells)
-    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == ([], [])
+
+
+# ---------------------------------------------------------------------------
+# Contract gaps: a payment the contract has no clause for. Reported, never
+# priced -- scenario 12 of the chaos suite. NoApplicableRule must not abort
+# the rest of the proof's payments.
+# ---------------------------------------------------------------------------
+
+
+def test_a_payment_the_contract_has_no_clause_for_produces_a_gap_not_a_crash():
+    contract = _two_tier_contract()  # covers CARD/CREDIT only
+    uncovered = _payment(id_="PAY-UPI", paise=50_000).model_copy(
+        update={"method": PaymentMethod.UPI, "card_type": None}
+    )
+    covered = _payment(id_="PAY-1", paise=500_000)
+    fee_line = _fee_line(paise=8_000, rule_id="card.credit.tier2")
+    tax_line = _tax_line(base_paise=8_000, paise=1_440)
+    ledger = Ledger([uncovered, covered, fee_line, tax_line])
+    proof = _proof(
+        [_term(uncovered), _term(covered), _term(fee_line), _term(tax_line)],
+        credit_paise=50_000 + 500_000 - 8_000 - 1_440,
+    )
+
+    findings, gaps = verify(proof, ledger, contract, audit_run_id="RUN-1")
+
+    assert len(gaps) == 1
+    assert gaps[0].payment_ref == RecordRef(type=EntityType.PAYMENT, id="PAY-UPI")
+    assert gaps[0].method is PaymentMethod.UPI
+    assert findings == [], "the covered payment matches the contract exactly -- no fee/tax finding"
+
+
+def test_fee_tax_cells_reports_a_gap_alongside_cells_for_other_payments():
+    contract = _two_tier_contract()
+    uncovered = _payment(id_="PAY-UPI", paise=50_000).model_copy(
+        update={"method": PaymentMethod.UPI, "card_type": None}
+    )
+    covered = _payment(id_="PAY-1", paise=500_000)
+    fee_line = _fee_line(paise=8_000, rule_id="card.credit.tier2")
+    tax_line = _tax_line(base_paise=8_000, paise=1_440)
+    ledger = Ledger([uncovered, covered, fee_line, tax_line])
+    proof = _proof(
+        [_term(uncovered), _term(covered), _term(fee_line), _term(tax_line)],
+        credit_paise=50_000 + 500_000 - 8_000 - 1_440,
+    )
+
+    cells, gaps = fee_tax_cells(proof, ledger, contract)
+
+    assert len(gaps) == 1
+    assert cells, "the covered payment's cells must still be produced despite the other payment's gap"
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +361,7 @@ def test_a_reported_fee_higher_than_the_contract_is_a_fee_overcharge_finding():
     ledger = Ledger([payment, fee_line, tax_line])
     proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 9_000 - 1_440)
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1")
     assert len(findings) == 1
     assert findings[0].discrepancy_class is DiscrepancyClass.FEE_OVERCHARGE
     assert findings[0].amount_impact == Money(1_000)
@@ -326,7 +375,7 @@ def test_a_reported_fee_lower_than_the_contract_is_a_fee_undercharge_finding():
     ledger = Ledger([payment, fee_line, tax_line])
     proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 7_000 - 1_440)
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1")
     assert len(findings) == 1
     assert findings[0].discrepancy_class is DiscrepancyClass.FEE_UNDERCHARGE
     assert findings[0].amount_impact == Money(1_000)
@@ -340,7 +389,7 @@ def test_tax_computed_off_the_wrong_base_is_a_tax_miscalculation_finding():
     ledger = Ledger([payment, fee_line, tax_line])
     proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 8_000 - 1_500)
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1")
     assert len(findings) == 1
     assert findings[0].discrepancy_class is DiscrepancyClass.TAX_MISCALCULATION
     assert findings[0].amount_impact == Money(60)
@@ -357,7 +406,7 @@ def test_a_won_chargeback_with_no_reversal_anywhere_in_the_ledger_is_a_chargebac
     ledger = Ledger([cb])
     proof = _proof([_term(cb)], credit_paise=-20_000)
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1")
     assert len(findings) == 1
     assert findings[0].discrepancy_class is DiscrepancyClass.CHARGEBACK_AMOUNT_MISMATCH
     assert findings[0].amount_impact == Money(20_000)
@@ -376,7 +425,7 @@ def test_a_won_chargebacks_reversal_satisfies_the_check_even_in_a_different_sett
     ledger = Ledger([cb, reversal])
     proof = _proof([_term(cb)], credit_paise=-20_000)  # reversal NOT among these terms
 
-    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == ([], [])
 
 
 def test_two_won_chargebacks_of_the_same_amount_need_two_separate_reversals():
@@ -387,7 +436,7 @@ def test_two_won_chargebacks_of_the_same_amount_need_two_separate_reversals():
     ledger = Ledger([cb1, cb2, reversal])
     proof = _proof([_term(cb1), _term(cb2)], credit_paise=-20_000)
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1")
     assert len(findings) == 1  # CB-1 consumes the one reversal (sorted-ref order); CB-2 is left unmatched
     assert findings[0].evidence_ids == [RecordRef(type=EntityType.CHARGEBACK, id="CB-2")]
 
@@ -407,7 +456,7 @@ def test_two_won_chargebacks_of_the_same_amount_in_different_proofs_still_need_t
     proof1 = _proof([_term(cb1)], credit_paise=-20_000, credit_id="BC-1")
     proof2 = _proof([_term(cb2)], credit_paise=-20_000, credit_id="BC-2")
 
-    findings = verify_all([proof1, proof2], ledger, contract, audit_run_id="RUN-1")
+    findings, _gaps = verify_all([proof1, proof2], ledger, contract, audit_run_id="RUN-1")
     assert len(findings) == 1  # exactly one of the two chargebacks is genuinely unreversed
     assert findings[0].evidence_ids == [RecordRef(type=EntityType.CHARGEBACK, id="CB-2")]
 
@@ -418,7 +467,7 @@ def test_a_lost_chargeback_needs_no_reversal():
     ledger = Ledger([cb])
     proof = _proof([_term(cb)], credit_paise=-20_000)
 
-    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == ([], [])
 
 
 # ---------------------------------------------------------------------------
@@ -444,7 +493,7 @@ def test_a_residual_matching_one_of_the_proofs_own_refund_terms_is_a_refund_mism
     ledger = Ledger([refund])
     proof = _proof([_term(refund)], credit_paise=-15_000 - 15_000)  # short by refund's own amount again
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1")
 
     assert len(findings) == 1
     assert findings[0].discrepancy_class is DiscrepancyClass.REFUND_AMOUNT_MISMATCH
@@ -458,7 +507,7 @@ def test_a_zero_residual_produces_no_refund_finding():
     ledger = Ledger([refund])
     proof = _proof([_term(refund)], credit_paise=-15_000)  # exactly one deduction -- no residual
 
-    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == ([], [])
 
 
 def test_a_residual_in_the_credits_favour_produces_no_refund_finding():
@@ -471,7 +520,7 @@ def test_a_residual_in_the_credits_favour_produces_no_refund_finding():
     ledger = Ledger([refund])
     proof = _proof([_term(refund)], credit_paise=-15_000 + 15_000)
 
-    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == ([], [])
 
 
 def test_a_residual_matching_no_refund_terms_amount_produces_no_finding():
@@ -480,7 +529,7 @@ def test_a_residual_matching_no_refund_terms_amount_produces_no_finding():
     ledger = Ledger([refund])
     proof = _proof([_term(refund)], credit_paise=-15_000 - 777)  # residual doesn't match any refund
 
-    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == ([], [])
 
 
 def test_two_refunds_of_the_same_amount_produce_no_finding_rather_than_a_guess():
@@ -493,7 +542,7 @@ def test_two_refunds_of_the_same_amount_produce_no_finding_rather_than_a_guess()
     ledger = Ledger([r1, r2])
     proof = _proof([_term(r1), _term(r2)], credit_paise=-15_000 - 15_000 - 15_000)
 
-    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == []
+    assert verify(proof, ledger, contract, audit_run_id="RUN-1") == ([], [])
 
 
 def test_a_refund_finding_coexists_with_a_fee_mismatch_on_the_same_proof():
@@ -508,7 +557,7 @@ def test_a_refund_finding_coexists_with_a_fee_mismatch_on_the_same_proof():
         credit_paise=500_000 - 9_000 - 1_440 - 15_000 - 15_000,
     )
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1")
 
     classes = {f.discrepancy_class for f in findings}
     assert classes == {DiscrepancyClass.FEE_OVERCHARGE, DiscrepancyClass.REFUND_AMOUNT_MISMATCH}
@@ -522,7 +571,7 @@ def test_refund_findings_are_also_calibrated_when_supplied():
     artifact = _lane_artifact()
     expected = assign_lane_for_verify_finding(CONFIDENCE, artifact)
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1", calibration=artifact)
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1", calibration=artifact)
 
     assert len(findings) == 1
     assert findings[0].confidence == expected.calibrated_confidence_bps
@@ -537,13 +586,13 @@ def test_refund_findings_are_also_calibrated_when_supplied():
 def test_ambiguous_proofs_are_skipped_without_error():
     contract = _two_tier_contract()
     proof = _proof([], credit_paise=100_000, outcome=DecompositionOutcome.AMBIGUOUS)
-    assert verify(proof, Ledger([]), contract, audit_run_id="RUN-1") == []
+    assert verify(proof, Ledger([]), contract, audit_run_id="RUN-1") == ([], [])
 
 
 def test_unresolved_proofs_are_skipped_without_error():
     contract = _two_tier_contract()
     proof = _proof([], credit_paise=100_000, outcome=DecompositionOutcome.UNRESOLVED)
-    assert verify(proof, Ledger([]), contract, audit_run_id="RUN-1") == []
+    assert verify(proof, Ledger([]), contract, audit_run_id="RUN-1") == ([], [])
 
 
 # ---------------------------------------------------------------------------
@@ -564,7 +613,7 @@ def test_every_finding_verify_emits_is_major_severity_propose_lane_and_full_conf
     ledger = Ledger([payment, fee_line, tax_line])
     proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 9_000 - 1_620)
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1")
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1")
     assert findings, "fixture must actually produce findings to test their shape"
     for finding in findings:
         assert finding.severity.value == "major"
@@ -617,7 +666,7 @@ def test_when_calibration_is_supplied_findings_use_assign_lane_for_verify_findin
     artifact = _lane_artifact()
     expected = assign_lane_for_verify_finding(CONFIDENCE, artifact)
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1", calibration=artifact)
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1", calibration=artifact)
 
     assert findings, "fixture must actually produce findings to test their shape"
     for finding in findings:
@@ -636,7 +685,7 @@ def test_chargeback_findings_are_also_calibrated_when_supplied():
     artifact = _lane_artifact()
     expected = assign_lane_for_verify_finding(CONFIDENCE, artifact)
 
-    findings = verify(proof, ledger, _two_tier_contract(), audit_run_id="RUN-1", calibration=artifact)
+    findings, _gaps = verify(proof, ledger, _two_tier_contract(), audit_run_id="RUN-1", calibration=artifact)
 
     assert findings, "an unreversed WON chargeback must produce a finding"
     assert findings[0].confidence == expected.calibrated_confidence_bps
@@ -656,7 +705,7 @@ def test_the_real_committed_calibration_artifact_routes_verify_findings_to_propo
     ledger = Ledger([payment, fee_line, tax_line])
     proof = _proof([_term(payment), _term(fee_line), _term(tax_line)], credit_paise=500_000 - 9_000 - 1_620)
 
-    findings = verify(proof, ledger, contract, audit_run_id="RUN-1", calibration=artifact)
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id="RUN-1", calibration=artifact)
 
     assert findings
     for finding in findings:
@@ -674,7 +723,7 @@ def test_verify_all_threads_calibration_to_every_finding():
     artifact = _lane_artifact()
     expected = assign_lane_for_verify_finding(CONFIDENCE, artifact)
 
-    findings = verify_all([proof], ledger, contract, audit_run_id="RUN-1", calibration=artifact)
+    findings, _gaps = verify_all([proof], ledger, contract, audit_run_id="RUN-1", calibration=artifact)
 
     assert findings
     for finding in findings:
@@ -699,11 +748,11 @@ def test_finding_ids_are_unique_and_stable_across_a_run():
         [_term(payment2), _term(fee2), _term(tax2)], credit_paise=500_000 - 9_000 - 1_620, credit_id="BC-2"
     )
 
-    first = verify_all([proof1, proof2], ledger, contract, audit_run_id="RUN-X")
+    first, _gaps = verify_all([proof1, proof2], ledger, contract, audit_run_id="RUN-X")
     ids = [f.id for f in first]
     assert len(ids) == len(set(ids))
 
-    second = verify_all([proof1, proof2], ledger, contract, audit_run_id="RUN-X")
+    second, _gaps = verify_all([proof1, proof2], ledger, contract, audit_run_id="RUN-X")
     assert [f.id for f in second] == ids
 
 
@@ -759,8 +808,9 @@ def test_the_clean_profile_reconciles_to_zero_unexplained_and_zero_findings():
         assert r.unexplained_paise == 0, r.credit_ref.id
     assert total_unexplained_paise(reports) == 0
 
-    findings = verify_all(proofs, ledger, contract, audit_run_id="RUN-CLEAN-TEST")
+    findings, gaps = verify_all(proofs, ledger, contract, audit_run_id="RUN-CLEAN-TEST")
     assert findings == []
+    assert gaps == [], "the clean profile plants no discrepancies -- every payment should have a clause"
 
 
 @pytest.mark.timeout(180)
@@ -785,7 +835,7 @@ def test_the_committed_realistic_run_still_has_real_unexplained_and_verify_findi
 
     proofs = decompose_all(credits, ledger, merchant_id=MERCHANT)
     reports = conserve_all(proofs, ledger)
-    findings = verify_all(proofs, ledger, contract, audit_run_id="RUN-REALISTIC-CHECK")
+    findings, _gaps = verify_all(proofs, ledger, contract, audit_run_id="RUN-REALISTIC-CHECK")
 
     assert total_unexplained_paise(reports) != 0
     assert findings != []

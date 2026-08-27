@@ -50,9 +50,10 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable
+from datetime import datetime
 from typing import Literal
 
-from core.contract import CompiledContract, FeeBreakdown
+from core.contract import CompiledContract, FeeBreakdown, NoApplicableRule
 from core.decompose import DecompositionOutcome, DecompositionProof
 from core.exceptions import DiscrepancyClass
 from core.lanes import CalibrationArtifact, assign_lane_for_verify_finding
@@ -68,6 +69,7 @@ from core.models import (
     Finding,
     Lane,
     Payment,
+    PaymentMethod,
     RecordRef,
     Refund,
     Severity,
@@ -178,14 +180,56 @@ class FeeTaxCell(AssayModel):
     evidence_ids: list[RecordRef]
 
 
-def fee_tax_cells(proof: DecompositionProof, ledger: Ledger, contract: CompiledContract) -> list[FeeTaxCell]:
+class ContractGap(AssayModel):
+    """A payment the compiled contract has no clause for -- CompiledContract
+    .fee_for() raised NoApplicableRule. Reported, never priced: there is no
+    correct amount to compare against, so turning this into a Finding (which
+    requires an amount_impact) would mean inventing one, exactly the
+    "fall back to a default rate" this engine refuses to do. Distinct from a
+    DiscrepancyClass/Finding for that reason -- see
+    .claude/skills/new-discrepancy-class/SKILL.md, which this deliberately
+    does not follow."""
+
+    payment_ref: RecordRef
+    method: PaymentMethod
+    card_type: str | None
+    mcc: str
+    captured_at: datetime
+    contract_version: str
+    reason: str
+
+
+def fee_tax_cells(
+    proof: DecompositionProof, ledger: Ledger, contract: CompiledContract
+) -> tuple[list[FeeTaxCell], list[ContractGap]]:
     """Every fee/tax comparison cell for a RESOLVED proof's payments,
     including exact matches. `_fee_and_tax_findings` is the subset of this
-    where `reported_paise != recomputed_paise`."""
+    where `reported_paise != recomputed_paise`.
+
+    A payment the contract has no clause for (`NoApplicableRule`) is
+    reported as a `ContractGap` and skipped, rather than aborting the rest
+    of the proof's payments -- one uncovered transaction must not cost the
+    audit every other cell it could otherwise compute.
+    """
     cells: list[FeeTaxCell] = []
+    gaps: list[ContractGap] = []
     for payment_ref in _resolved_payment_refs(proof):
         payment: Payment = ledger.get(payment_ref)
-        breakdown = contract.fee_for(payment, at=payment.captured_at)
+        try:
+            breakdown = contract.fee_for(payment, at=payment.captured_at)
+        except NoApplicableRule as error:
+            gaps.append(
+                ContractGap(
+                    payment_ref=payment_ref,
+                    method=payment.method,
+                    card_type=payment.card_type,
+                    mcc=payment.mcc,
+                    captured_at=payment.captured_at,
+                    contract_version=contract.version_id,
+                    reason=str(error),
+                )
+            )
+            continue
 
         reported_fees = _reported_fee_totals(ledger, payment_ref)
         recomputed_fees = _recomputed_fee_totals(breakdown)
@@ -214,7 +258,7 @@ def fee_tax_cells(proof: DecompositionProof, ledger: Ledger, contract: CompiledC
                     evidence_ids=_evidence_for_tax_of_fee_type(ledger, payment_ref, fee_type),
                 )
             )
-    return cells
+    return cells, gaps
 
 
 def _fee_and_tax_findings(
@@ -225,9 +269,10 @@ def _fee_and_tax_findings(
     audit_run_id: str,
     confidence_bps: int,
     lane: Lane,
-) -> list[Finding]:
+) -> tuple[list[Finding], list[ContractGap]]:
     findings: list[Finding] = []
-    for cell in fee_tax_cells(proof, ledger, contract):
+    cells, gaps = fee_tax_cells(proof, ledger, contract)
+    for cell in cells:
         delta = cell.reported_paise - cell.recomputed_paise
         if delta == 0:
             continue
@@ -262,7 +307,7 @@ def _fee_and_tax_findings(
                 explanation=explanation,
             )
         )
-    return findings
+    return findings, gaps
 
 
 def _reversal_amount_pool(ledger: Ledger) -> Counter[int]:
@@ -394,10 +439,11 @@ def verify(
     audit_run_id: str,
     reversal_amounts: Counter[int] | None = None,
     calibration: CalibrationArtifact | None = None,
-) -> list[Finding]:
+) -> tuple[list[Finding], list[ContractGap]]:
     """Independently recompute one proof's fee/tax lines, chargeback
     reversals, and refund-duplicate-deduction shape; return every mismatch
-    as a Finding.
+    as a Finding, plus any payment the contract has no clause for as a
+    ContractGap.
 
     Skips AMBIGUOUS/UNRESOLVED proofs: terms is empty by construction, so
     there is nothing to recompute against, and their full credit amount
@@ -416,7 +462,7 @@ def verify(
     existing caller keeps the placeholder behaviour unless it opts in.
     """
     if proof.outcome is not DecompositionOutcome.RESOLVED:
-        return []
+        return [], []
     if reversal_amounts is None:
         reversal_amounts = _reversal_amount_pool(ledger)
     if calibration is not None:
@@ -425,11 +471,13 @@ def verify(
     else:
         confidence_bps, lane = CONFIDENCE, Lane.PROPOSE
     ids = _IdSeq(audit_run_id, proof.credit_ref.id)
-    return [
-        *_fee_and_tax_findings(proof, ledger, contract, ids, audit_run_id, confidence_bps, lane),
+    fee_tax_findings, gaps = _fee_and_tax_findings(proof, ledger, contract, ids, audit_run_id, confidence_bps, lane)
+    findings = [
+        *fee_tax_findings,
         *_chargeback_findings(proof, ledger, ids, audit_run_id, reversal_amounts, confidence_bps, lane),
         *_refund_findings(proof, ledger, ids, audit_run_id, confidence_bps, lane),
     ]
+    return findings, gaps
 
 
 def verify_all(
@@ -439,18 +487,19 @@ def verify_all(
     *,
     audit_run_id: str,
     calibration: CalibrationArtifact | None = None,
-) -> list[Finding]:
+) -> tuple[list[Finding], list[ContractGap]]:
     reversal_amounts = _reversal_amount_pool(ledger)
     findings: list[Finding] = []
+    gaps: list[ContractGap] = []
     for proof in sorted(proofs, key=lambda p: p.credit_ref.id):
-        findings.extend(
-            verify(
-                proof,
-                ledger,
-                contract,
-                audit_run_id=audit_run_id,
-                reversal_amounts=reversal_amounts,
-                calibration=calibration,
-            )
+        proof_findings, proof_gaps = verify(
+            proof,
+            ledger,
+            contract,
+            audit_run_id=audit_run_id,
+            reversal_amounts=reversal_amounts,
+            calibration=calibration,
         )
-    return findings
+        findings.extend(proof_findings)
+        gaps.extend(proof_gaps)
+    return findings, gaps

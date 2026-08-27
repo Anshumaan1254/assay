@@ -109,14 +109,18 @@ def explain_record(
         return "\n".join(lines)
 
     if ref.type is EntityType.PAYMENT:
-        cells = [cell for cell in fee_tax_cells(proof, ledger, contract) if cell.payment_ref == ref]
+        all_cells, gaps = fee_tax_cells(proof, ledger, contract)
+        cells = [cell for cell in all_cells if cell.payment_ref == ref]
         for cell in cells:
             lines.append(
                 f"  {cell.kind} {cell.fee_type.value}: reported {Money(cell.reported_paise).to_rupees_str()}, "
                 f"recomputed {Money(cell.recomputed_paise).to_rupees_str()}"
             )
+        gap = next((g for g in gaps if g.payment_ref == ref), None)
+        if gap is not None:
+            lines.append(f"  contract gap: {gap.reason}")
 
-    findings = verify(proof, ledger, contract, audit_run_id=AUDIT_RUN_ID, calibration=calibration)
+    findings, _gaps = verify(proof, ledger, contract, audit_run_id=AUDIT_RUN_ID, calibration=calibration)
     relevant = [f for f in findings if ref in f.evidence_ids]
     if relevant:
         lines.append("Findings citing this record:")
