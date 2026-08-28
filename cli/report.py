@@ -35,9 +35,31 @@ class ReportArtifactMissing(Exception):
     after the fact."""
 
 
+class ReportArtifactStale(Exception):
+    """The report.json in this run's directory is some OTHER run's report.
+
+    The run_id -> run_dir mapping lives in the audit store; the artifact
+    lives in the run directory. Those are two places, and they drift: a
+    re-audit of the same run_dir under different flags, or into a different
+    ASSAY_STORE_PATH, rewrites the artifact while the original store row
+    keeps the original hash. Serving the newer artifact under the older
+    run_id would let `assay report` print a report whose own embedded hash
+    contradicts the run it was asked for -- the exact substitution the
+    hashing exists to make impossible, so it is refused rather than
+    reconciled.
+    """
+
+
 def locate_run(run_id: str, store_path: Path | None = None) -> tuple[Path, Path, AuditReport]:
     """(run_dir, report_json_path, parsed report) for `run_id`, looked up
-    purely from the audit store -- no `--run-dir` needed."""
+    purely from the audit store -- no `--run-dir` needed.
+
+    The artifact's own `report_hash` is checked against the one the store
+    recorded for this run_id. Both are written from the same report object
+    in the same `assay audit` invocation, so in normal operation they
+    always agree; a disagreement means the artifact on disk is not this
+    run's, and is raised rather than served.
+    """
     from sqlmodel import Session
 
     from store.models import AuditRunRow
@@ -61,6 +83,12 @@ def locate_run(run_id: str, store_path: Path | None = None) -> tuple[Path, Path,
         )
 
     report = AuditReport.model_validate_json(report_json_path.read_text(encoding="utf-8"))
+    if report.report_hash != row.report_hash:
+        raise ReportArtifactStale(
+            f"{report_json_path} carries report_hash {report.report_hash}, but the audit store "
+            f"records {row.report_hash} for run '{run_id}' -- this artifact is not that run's "
+            f"report. Re-run 'assay audit --run-dir {run_dir}' to regenerate it."
+        )
     return run_dir, report_json_path, report
 
 

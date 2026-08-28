@@ -70,10 +70,9 @@ def audit(
     arguments and will pick up from its last durable checkpoint rather than
     redoing completed work or double-posting -- see store/resumable.py.
     """
+    from cli.contract import PinnedContractMismatch, load_pinned_contract
     from eval.determinism import NonDeterministicRun
     from store.resumable import CheckpointConflict, resume_or_run
-
-    from cli.contract import PinnedContractMismatch, load_pinned_contract
 
     contract = None
     if contract_path is not None:
@@ -210,11 +209,18 @@ def report(
 ) -> None:
     """Print a previously completed audit run, found by run_id alone (see
     `assay audit`'s own printed `audit run:`/`report:` lines)."""
-    from cli.report import ReportArtifactMissing, RunNotFound, locate_run, render_html, render_table
+    from cli.report import (
+        ReportArtifactMissing,
+        ReportArtifactStale,
+        RunNotFound,
+        locate_run,
+        render_html,
+        render_table,
+    )
 
     try:
         _run_dir, report_json_path, parsed = locate_run(run_id)
-    except (RunNotFound, ReportArtifactMissing) as error:
+    except (RunNotFound, ReportArtifactMissing, ReportArtifactStale) as error:
         typer.echo(f"assay report: refused -- {error}", err=True)
         raise typer.Exit(code=1) from None
 
@@ -232,14 +238,19 @@ def report(
 def replay(run_id: str) -> None:
     """Independently re-run a completed audit and prove its report_hash
     reproduces -- invariant 4, on demand."""
+    from cli.report import ReportArtifactMissing, ReportArtifactStale, RunNotFound, replay_run
     from core.decompose import ProofIntegrityViolation
     from llm.provider import ProviderUnavailable
 
-    from cli.report import ReportArtifactMissing, RunNotFound, replay_run
-
     try:
         result = replay_run(run_id, default_provider(), calibration=load_calibration_artifact())
-    except (RunNotFound, ReportArtifactMissing, ProviderUnavailable, ProofIntegrityViolation) as error:
+    except (
+        RunNotFound,
+        ReportArtifactMissing,
+        ReportArtifactStale,
+        ProviderUnavailable,
+        ProofIntegrityViolation,
+    ) as error:
         typer.echo(f"assay replay: refused -- {error}", err=True)
         raise typer.Exit(code=1) from None
 

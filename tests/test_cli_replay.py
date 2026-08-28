@@ -74,7 +74,40 @@ def test_replay_passes_and_matches_the_stored_hash(audited_run, monkeypatch):
     assert "PASS" in result.output
 
 
-def test_replay_fails_cleanly_when_the_stored_hash_was_tampered_with(audited_run, clean_run_dir, monkeypatch):
+def test_replay_reports_fail_when_the_recomputation_genuinely_diverges(audited_run, monkeypatch):
+    """The FAIL branch is about NON-DETERMINISM -- the engine recomputing a
+    different answer from the same inputs -- so it is exercised by making
+    the recomputation diverge, not by editing the stored artifact.
+
+    Editing report.json is a different failure (a substituted artifact) and
+    is now caught earlier, by locate_run's stale-artifact guard; see
+    test_replay_refuses_an_artifact_that_belongs_to_a_different_run below.
+    """
+    import cli.report
+
+    run_id, store_path = audited_run
+    monkeypatch.setattr(cli, "default_provider", _offline_provider)
+    monkeypatch.setenv("ASSAY_STORE_PATH", str(store_path))
+
+    real_run_audit = cli.report.run_audit
+
+    def _divergent(*args, **kwargs):
+        report = real_run_audit(*args, **kwargs)
+        return report.model_copy(update={"report_hash": "0" * 64})
+
+    monkeypatch.setattr(cli.report, "run_audit", _divergent)
+
+    result = runner.invoke(cli.app, ["replay", run_id])
+
+    assert result.exit_code == 1
+    assert "FAIL" in result.output
+    assert "0" * 64 in result.output
+
+
+def test_replay_refuses_an_artifact_that_belongs_to_a_different_run(audited_run, clean_run_dir, monkeypatch):
+    """A report.json whose embedded hash disagrees with the store's row for
+    that run_id is refused before any recomputation happens -- replaying it
+    would be replaying an artifact that is not this run's."""
     run_id, store_path = audited_run
     monkeypatch.setattr(cli, "default_provider", _offline_provider)
     monkeypatch.setenv("ASSAY_STORE_PATH", str(store_path))
@@ -87,8 +120,8 @@ def test_replay_fails_cleanly_when_the_stored_hash_was_tampered_with(audited_run
     result = runner.invoke(cli.app, ["replay", run_id])
 
     assert result.exit_code == 1
-    assert "FAIL" in result.output
-    assert "0" * 64 in result.output
+    assert "Traceback" not in result.output
+    assert "refused" in result.output
 
 
 def test_replay_resolves_its_provider_through_the_same_patchable_name_as_the_rest_of_the_cli(

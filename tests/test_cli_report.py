@@ -120,3 +120,29 @@ def test_report_refuses_cleanly_when_the_artifact_is_missing(audited_run, clean_
     assert result.exit_code == 1
     assert "Traceback" not in result.output
     assert "refused" in result.output
+
+
+def test_report_refuses_an_artifact_that_belongs_to_a_different_run(audited_run, clean_run_dir, monkeypatch):
+    """`report.json` lives in the run directory but the run_id -> run_dir
+    mapping lives in the audit store, and the two can drift: auditing the
+    same run_dir into a *different* store (a test with its own
+    ASSAY_STORE_PATH, a second machine, a re-audit under different flags)
+    rewrites the artifact while the original store row keeps the original
+    hash. Silently serving the newer artifact under the older run_id would
+    let `assay report` print a report whose own embedded hash contradicts
+    the run it was asked for -- exactly the substitution this project's
+    hashing exists to make impossible. Found by running the reviewer UI
+    against a store whose row and artifact had drifted this way."""
+    run_id, store_path = audited_run
+    monkeypatch.setenv("ASSAY_STORE_PATH", str(store_path))
+
+    report_json = clean_run_dir / "report.json"
+    payload = json.loads(report_json.read_text(encoding="utf-8"))
+    payload["report_hash"] = "f" * 64
+    report_json.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = runner.invoke(cli.app, ["report", run_id])
+
+    assert result.exit_code == 1
+    assert "Traceback" not in result.output
+    assert "refused" in result.output
