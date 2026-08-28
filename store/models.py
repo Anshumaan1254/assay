@@ -82,3 +82,4 @@ class AuditRunRow(SQLModel, table=True):
     input_hashes_json: str
     seed: int
     report_hash: str
+    run_dir: str

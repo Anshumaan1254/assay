@@ -77,6 +77,22 @@ def test_a_fresh_run_matches_run_audits_own_report_hash(clean_run_dir, tmp_path)
 
 
 @pytest.mark.timeout(120)
+def test_resume_or_run_persists_run_dir_on_the_audit_run_row(clean_run_dir, tmp_path):
+    """assay report/assay replay (added on top of this) look up a run by
+    run_id alone, with no --run-dir of their own -- AuditRunRow.run_dir is
+    the only place that mapping lives."""
+    from store.models import AuditRunRow
+
+    store_path = tmp_path / "store.db"
+    report = resume_or_run(clean_run_dir, _offline_provider(), merchant_id=MERCHANT, store_path=store_path)
+
+    with Session(get_engine(store_path)) as session:
+        row = session.get(AuditRunRow, report.audit_run_id)
+    assert row is not None
+    assert row.run_dir == str(clean_run_dir)
+
+
+@pytest.mark.timeout(120)
 def test_a_fresh_run_leaves_exactly_one_report_done_checkpoint(clean_run_dir, tmp_path):
     store_path = tmp_path / "store.db"
     resume_or_run(clean_run_dir, _offline_provider(), merchant_id=MERCHANT, store_path=store_path)

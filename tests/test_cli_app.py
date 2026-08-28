@@ -62,6 +62,18 @@ def test_assay_audit_runs_end_to_end_through_the_real_typer_app(clean_run_dir, t
     assert result.exit_code == 0, result.output
     assert "audit run:" in result.output
     assert "report hash:" in result.output
+    assert (clean_run_dir / "report.json").is_file(), "assay report/replay locate a run via this file"
+
+
+@pytest.mark.timeout(120)
+def test_assay_audit_json_output_is_unchanged_by_writing_report_json(clean_run_dir, tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "default_provider", _offline_provider)
+    monkeypatch.setenv("ASSAY_STORE_PATH", str(tmp_path / "store.db"))
+
+    result = runner.invoke(cli.app, ["audit", "--run-dir", str(clean_run_dir), "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert "report:" not in result.output
 
 
 @pytest.mark.timeout(120)

@@ -376,6 +376,7 @@ def resume_or_run(
                 input_hashes_json=canonical_json(input_hashes),
                 seed=report.seed,
                 report_hash=report.report_hash,
+                run_dir=report.run_dir,
             )
         )
         session.commit()

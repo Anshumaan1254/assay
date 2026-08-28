@@ -97,12 +97,17 @@ def audit(
         typer.echo(f"assay audit: refused -- {error}", err=True)
         raise typer.Exit(code=1) from None
 
+    from cli.report import write_report_json
+
+    report_path = write_report_json(report)
+
     if as_json:
         typer.echo(json.dumps(report.hash_payload(), indent=2, sort_keys=True))
         return
 
     for line in report.summary_lines():
         typer.echo(line)
+    typer.echo(f"report:           {report_path}")
     if report.clusters:
         typer.echo("")
         typer.echo("Top exceptions by money:")
