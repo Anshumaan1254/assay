@@ -160,6 +160,9 @@ def eval(
     ),
     evidence: bool = typer.Option(False, "--evidence", help="Regenerate EVIDENCE.md in place."),
     ablate: bool = typer.Option(True, "--ablate/--no-ablate", help="Run the ablation study."),
+    diagrams: bool = typer.Option(
+        True, "--diagrams/--no-diagrams", help="Write docs/reliability.{svg,png}."
+    ),
 ) -> None:
     """Score the engine against planted ground truth and write eval/results/.
 
@@ -179,6 +182,7 @@ def eval(
         out=out,
         write_evidence=evidence,
         ablate=ablate,
+        write_diagrams=diagrams,
         echo=typer.echo,
     )
 

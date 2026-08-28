@@ -35,10 +35,23 @@ def run_eval(
     out: Path,
     write_evidence: bool,
     ablate: bool,
+    write_diagrams: bool = True,
     echo=print,
 ) -> Path:
     """Run the sweep, persist every raw result, and optionally regenerate
     EVIDENCE.md and the reliability diagrams.
+
+    `write_diagrams=False` exists for a sweep that is deliberately NOT
+    representative of the real evaluation -- `assay generate`/`make demo`'s
+    reduced one-profile-one-seed run, say. `write_svg`/`write_png` default
+    to the committed `docs/reliability.{svg,png}` paths unconditionally
+    (there is no `--out`-relative variant), so without this, even a tiny
+    demo sweep silently overwrites the diagram EVIDENCE.md's own
+    body-hash-verified text still references -- an inconsistency nothing
+    currently detects, since scripts/check_evidence.py only hashes
+    EVIDENCE.md's own body. Every existing caller (assay eval, make eval,
+    make evidence) keeps writing diagrams by default; only make demo opts
+    out.
 
     Imported lazily by `cli/__init__.py`; import it here at module level
     because this module is already inside `eval/`.
@@ -66,19 +79,22 @@ def run_eval(
     (out / "sweep.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
     echo(f"wrote {len(report.runs)} run results + sweep.json to {out}/")
 
-    svg = write_svg(
-        report.calibration.bins,
-        ece=report.calibration.expected_calibration_error,
-        brier=report.calibration.brier_score,
-        total=report.calibration.total,
-    )
-    png = write_png(
-        report.calibration.bins,
-        ece=report.calibration.expected_calibration_error,
-        brier=report.calibration.brier_score,
-        total=report.calibration.total,
-    )
-    echo(f"wrote {svg}" + (f" and {png}" if png else " (matplotlib unavailable; PNG skipped)"))
+    if write_diagrams:
+        svg = write_svg(
+            report.calibration.bins,
+            ece=report.calibration.expected_calibration_error,
+            brier=report.calibration.brier_score,
+            total=report.calibration.total,
+        )
+        png = write_png(
+            report.calibration.bins,
+            ece=report.calibration.expected_calibration_error,
+            brier=report.calibration.brier_score,
+            total=report.calibration.total,
+        )
+        echo(f"wrote {svg}" + (f" and {png}" if png else " (matplotlib unavailable; PNG skipped)"))
+    else:
+        echo("skipped docs/reliability.{svg,png} (--no-diagrams)")
 
     evidence_path = DEFAULT_RESULTS_DIR / "EVIDENCE.preview.md"
     if write_evidence:
@@ -108,6 +124,9 @@ def sweep(
     ),
     evidence: bool = typer.Option(False, "--evidence", help="Regenerate EVIDENCE.md in place."),
     ablate: bool = typer.Option(True, "--ablate/--no-ablate", help="Run the §13 ablation study."),
+    diagrams: bool = typer.Option(
+        True, "--diagrams/--no-diagrams", help="Write docs/reliability.{svg,png}."
+    ),
 ) -> None:
     """Run the evaluation sweep and write eval/results/ (and, with
     --evidence, EVIDENCE.md plus docs/reliability.{svg,png})."""
@@ -120,6 +139,7 @@ def sweep(
         out=out,
         write_evidence=evidence,
         ablate=ablate,
+        write_diagrams=diagrams,
         echo=typer.echo,
     )
 
