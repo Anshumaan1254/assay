@@ -1,6 +1,6 @@
 PYTHON ?= D:/CondaEnvs/ai/python.exe
 
-.PHONY: install test lint guard demo evidence eval chaos
+.PHONY: install test lint guard demo evidence eval chaos ui ui-build
 
 install:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -40,6 +40,19 @@ demo:
 	$(PYTHON) -m cli contract compile runs/realistic-seed42/rate_card.md
 	$(PYTHON) -m cli audit --run-dir runs/realistic-seed42
 	$(PYTHON) -m cli eval --profiles realistic --seeds 42 --no-ablate --no-diagrams --out eval/results/demo
+
+# Builds the reviewer front end into reviewer/web/dist/, which reviewer/api.py
+# mounts at "/" when present. Requires node; the Python side works without it
+# (the API is fully usable on its own, which is how the Vite dev server
+# consumes it).
+ui-build:
+	cd reviewer/web && npm install && npm run build
+
+# Serves the built UI and the read-only API on one origin. Audit something
+# first -- the reviewer reads runs the engine has already produced:
+#   make demo   (or)   assay audit --run-dir runs/realistic-seed42
+ui: ui-build
+	$(PYTHON) -m uvicorn reviewer.api:app --host 127.0.0.1 --port 8000
 
 # Runs every failure-injection scenario and prints a pass/fail table read
 # back from the structured incident log each scenario writes -- see

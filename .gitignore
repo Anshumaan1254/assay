@@ -27,3 +27,15 @@ chaos/incidents/
 # top-level eval/results/*.json (the real sweep), so a stray `git add -A`
 # never picks it up.
 eval/results/demo/
+
+# Reviewer front end: npm's tree and Vite's build output. `make ui` builds
+# dist/ on demand, so it is a derived artifact rather than a committed one.
+reviewer/web/node_modules/
+reviewer/web/dist/
+reviewer/web/*.tsbuildinfo
+
+# assay audit writes report.json into the run directory it audits, and
+# `assay contract compile` writes <ratecard>.contract.json beside its input.
+# Both are derived from the committed inputs; regenerate rather than commit.
+runs/**/report.json
+runs/**/*.contract.json

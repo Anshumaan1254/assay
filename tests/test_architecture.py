@@ -70,7 +70,7 @@ def test_top_level_packages_includes_chaos_and_excludes_eval_and_datagen():
     # future package) was previously un-checked because the old test
     # hardcoded (CORE_DIR, LLM_DIR, CLI_DIR).
     names = {p.name for p in _top_level_packages(REPO_ROOT, exclude={"eval", "datagen"})}
-    assert names == {"core", "llm", "chaos", "cli", "store", "ingest"}
+    assert names == {"core", "llm", "chaos", "cli", "store", "ingest", "reviewer"}
 
 
 def test_everything_except_eval_and_datagen_never_imports_datagen():

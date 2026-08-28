@@ -51,10 +51,19 @@ dev = [
     "pytest-timeout",
     "hypothesis",
     "ruff",
+    # reviewer/ only. In dev rather than the base install: the CLI is the
+    # product and must stay installable without a web stack. httpx (already
+    # a base dependency for ingest/) doubles as fastapi's TestClient.
+    "fastapi",
+    "uvicorn",
+]
+ui = [
+    "fastapi",
+    "uvicorn",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["core", "llm", "datagen", "eval", "chaos", "cli", "store", "ingest"]
+packages = ["core", "llm", "datagen", "eval", "chaos", "cli", "store", "ingest", "reviewer"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

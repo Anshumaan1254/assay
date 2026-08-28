@@ -95,6 +95,31 @@ google-genai for the Gemini provider only.
 FastAPI + React only for the reviewer UI, added late. The CLI is the product.
 No pandas in `core/`. No new dependencies without asking me first.
 
+## Reviewer UI
+Deliberately **read-only**, and that is an architectural position, not a
+missing feature. `core/ledger.py` posts journal entries for `Lane.AUTO`
+findings only, and the engine has no approval or reviewer concept at all —
+no `approved_by`, no `reviewed_at`, no single-finding posting path. A
+working "approve this PROPOSE finding" button is therefore new money-path
+code letting a human cause a posting the calibration explicitly declined to
+certify. That is invariant 7's territory and gets its own test-first
+change; until then `reviewer/` exposes no write routes and a test asserts
+it (`tests/test_reviewer_api.py::test_every_route_is_read_only`).
+
+The visual direction is deliberate and heavy: GSAP ScrollTrigger drives a
+scrubbed, pinned assembly of the conservation identity, count-ups on the
+headline figures, and staggered reveals throughout. The reasoning is that
+the one screen a skeptical reader remembers should be the one where
+invariant 3 assembles itself term by term in front of them. Motion never
+substitutes for a number: every rupee figure is served as both exact
+integer paise and a preformatted string, and the browser never does money
+arithmetic. `prefers-reduced-motion` collapses every timeline to its end
+state.
+
+`reviewer/` must never import `datagen/` (invariant 5) and never compute an
+amount — it sums and subtracts integer paise read off a signed report, and
+nothing else.
+
 ## Repo layout
 assay/
   core/          deterministic engine. NO llm imports, NO float money.
@@ -114,6 +139,10 @@ assay/
   store/         checkpoint/resume + durable AUTO-lane journal (SQLModel/SQLite)
   ingest/        real gateway API -> a run directory. Mirror of datagen/.
   cli/           typer app
+  reviewer/      FastAPI read-only UI over a computed audit. NO write routes.
+    derive.py    every figure the UI shows, as pure functions over a report
+    api.py       GET-only routes; reuses cli/report.py's run_id lookup
+    web/         Vite + React + TypeScript + GSAP ScrollTrigger
   site/          landing page, added 2 Sep
 tests/
 scripts/         guard_core.py and other hook scripts
