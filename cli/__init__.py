@@ -267,6 +267,19 @@ def evidence() -> None:
 
 
 @app.command()
+def chaos() -> None:
+    """Run every failure-injection scenario and print the pass/fail table
+    read back from the incidents each one recorded. Real subprocess kills
+    (C02) make this slow (~10 minutes); --timeout is generous rather than
+    tight, matching `make chaos`."""
+    from cli.chaos import run_chaos_suite
+
+    code = run_chaos_suite()
+    if code:
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def explain(
     record_id: str,
     run_dir: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
