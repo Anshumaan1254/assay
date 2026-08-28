@@ -74,10 +74,17 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
 
 function LiquidCard({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div className="">
+    // `contents` so the card itself is the direct flex/grid child -- the
+    // upstream wrapper div swallowed `h-full`, leaving cards in a row at
+    // ragged heights.
+    <div className="contents">
       <div
         data-slot="card"
-        style={{ backdropFilter: 'url("#container-glass")' }}
+        // Distinct filter id per component. Card and button both shipped
+        // `#container-glass`; duplicate ids in one document mean the browser
+        // resolves every reference to whichever appeared first, so one of
+        // the two treatments silently never applied.
+        style={{ backdropFilter: 'url("#card-glass")' }}
         className={cn(
           "text-card-foreground bg-transparent flex flex-col gap-6 rounded-xl border py-6 shadow-[0_0_6px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3px_rgba(0,0,0,0.9),inset_-3px_-3px_0.5px_-3px_rgba(0,0,0,0.85),inset_1px_1px_1px_-0.5px_rgba(0,0,0,0.6),inset_-1px_-1px_1px_-0.5px_rgba(0,0,0,0.6),inset_0_0_6px_6px_rgba(0,0,0,0.12),inset_0_0_2px_2px_rgba(0,0,0,0.06),0_0_12px_rgba(255,255,255,0.15)] transition-all dark:shadow-[0_0_8px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3.5px_rgba(255,255,255,0.09),inset_-3px_-3px_0.5px_-3.5px_rgba(255,255,255,0.85),inset_1px_1px_1px_-0.5px_rgba(255,255,255,0.6),inset_-1px_-1px_1px_-0.5px_rgba(255,255,255,0.6),inset_0_0_6px_6px_rgba(255,255,255,0.12),inset_0_0_2px_2px_rgba(255,255,255,0.06),0_0_12px_rgba(0,0,0,0.15)]",
           className,
@@ -94,7 +101,7 @@ function GlassFilter() {
     <svg className="hidden">
       <defs>
         <filter
-          id="container-glass"
+          id="card-glass"
           x="0%"
           y="0%"
           width="100%"

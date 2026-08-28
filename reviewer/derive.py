@@ -21,6 +21,34 @@ def rupees(paise: int) -> str:
     return Money(paise).to_rupees_str()
 
 
+def _group_indian(digits: str) -> str:
+    """Indian digit grouping (last 3, then pairs): 6490836 -> 64,90,836.
+
+    String surgery on the digits Money already produced, never a parse to
+    float and back -- the grouped form must be the same number, just easier
+    to read.
+    """
+    if len(digits) <= 3:
+        return digits
+    head, tail = digits[:-3], digits[-3:]
+    parts = []
+    while len(head) > 2:
+        parts.insert(0, head[-2:])
+        head = head[:-2]
+    if head:
+        parts.insert(0, head)
+    return ",".join([*parts, tail])
+
+
+def rupees_display(paise: int) -> str:
+    """`₹64,90,836.77` -- grouped, symbol-prefixed, for prose and labels."""
+    text = rupees(paise)
+    negative = text.startswith("-")
+    body = text[1:] if negative else text
+    whole, _, frac = body.partition(".")
+    return f"{'-' if negative else ''}₹{_group_indian(whole)}.{frac}"
+
+
 class MoneyView(BaseModel):
     """One amount, twice: the exact integer the engine computed, and the
     string the browser should print. The browser never divides by 100."""
@@ -362,20 +390,20 @@ def score_cards(report: AuditReport) -> list[ScoreCard]:
             key="verified_value",
             title="Verified value",
             description=(
-                "Share of settled volume this audit could account for, weighted by money "
-                "rather than by row count. The remainder is the unaccounted bucket."
+                "Share of settled volume this audit accounted for, weighted by money "
+                "rather than row count."
             ),
             value_bps=verified_bps,
             headline=_pct(verified_bps),
-            detail=f"{rupees(verified)} of {rupees(volume)}",
+            detail=f"{rupees_display(verified)} of {rupees_display(volume)}",
             strength=_strength(verified_bps),
         ),
         ScoreCard(
             key="credits_decomposed",
             title="Credits decomposed",
             description=(
-                "Bank credits resolved to an exact subset of transactions with a proof, "
-                "rather than left ambiguous or unresolved."
+                "Credits resolved to an exact subset of transactions with a proof, "
+                "not left ambiguous."
             ),
             value_bps=decomposed_bps,
             headline=_pct(decomposed_bps),
@@ -384,10 +412,10 @@ def score_cards(report: AuditReport) -> list[ScoreCard]:
         ),
         ScoreCard(
             key="clean_credits",
-            title="Credits reconciling exactly",
+            title="Credits reconciled",
             description=(
                 "Credits whose conservation identity closes with a zero residual — every "
-                "paisa of the payout explained by a ledger record."
+                "paisa explained by a ledger record."
             ),
             value_bps=clean_bps,
             headline=_pct(clean_bps),

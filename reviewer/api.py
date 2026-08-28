@@ -33,7 +33,6 @@ from reviewer.derive import (
 )
 
 WEB_DIST = Path(__file__).resolve().parent / "web" / "dist"
-REPO_ROOT = Path(__file__).resolve().parent.parent
 
 app = FastAPI(
     title="Assay Reviewer",
@@ -81,21 +80,6 @@ def health() -> dict:
     return {"ok": True}
 
 
-@app.get("/api/diagram/reliability.svg")
-def get_reliability_diagram():
-    """The committed reliability diagram, served as the hero's media.
-
-    A real artifact of the engine -- eval/diagram.py builds it as
-    byte-deterministic SVG from the sweep's own calibration bins -- rather
-    than stock imagery. If it hasn't been generated yet the hero falls back
-    to type alone, so this 404 is not an error state for the page.
-    """
-    from fastapi.responses import FileResponse
-
-    path = REPO_ROOT / "docs" / "reliability.svg"
-    if not path.is_file():
-        raise HTTPException(status_code=404, detail="docs/reliability.svg has not been generated")
-    return FileResponse(path, media_type="image/svg+xml")
 
 
 @app.get("/api/runs", response_model=list[RunSummary])

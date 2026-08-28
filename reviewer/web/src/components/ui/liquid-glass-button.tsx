@@ -98,7 +98,7 @@ function LiquidButton({
       <div className="absolute top-0 left-0 z-0 h-full w-full rounded-full shadow-[0_0_6px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3px_rgba(0,0,0,0.9),inset_-3px_-3px_0.5px_-3px_rgba(0,0,0,0.85),inset_1px_1px_1px_-0.5px_rgba(0,0,0,0.6),inset_-1px_-1px_1px_-0.5px_rgba(0,0,0,0.6),inset_0_0_6px_6px_rgba(0,0,0,0.12),inset_0_0_2px_2px_rgba(0,0,0,0.06),0_0_12px_rgba(255,255,255,0.15)] transition-all dark:shadow-[0_0_8px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.08),inset_3px_3px_0.5px_-3.5px_rgba(255,255,255,0.09),inset_-3px_-3px_0.5px_-3.5px_rgba(255,255,255,0.85),inset_1px_1px_1px_-0.5px_rgba(255,255,255,0.6),inset_-1px_-1px_1px_-0.5px_rgba(255,255,255,0.6),inset_0_0_6px_6px_rgba(255,255,255,0.12),inset_0_0_2px_2px_rgba(255,255,255,0.06),0_0_12px_rgba(0,0,0,0.15)]" />
       <div
         className="absolute top-0 left-0 isolate -z-10 h-full w-full overflow-hidden rounded-md"
-        style={{ backdropFilter: 'url("#container-glass")' }}
+        style={{ backdropFilter: 'url("#button-glass")' }}
       />
 
       <div className="pointer-events-none z-10">{children}</div>
@@ -111,8 +111,12 @@ function GlassFilter() {
   return (
     <svg className="hidden">
       <defs>
+        {/* Distinct id from the card's filter -- see liquid-glass-card.tsx.
+         * Displacement is 70 -> 12 and the final blur 4 -> 1.5: at upstream
+         * strength the turbulence smeared the button's lower edge into a
+         * visible fringe rather than reading as glass. */}
         <filter
-          id="container-glass"
+          id="button-glass"
           x="0%"
           y="0%"
           width="100%"
@@ -130,12 +134,12 @@ function GlassFilter() {
           <feDisplacementMap
             in="SourceGraphic"
             in2="blurredNoise"
-            scale="70"
+            scale="12"
             xChannelSelector="R"
             yChannelSelector="B"
             result="displaced"
           />
-          <feGaussianBlur in="displaced" stdDeviation="4" result="finalBlur" />
+          <feGaussianBlur in="displaced" stdDeviation="1.5" result="finalBlur" />
           <feComposite in="finalBlur" in2="finalBlur" operator="over" />
         </filter>
       </defs>

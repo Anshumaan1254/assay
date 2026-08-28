@@ -70,8 +70,8 @@ function ScoreCardShell({ children }: { children?: React.ReactNode }) {
   if (!appearing) return null;
 
   return (
-    <LiquidCard className="w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-800 fill-mode-both">
-      <CardContent className="p-9">{children}</CardContent>
+    <LiquidCard className="h-full w-full animate-in fade-in slide-in-from-bottom-8 duration-800 fill-mode-both">
+      <CardContent className="flex h-full flex-col p-7">{children}</CardContent>
     </LiquidCard>
   );
 }
@@ -82,24 +82,25 @@ function ScoreDisplay({ card }: { card: ScoreCard }) {
   const chars = card.headline.split("");
 
   return (
-    <div className="absolute bottom-0 w-full text-center">
-      <div className="text-4xl font-medium h-15 overflow-hidden relative font-mono tracking-tight">
-        <div className="absolute inset-0">
-          {chars.map((ch, i) => (
-            <span
-              key={i}
-              className="inline-block animate-in slide-in-from-bottom-full fill-mode-both"
-              style={{
-                animationDelay: `${400 + i * 60}ms`,
-                animationDuration: `${800 + i * 160}ms`,
-              }}
-            >
-              {ch}
-            </span>
-          ))}
-        </div>
+    // Absolutely positioned INSIDE the arc's hollow only. The detail line
+    // used to ride along here too and collided with the arc stroke on any
+    // card whose detail was long (two grouped rupee amounts, say); it now
+    // sits below the gauge in normal flow, where it cannot overlap.
+    <div className="pointer-events-none absolute inset-x-0 bottom-1 text-center">
+      <div className="font-mono text-3xl font-medium tracking-tight leading-none">
+        {chars.map((ch, i) => (
+          <span
+            key={i}
+            className="inline-block animate-in slide-in-from-bottom-full fill-mode-both"
+            style={{
+              animationDelay: `${400 + i * 60}ms`,
+              animationDuration: `${800 + i * 160}ms`,
+            }}
+          >
+            {ch}
+          </span>
+        ))}
       </div>
-      <div className="text-sm text-muted-foreground uppercase tracking-wide">{card.detail}</div>
     </div>
   );
 }
@@ -165,10 +166,13 @@ function ScoreHeader({ card }: { card: ScoreCard }) {
   const badgeClass = badgeClasses[card.strength] ?? "";
 
   return (
-    <CardHeader className="flex flex-row items-center justify-between gap-6 pb-10 px-0 animate-in fade-in slide-in-from-bottom-12 duration-800">
-      <h2 className="text-xl font-medium truncate">{card.title}</h2>
+    // No `truncate`: the titles were being clipped ("Credits reconcilin…").
+    // They are short enough to fit now that the CSS layering fix lets
+    // `text-lg` actually apply, and wrapping beats an ellipsis anyway.
+    <CardHeader className="flex flex-row items-start justify-between gap-3 pb-6 px-0 animate-in fade-in slide-in-from-bottom-12 duration-800">
+      <h2 className="text-lg font-medium leading-snug">{card.title}</h2>
       <span
-        className={`uppercase text-xs font-semibold shrink-0 rounded-full px-2.5 py-1 ${badgeClass}`}
+        className={`uppercase text-[0.625rem] font-semibold shrink-0 rounded-full px-2 py-0.5 tracking-wider ${badgeClass}`}
       >
         {card.strength}
       </span>
@@ -180,19 +184,27 @@ function Score({ card, onExplain }: { card: ScoreCard; onExplain?: (key: string)
   return (
     <ScoreCardShell>
       <ScoreHeader card={card} />
-      <div className="relative mb-8 animate-in fade-in slide-in-from-bottom-12 duration-800">
+
+      <div className="relative animate-in fade-in slide-in-from-bottom-12 duration-800">
         <HalfCircle card={card} />
         <ScoreDisplay card={card} />
       </div>
-      <p className="text-muted-foreground text-center mb-9 min-h-[4.5rem] animate-in fade-in slide-in-from-bottom-12 duration-800">
+
+      <p className="mt-3 text-center font-mono text-xs text-muted-foreground">{card.detail}</p>
+
+      <p className="mt-4 text-center text-sm leading-relaxed text-muted-foreground">
         {card.description}
       </p>
+
       {/* No "Calculate your score" button: there is nothing to calculate.
-       * The number is already computed, signed and hashed by the engine. */}
+       * The number is already computed, signed and hashed by the engine.
+       * mt-auto pins this to the bottom so buttons align across cards of
+       * differing description length. */}
       <LiquidButton
         variant="default"
+        size="default"
         onClick={() => onExplain?.(card.key)}
-        className="w-full h-16 text-lg py-3 animate-in fade-in slide-in-from-bottom-12 duration-800"
+        className="mt-auto w-full h-12 pt-6 text-base animate-in fade-in slide-in-from-bottom-12 duration-800"
       >
         See the evidence
       </LiquidButton>
@@ -208,7 +220,9 @@ export function FinancialScoreCards({
   onExplain?: (key: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-stretch justify-center gap-3 mx-auto">
+    // A real grid, not wrapping flex: three max-w-md cards could not fit a
+    // row, so the third dropped to its own centred line.
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 items-stretch">
       <CounterProvider>
         {cards.map((card) => (
           <Score key={card.key} card={card} onExplain={onExplain} />

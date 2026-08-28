@@ -312,22 +312,17 @@ def test_scores_endpoint_serves_real_cards(audited):
     assert all(0 <= c["value_bps"] <= 10_000 for c in body)
 
 
-def test_the_hero_media_is_the_engines_own_diagram_not_a_third_party_asset(audited):
-    """The upstream hero pointed at Unsplash/Pexels CDNs. Decorative images
-    fetched from third parties onto a page showing a merchant's money is
-    not a trade worth making, so the hero's media is served from this app:
-    the committed, byte-deterministic reliability diagram."""
-    _run_id, client = audited
+def test_the_hero_media_is_local_and_decorative_not_a_third_party_asset():
+    """The upstream hero pointed at Unsplash/Pexels CDNs. Fetching
+    decorative images from third parties onto a page showing a merchant's
+    money is not a trade worth making, so the hero's media is a local
+    asset shipped with the app."""
+    web = Path(__file__).resolve().parent.parent / "reviewer" / "web"
 
-    response = client.get("/api/diagram/reliability.svg")
+    hero_asset = web / "public" / "hero.svg"
+    assert hero_asset.is_file(), "the hero's decorative media must ship with the app"
 
-    # 404 is a legitimate state (diagram not generated yet) -- what must
-    # never happen is the page reaching outside for its assets.
-    assert response.status_code in (200, 404)
-    if response.status_code == 200:
-        assert response.headers["content-type"].startswith("image/svg+xml")
-
-    web_src = Path(__file__).resolve().parent.parent / "reviewer" / "web" / "src"
+    web_src = web / "src"
     hero = strip_comments(
         (web_src / "components" / "ui" / "scroll-expansion-hero.tsx").read_text(encoding="utf-8")
     )

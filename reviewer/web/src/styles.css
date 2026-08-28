@@ -68,10 +68,20 @@
   --font-mono: var(--mono);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Bare-element rules live in @layer base deliberately.
+ *
+ * Tailwind v4 emits its utilities into `@layer utilities`, and unlayered
+ * CSS beats *any* layered CSS regardless of specificity. So an unlayered
+ * `h2 { font-size: clamp(...) }` silently overrode `text-xl` on every
+ * shadcn component pasted into this page -- card titles rendered at hero
+ * size and then got clipped by `truncate`. Keeping element defaults in
+ * `base` puts them below utilities, where defaults belong. */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 html {
@@ -221,10 +231,12 @@ main {
   z-index: 1;
 }
 
-section {
-  padding: clamp(4rem, 11vh, 8.5rem) var(--gutter);
-  max-width: 1280px;
-  margin: 0 auto;
+@layer base {
+  section {
+    padding: clamp(4rem, 11vh, 8.5rem) var(--gutter);
+    max-width: 1280px;
+    margin: 0 auto;
+  }
 }
 
 .eyebrow {
@@ -245,12 +257,14 @@ section {
   background: linear-gradient(90deg, var(--line-bright), transparent);
 }
 
-h2 {
-  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
-  margin-bottom: 0.7rem;
+@layer base {
+  h2 {
+    font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+    margin-bottom: 0.7rem;
+  }
 }
 
 .lede {

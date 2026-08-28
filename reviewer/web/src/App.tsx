@@ -892,24 +892,23 @@ export default function App() {
       </header>
 
       <main>
-        {/* The scroll gate. Its media is the engine's own committed
-         * reliability diagram, not stock imagery. onExpanded hands scroll
-         * back to ScrollTrigger and forces a refresh, so the pinned
-         * identity section measures against the full document height
-         * rather than the collapsed one. */}
+        {/* The scroll gate. Its media is decorative and says nothing about
+         * this run -- swap public/hero.svg for any image. onExpanded hands
+         * scroll back to ScrollTrigger and forces a refresh, so the pinned
+         * identity section measures against the full document height rather
+         * than the collapsed one. */}
         <ScrollExpandMedia
           mediaType="image"
-          mediaSrc="/api/diagram/reliability.svg"
+          mediaSrc="/hero.svg"
           title="Assay Reviewer"
-          date={`₹${money(batch.unaccounted)} unaccounted`}
+          date={batch.run_id}
           scrollToExpand="Scroll to open the report"
           onExpanded={() => ScrollTrigger.refresh()}
         >
           <div className="max-w-3xl mx-auto text-center">
             <p style={{ color: "var(--ink-dim)" }}>
-              Calibration is the claim behind every lane decision below, so it is the first thing
-              this page shows: the reliability diagram <code className="mono">eval/diagram.py</code>{" "}
-              builds, byte-deterministically, from the sweep's own confidence bins.
+              Everything below is read from a report the engine already computed, signed and
+              hashed. This page adds no arithmetic of its own.
             </p>
           </div>
         </ScrollExpandMedia>
