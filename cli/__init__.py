@@ -250,6 +250,23 @@ def replay(run_id: str) -> None:
 
 
 @app.command()
+def evidence() -> None:
+    """Print the committed EVIDENCE.md and confirm it matches its own
+    declared body hash. Never regenerates it -- see 'make evidence' /
+    'assay eval --evidence' for that."""
+    from cli.evidence import EvidenceMissing, EvidenceTampered, read_evidence
+
+    try:
+        document, actual_hash = read_evidence()
+    except (EvidenceMissing, EvidenceTampered) as error:
+        typer.echo(f"assay evidence: refused -- {error}", err=True)
+        raise typer.Exit(code=1) from None
+
+    typer.echo(document)
+    typer.echo(f"OK: matches its declared body hash ({actual_hash[:12]}...)")
+
+
+@app.command()
 def explain(
     record_id: str,
     run_dir: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
@@ -269,7 +286,30 @@ def explain(
     typer.echo(explain_record(record_id, ledger, credits, contract, merchant_id, calibration=calibration))
 
 
+def _use_utf8_streams() -> None:
+    """Windows' default console codepage (cp1252 and friends) cannot
+    encode a rupee sign, and `assay evidence` prints EVIDENCE.md's
+    committed prose verbatim -- which contains one. Reconfiguring here
+    rather than per-command: any future command that echoes non-ASCII text
+    would hit the identical UnicodeEncodeError otherwise. Only touches
+    real console streams (never CliRunner's captured ones, since tests
+    invoke `cli.app` directly and never call `main()`), and never raises:
+    a redirected/piped stdout may not support reconfigure(), and failing
+    to upgrade the encoding must not crash the CLI over what it's trying
+    to fix.
+    """
+    import sys
+
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if stream.encoding and stream.encoding.lower() != "utf-8":
+                stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
 def main() -> None:
+    _use_utf8_streams()
     app()
 
 
