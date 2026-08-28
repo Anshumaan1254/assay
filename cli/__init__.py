@@ -7,6 +7,7 @@ from pathlib import Path
 
 import typer
 
+from cli.contract import contract_app
 from cli.explain import explain_record
 from cli.loaders import (
     DEFAULT_RUN_DIR,
@@ -19,6 +20,7 @@ from cli.loaders import (
 )
 
 app = typer.Typer(help="Assay -- settlement audit engine.")
+app.add_typer(contract_app, name="contract")
 
 
 @app.callback()
