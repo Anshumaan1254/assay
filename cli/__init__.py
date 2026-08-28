@@ -225,6 +225,31 @@ def report(
 
 
 @app.command()
+def replay(run_id: str) -> None:
+    """Independently re-run a completed audit and prove its report_hash
+    reproduces -- invariant 4, on demand."""
+    from core.decompose import ProofIntegrityViolation
+    from llm.provider import ProviderUnavailable
+
+    from cli.report import ReportArtifactMissing, RunNotFound, replay_run
+
+    try:
+        result = replay_run(run_id, default_provider(), calibration=load_calibration_artifact())
+    except (RunNotFound, ReportArtifactMissing, ProviderUnavailable, ProofIntegrityViolation) as error:
+        typer.echo(f"assay replay: refused -- {error}", err=True)
+        raise typer.Exit(code=1) from None
+
+    if result.match:
+        typer.echo(f"PASS -- {run_id} replays to the same report_hash")
+        typer.echo(f"  hash: {result.stored_hash}")
+    else:
+        typer.echo(f"FAIL -- {run_id} did not reproduce its stored report_hash", err=True)
+        typer.echo(f"  stored:     {result.stored_hash}", err=True)
+        typer.echo(f"  recomputed: {result.recomputed_hash}", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def explain(
     record_id: str,
     run_dir: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern

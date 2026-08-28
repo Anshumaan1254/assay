@@ -6,9 +6,12 @@ audit to prove its report_hash reproduces (invariant 4, on demand).
 from __future__ import annotations
 
 import html
+from dataclasses import dataclass
 from pathlib import Path
 
-from cli.audit import AuditReport
+from cli.audit import AuditReport, run_audit
+from core.lanes import CalibrationArtifact
+from llm.provider import LLMProvider
 
 
 def write_report_json(report: AuditReport) -> Path:
@@ -75,6 +78,64 @@ def render_table(report: AuditReport) -> str:
                 f"  {cluster.count:>3} finding(s)  [{cluster.rule_id or 'no rule resolved'}]"
             )
     return "\n".join(lines)
+
+
+@dataclass(frozen=True)
+class ReplayResult:
+    match: bool
+    stored_hash: str
+    recomputed_hash: str
+    run_dir: str
+
+
+def replay_run(
+    run_id: str,
+    provider: LLMProvider,
+    *,
+    calibration: CalibrationArtifact | None = None,
+    store_path: Path | None = None,
+) -> ReplayResult:
+    """Independently re-run `run_id`'s audit from its original run_dir and
+    prove its report_hash reproduces -- invariant 4, on demand. Calls
+    `run_audit` directly, not `resume_or_run`: `run_audit` is the pure,
+    uncheckpointed entry point, kept exactly so a second, independent call
+    can prove determinism -- going through the checkpoint would just replay
+    it back and prove nothing.
+
+    `provider`/`calibration` are taken as parameters, not resolved here via
+    `cli.loaders.default_provider()` -- a caller in cli/__init__.py already
+    has its own, monkeypatchable copy of that name imported at module
+    scope (the same one `assay audit`/`assay explain` use); resolving a
+    second, independent copy here would silently bypass a test's stub on
+    the first and, on a machine with no GEMINI_API_KEY and an incomplete
+    cache, could reach a real network call instead of the clean refusal
+    every other command gives.
+    """
+    run_dir, _report_json_path, original = locate_run(run_id, store_path)
+
+    # Not asking (provider=None) and asking-but-being-refused are both
+    # recorded on the original report, and neither should silently become
+    # the other kind of run on replay -- see AuditReport's own docstring.
+    adjudicate = original.adjudication is not None or original.adjudication_degraded
+
+    # merchant_id is deliberately NOT passed through from `original` --
+    # left None so run_audit re-derives it via infer_merchant_id(ledger),
+    # the same as the original `assay audit` call did. Feeding the stored
+    # value back in would make replay trust it instead of re-proving it,
+    # narrowing what invariant 4 actually checks.
+    recomputed = run_audit(
+        run_dir,
+        provider,
+        calibration=calibration,
+        adjudicate=adjudicate,
+    )
+
+    return ReplayResult(
+        match=recomputed.report_hash == original.report_hash,
+        stored_hash=original.report_hash,
+        recomputed_hash=recomputed.report_hash,
+        run_dir=str(run_dir),
+    )
 
 
 def render_html(report: AuditReport) -> str:
