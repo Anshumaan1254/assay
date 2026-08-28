@@ -9,6 +9,13 @@
 
 @import "tailwindcss";
 
+/* This UI is dark-only, regardless of OS preference. Tailwind v4's default
+ * `dark:` variant keys off prefers-color-scheme, so every `dark:` class in
+ * the pasted shadcn components silently did nothing for a viewer whose OS
+ * is set to light. Bound to the `.dark` class on <html> instead, which is
+ * what those components were written against. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --bg: #08090b;
   --bg-raised: #0d0f13;

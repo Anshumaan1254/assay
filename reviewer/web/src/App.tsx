@@ -16,6 +16,7 @@ import {
 import { FinancialScoreCards } from "@/components/ui/financial-score-cards";
 import { Component as AreaChart } from "@/components/ui/finance-chart";
 import ScrollExpandMedia from "@/components/ui/scroll-expansion-hero";
+import HelixChronoMatrix from "@/components/ui/helix-chrono-matrix";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -283,7 +284,7 @@ function Identity({ rows }: { rows: ConservationView[] }) {
   }, [terms]);
 
   return (
-    <section className="identity" ref={rootRef}>
+    <section className="identity" ref={rootRef} id="identity">
       <div className="identity__stage">
         <p className="eyebrow">Invariant 3 — money conservation</p>
         <h2>The identity, asserted for every credit.</h2>
@@ -327,11 +328,29 @@ function Identity({ rows }: { rows: ConservationView[] }) {
 
 /* ── score gauges ───────────────────────────────────────────────────── */
 
+/* Which section actually evidences each gauge. "See the evidence" was
+ * inert because App never passed `onExplain` -- the prop existed and
+ * nothing was wired to it. */
+const EVIDENCE_TARGET: Record<string, string> = {
+  verified_value: "clusters",
+  credits_decomposed: "volume",
+  clean_credits: "identity",
+};
+
 function Scores({ cards }: { cards: ScoreCard[] }) {
   const rootRef = useRef<HTMLElement>(null);
 
+  const goToEvidence = useCallback((key: string) => {
+    const target = document.getElementById(EVIDENCE_TARGET[key] ?? "clusters");
+    if (!target) return;
+    target.scrollIntoView({
+      behavior: REDUCED() ? "auto" : "smooth",
+      block: "start",
+    });
+  }, []);
+
   return (
-    <section ref={rootRef}>
+    <section ref={rootRef} id="scores">
       <p className="eyebrow">Headline ratios</p>
       <h2>Three numbers, each checkable.</h2>
       <p className="lede">
@@ -339,7 +358,7 @@ function Scores({ cards }: { cards: ScoreCard[] }) {
         <code className="mono">reviewer/derive.py</code> and unit-tested there. Each card names the
         two quantities it divided, so you can check the arithmetic rather than trust the arc.
       </p>
-      <FinancialScoreCards cards={cards} />
+      <FinancialScoreCards cards={cards} onExplain={goToEvidence} />
     </section>
   );
 }
@@ -378,7 +397,7 @@ function Volume({ points }: { points: TimelinePoint[] }) {
   if (!points.length) return null;
 
   return (
-    <section ref={rootRef}>
+    <section ref={rootRef} id="volume">
       <p className="eyebrow">Settlement month</p>
       <h2>Every credit the gateway paid.</h2>
       <p className="lede">
@@ -426,7 +445,7 @@ function Lanes({ batch }: { batch: BatchView }) {
   }, [batch]);
 
   return (
-    <section ref={rootRef}>
+    <section ref={rootRef} id="lanes">
       <p className="eyebrow">Autonomy lanes</p>
       <h2>Three lanes, conformally calibrated.</h2>
       <p className="lede">
@@ -499,7 +518,7 @@ function Clusters({
 
   if (!clusters.length) {
     return (
-      <section ref={rootRef}>
+      <section ref={rootRef} id="clusters">
         <p className="eyebrow">Exception clusters</p>
         <h2>Nothing to dispute.</h2>
         <p className="lede">
@@ -511,7 +530,7 @@ function Clusters({
   }
 
   return (
-    <section ref={rootRef}>
+    <section ref={rootRef} id="clusters">
       <p className="eyebrow">Exception clusters</p>
       <h2>Ranked by money, not by count.</h2>
       <p className="lede">
@@ -743,7 +762,7 @@ function Provenance({ batch }: { batch: BatchView }) {
   }, [batch]);
 
   return (
-    <section ref={rootRef}>
+    <section ref={rootRef} id="provenance">
       <p className="eyebrow">Provenance</p>
       <h2>The same inputs produce this same page.</h2>
       <p className="lede">
@@ -893,13 +912,16 @@ export default function App() {
 
       <main>
         {/* The scroll gate. Its media is decorative and says nothing about
-         * this run -- swap public/hero.svg for any image. onExpanded hands
+         * this run. `chrome={false}` drops the component's own topology and
+         * freeze controls -- the box starts 300px wide, where that header
+         * wraps into an unreadable stack -- and `headline=""` avoids a
+         * second title competing with the hero's own. onExpanded hands
          * scroll back to ScrollTrigger and forces a refresh, so the pinned
          * identity section measures against the full document height rather
          * than the collapsed one. */}
         <ScrollExpandMedia
-          mediaType="image"
-          mediaSrc="/hero.svg"
+          mediaType="node"
+          mediaNode={<HelixChronoMatrix headline="" chrome={false} />}
           title="Assay Reviewer"
           date={batch.run_id}
           scrollToExpand="Scroll to open the report"

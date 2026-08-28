@@ -22,12 +22,16 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 
 import { CardContent, CardHeader, LiquidCard } from "@/components/ui/liquid-glass-card";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
+import { cn } from "@/lib/utils";
 import type { ScoreCard } from "@/api";
 
 type CounterContextType = { getNextIndex: () => number };
 type StrengthColors = Record<string, string[]>;
 
 const easeInOut = "cubic-bezier(0.65, 0, 0.35, 1)";
+
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function circumference(r: number): number {
   return 2 * Math.PI * r;
@@ -53,24 +57,56 @@ const useCounter = () => {
   return context.getNextIndex;
 };
 
-function ScoreCardShell({ children }: { children?: React.ReactNode }) {
+/** Fires once, the first time `ref`'s element scrolls into view. */
+function useInView<T extends Element>(ref: React.RefObject<T | null>, rootMargin = "-15% 0px") {
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref, rootMargin]);
+
+  return inView;
+}
+
+function ScoreCardShell({ inView, children }: { inView: boolean; children?: React.ReactNode }) {
   const getNextIndex = useCounter();
   const indexRef = useRef<number | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const [appearing, setAppearing] = useState(false);
 
   if (indexRef.current === null) indexRef.current = getNextIndex();
 
-  useEffect(() => {
-    const delay = 300 + indexRef.current! * 200;
-    timerRef.current = setTimeout(() => setAppearing(true), delay);
-    return () => clearTimeout(timerRef.current);
-  }, []);
-
-  if (!appearing) return null;
-
+  // The card is ALWAYS rendered and merely starts transparent. It used to
+  // be mounted only once in view, behind a wrapper with `display:
+  // contents` -- which generates no layout box, so IntersectionObserver
+  // (which observes boxes) never fired and the cards never appeared at
+  // all. Gate the animation, never the mount.
+  //
+  // Entrance is still tied to scrolling rather than the upstream
+  // `setTimeout(300 + i * 200)`: these cards sit well down the page, so a
+  // mount timer had always finished long before anyone reached them.
   return (
-    <LiquidCard className="h-full w-full animate-in fade-in slide-in-from-bottom-8 duration-800 fill-mode-both">
+    <LiquidCard
+      className={cn(
+        "h-full w-full fill-mode-both",
+        inView ? "animate-in fade-in slide-in-from-bottom-8 duration-700" : "opacity-0",
+      )}
+      style={{ animationDelay: `${indexRef.current * 120}ms` }}
+    >
       <CardContent className="flex h-full flex-col p-7">{children}</CardContent>
     </LiquidCard>
   );
@@ -123,20 +159,35 @@ function HalfCircle({ card }: { card: ScoreCard }) {
   };
   const colorStops = strengthColors[card.strength] ?? strengthColors.none;
 
+  const svgRef = useRef<SVGSVGElement>(null);
+  const inView = useInView(svgRef);
+
   useEffect(() => {
-    const duration = 1400;
+    // Held at empty until the arc is actually on screen, then swept. The
+    // sweep is the whole point of the gauge, and running it on mount meant
+    // it had always already finished by the time anyone scrolled here.
+    if (!inView) return;
+    if (prefersReducedMotion()) {
+      strokeRef.current?.style.setProperty("stroke-dashoffset", strokeDashoffset.toString());
+      return;
+    }
+    const duration = 1600;
     strokeRef.current?.animate(
       [
         { strokeDashoffset: "0", offset: 0 },
-        { strokeDashoffset: "0", offset: 400 / duration },
-        { strokeDashoffset: strokeDashoffset.toString() },
+        { strokeDashoffset: strokeDashoffset.toString(), offset: 1 },
       ],
       { duration, easing: easeInOut, fill: "forwards" },
     );
-  }, [strokeDashoffset]);
+  }, [inView, strokeDashoffset]);
 
   return (
-    <svg className="block mx-auto w-auto max-w-full h-36" viewBox="0 0 100 50" aria-hidden="true">
+    <svg
+      ref={svgRef}
+      className="block mx-auto w-auto max-w-full h-36"
+      viewBox="0 0 100 50"
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
           {colorStops.map((stop, i) => (
@@ -180,9 +231,17 @@ function ScoreHeader({ card }: { card: ScoreCard }) {
   );
 }
 
-function Score({ card, onExplain }: { card: ScoreCard; onExplain?: (key: string) => void }) {
+function Score({
+  card,
+  inView,
+  onExplain,
+}: {
+  card: ScoreCard;
+  inView: boolean;
+  onExplain?: (key: string) => void;
+}) {
   return (
-    <ScoreCardShell>
+    <ScoreCardShell inView={inView}>
       <ScoreHeader card={card} />
 
       <div className="relative animate-in fade-in slide-in-from-bottom-12 duration-800">
@@ -219,13 +278,17 @@ export function FinancialScoreCards({
   cards: ScoreCard[];
   onExplain?: (key: string) => void;
 }) {
+  // Observed here, on the grid, because the grid has a real layout box.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(gridRef);
+
   return (
     // A real grid, not wrapping flex: three max-w-md cards could not fit a
     // row, so the third dropped to its own centred line.
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 items-stretch">
+    <div ref={gridRef} className="grid grid-cols-1 gap-4 md:grid-cols-3 items-stretch">
       <CounterProvider>
         {cards.map((card) => (
-          <Score key={card.key} card={card} onExplain={onExplain} />
+          <Score key={card.key} card={card} inView={inView} onExplain={onExplain} />
         ))}
       </CounterProvider>
     </div>

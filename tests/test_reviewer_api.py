@@ -314,14 +314,10 @@ def test_scores_endpoint_serves_real_cards(audited):
 
 def test_the_hero_media_is_local_and_decorative_not_a_third_party_asset():
     """The upstream hero pointed at Unsplash/Pexels CDNs. Fetching
-    decorative images from third parties onto a page showing a merchant's
-    money is not a trade worth making, so the hero's media is a local
-    asset shipped with the app."""
+    decorative media from third parties onto a page showing a merchant's
+    money is not a trade worth making, so the hero renders a local
+    component (a canvas animation) and no remote asset at all."""
     web = Path(__file__).resolve().parent.parent / "reviewer" / "web"
-
-    hero_asset = web / "public" / "hero.svg"
-    assert hero_asset.is_file(), "the hero's decorative media must ship with the app"
-
     web_src = web / "src"
     hero = strip_comments(
         (web_src / "components" / "ui" / "scroll-expansion-hero.tsx").read_text(encoding="utf-8")
@@ -332,6 +328,39 @@ def test_the_hero_media_is_local_and_decorative_not_a_third_party_asset():
         code = strip_comments(source.read_text(encoding="utf-8"))
         for cdn in ("unsplash.com", "pexels.com", "ufs.sh"):
             assert cdn not in code, f"{source.name} fetches decorative media from {cdn}"
+
+
+def test_score_cards_are_never_mounted_conditionally_on_being_in_view():
+    """Regression guard, from a bug that made all three cards vanish.
+
+    The card was mounted only once an IntersectionObserver reported it in
+    view, and the observed wrapper carried `display: contents`. That
+    generates no layout box, IntersectionObserver observes boxes, so the
+    callback never fired and the cards never rendered at all.
+
+    The rule this pins is the general one: gate the ANIMATION on being in
+    view, never the mount. A card that fails to appear is a far worse
+    failure than one that appears without its entrance.
+    """
+    card_source = (
+        Path(__file__).resolve().parent.parent
+        / "reviewer"
+        / "web"
+        / "src"
+        / "components"
+        / "ui"
+        / "financial-score-cards.tsx"
+    ).read_text(encoding="utf-8")
+    code = strip_comments(card_source)
+
+    assert "{inView && " not in code, (
+        "the card must render unconditionally and use inView only to trigger its animation"
+    )
+    # The observed element must not be display:contents -- it would have no
+    # box for IntersectionObserver to observe.
+    assert 'ref={gridRef} className="grid' in code, (
+        "the in-view observer must target the grid, which has a real layout box"
+    )
 
 
 def test_the_shipped_frontend_contains_no_mock_financial_data():

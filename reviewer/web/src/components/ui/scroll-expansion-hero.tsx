@@ -36,8 +36,13 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion";
 
 interface ScrollExpandMediaProps {
-  mediaType?: "video" | "image";
-  mediaSrc: string;
+  mediaType?: "video" | "image" | "node";
+  /** Required for "video" and "image"; ignored for "node". */
+  mediaSrc?: string;
+  /** A live component to expand instead of a file. The expanding box is
+   * sized by scroll, so whatever goes here must fill its container and
+   * cope with being resized continuously. */
+  mediaNode?: ReactNode;
   posterSrc?: string;
   bgImageSrc?: string;
   title?: string;
@@ -54,6 +59,7 @@ const prefersReducedMotion = () =>
 const ScrollExpandMedia = ({
   mediaType = "video",
   mediaSrc,
+  mediaNode,
   posterSrc,
   bgImageSrc,
   title,
@@ -227,7 +233,17 @@ const ScrollExpandMedia = ({
                   boxShadow: "0px 0px 50px rgba(0, 0, 0, 0.3)",
                 }}
               >
-                {mediaType === "video" ? (
+                {mediaType === "node" ? (
+                  <div className="relative h-full w-full overflow-hidden rounded-xl">
+                    {mediaNode}
+                    <motion.div
+                      className="absolute inset-0 bg-black/60 rounded-xl pointer-events-none"
+                      initial={{ opacity: 0.75 }}
+                      animate={{ opacity: 0.75 - scrollProgress * 0.75 }}
+                      transition={{ duration: 0.2 }}
+                    />
+                  </div>
+                ) : mediaType === "video" ? (
                   <div className="relative w-full h-full pointer-events-none">
                     <video
                       src={mediaSrc}
@@ -252,7 +268,7 @@ const ScrollExpandMedia = ({
                 ) : (
                   <div className="relative w-full h-full">
                     <img
-                      src={mediaSrc}
+                      src={mediaSrc ?? ""}
                       alt={title || "Media content"}
                       className="w-full h-full object-contain rounded-xl"
                       style={{ background: "var(--bg-raised)" }}
