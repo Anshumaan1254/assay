@@ -198,11 +198,32 @@ class RateLimiter:
 
 
 class GeminiProvider:
+    """`config`/`client` resolution is deliberately deferred to the first
+    real `generate_structured` call, not done in `__init__`. `CachedProvider`
+    (the wrapper `default_provider()` always puts around this class) promises
+    "a cache hit never calls the wrapped provider" -- a promise this class
+    can only keep if merely constructing it never requires GEMINI_API_KEY.
+    Before this, `CachedProvider(RetryingProvider(GeminiProvider()))`
+    raised ProviderUnavailable while just building the chain, on any
+    machine with no key, even for a prompt the committed .llm_cache/ could
+    have served -- breaking exactly the "no API key required" guarantee
+    `make demo` depends on.
+    """
+
     def __init__(self, config: GeminiConfig | None = None, client=None):
-        self._config = config or GeminiConfig.from_env()
-        self._client = client or genai.Client(api_key=self._config.api_key)
-        self._rate_limiter = RateLimiter(self._config.rpm)
+        self._config = config
+        self._client = client
+        self._rate_limiter: RateLimiter | None = None
         self.reset_counters()
+
+    def _ready(self) -> tuple[GeminiConfig, object, RateLimiter]:
+        if self._config is None:
+            self._config = GeminiConfig.from_env()
+        if self._client is None:
+            self._client = genai.Client(api_key=self._config.api_key)
+        if self._rate_limiter is None:
+            self._rate_limiter = RateLimiter(self._config.rpm)
+        return self._config, self._client, self._rate_limiter
 
     def reset_counters(self) -> None:
         """Zero the per-run counters EVIDENCE.md §10 reports. Nothing in the
@@ -216,6 +237,7 @@ class GeminiProvider:
         self.last_usage: TokenUsage | None = None
 
     def generate_structured(self, prompt: str, schema: type[BaseModel], model_hint: str) -> dict:
+        self._ready()
         model = self._config.model_for(model_hint)
         response_schema = to_gemini_schema(schema)
         last_error: Exception | None = None

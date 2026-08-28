@@ -168,6 +168,34 @@ def test_unknown_model_hint_raises_value_error():
         config.model_for("not-a-real-hint")
 
 
+def test_constructing_a_bare_gemini_provider_does_not_require_an_api_key(monkeypatch):
+    """CachedProvider's own docstring promises "a cache hit never calls the
+    wrapped provider", and cli/loaders.py::default_provider() builds
+    CachedProvider(RetryingProvider(GeminiProvider())) unconditionally on
+    every command -- including ones a cache hit could fully satisfy, like
+    `assay contract compile` re-parsing an already-cached rate card. If
+    GeminiProvider() eagerly resolves GEMINI_API_KEY in __init__, that
+    promise is broken: constructing the chain fails before CachedProvider
+    ever gets a chance to check the cache, which is exactly what made
+    `assay contract compile`/`assay audit --contract` crash with a raw
+    ProviderUnavailable on a machine with no key, even for a rate card the
+    committed .llm_cache/ already has an entry for. Resolving the config
+    must be deferred to the first actual generate_structured call."""
+    monkeypatch.setattr("llm.providers.gemini.load_dotenv", lambda *a, **k: False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    GeminiProvider()  # must not raise
+
+
+def test_a_bare_gemini_provider_still_raises_provider_unavailable_when_actually_called(monkeypatch):
+    monkeypatch.setattr("llm.providers.gemini.load_dotenv", lambda *a, **k: False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    provider = GeminiProvider()
+    with pytest.raises(ProviderUnavailable):
+        provider.generate_structured("prompt", DummySchema, "flash")
+
+
 # ---------------------------------------------------------------------------
 # GeminiProvider — 429 backoff and retry
 # ---------------------------------------------------------------------------
