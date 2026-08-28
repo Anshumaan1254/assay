@@ -174,6 +174,41 @@ def test_a_corrupted_checkpointed_proof_is_detected_on_the_next_resume(clean_run
 
 
 @pytest.mark.timeout(120)
+def test_reaudit_with_a_different_pinned_contract_refuses_rather_than_mixing_stale_journal_entries(
+    clean_run_dir, tmp_path
+):
+    """assay audit --contract (added alongside this test) lets a caller pin
+    an arbitrary CompiledContract, which can differ across two calls even
+    though audit_run_id -- derived only from run_dir's 4 input files -- does
+    not. Without a guard, a second run under a different (but still
+    individually valid) pinned contract would recompute findings/clusters
+    fresh under the new contract while resume_or_run's phase_at_least(...,
+    PHASE_JOURNAL_DONE) branch (store/resumable.py) reuses the FIRST run's
+    already-posted journal entries verbatim -- an internally inconsistent
+    report where findings and postings disagree about which contract
+    priced them. Refusing is correct: there is no single right way to
+    reconcile two different contracts' journal history for one run_dir."""
+    from cli.contract import compile_ratecard_file
+    from core.contract import CompiledContract, RateCardParse
+
+    store_path = tmp_path / "store.db"
+
+    v1, _ = compile_ratecard_file(clean_run_dir / "rate_card.md", _offline_provider(), out=tmp_path / "v1.json")
+    first = resume_or_run(
+        clean_run_dir, _offline_provider(), merchant_id=MERCHANT, contract=v1, store_path=store_path
+    )
+    assert first.contract_version == v1.version_id
+
+    v2 = CompiledContract.from_parse(RateCardParse(merchant_id=MERCHANT, rules=[]), source_sha256=v1.source_sha256)
+    assert v2.version_id != v1.version_id, "sanity check: the fixture must actually differ from v1"
+
+    with pytest.raises(CheckpointConflict, match="contract"):
+        resume_or_run(
+            clean_run_dir, _offline_provider(), merchant_id=MERCHANT, contract=v2, store_path=store_path
+        )
+
+
+@pytest.mark.timeout(120)
 def test_an_input_hash_mismatch_under_the_same_audit_run_id_is_a_checkpoint_conflict(clean_run_dir, tmp_path):
     # Simulates the only way this could happen: an astronomically unlikely
     # 12-hex-char audit_run_id prefix collision between two different

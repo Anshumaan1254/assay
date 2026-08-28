@@ -43,7 +43,15 @@ def _callback() -> None:
 def audit(
     run_dir: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
         DEFAULT_RUN_DIR,
+        "--run-dir",
+        "--batch",
         help="Directory holding ledger.json/settlement_report.json/bank_statement.json/rate_card.md.",
+    ),
+    contract_path: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
+        None,
+        "--contract",
+        help="Path to a previously `assay contract compile`'d contract, pinned in place of "
+        "recompiling run_dir's rate_card.md.",
     ),
     as_json: bool = typer.Option(False, "--json", help="Emit the full report as canonical JSON."),
     adjudicate: bool = typer.Option(
@@ -54,9 +62,8 @@ def audit(
 
     Takes a run directory, not a profile name. Resolving a profile name
     would mean generating data, which would mean `cli/` importing
-    `datagen/` -- invariant 5. Generate first with
-    `python -m datagen.cli generate --profile clean --seed 42`, then point
-    this at `runs/clean-seed42`.
+    `datagen/` -- invariant 5. Generate first with `assay generate --profile
+    clean --seed 42`, then point this at `runs/clean-seed42`.
 
     Resumable: a process killed mid-audit can be re-run with the exact same
     arguments and will pick up from its last durable checkpoint rather than
@@ -65,11 +72,22 @@ def audit(
     from eval.determinism import NonDeterministicRun
     from store.resumable import CheckpointConflict, resume_or_run
 
+    from cli.contract import PinnedContractMismatch, load_pinned_contract
+
+    contract = None
+    if contract_path is not None:
+        try:
+            contract = load_pinned_contract(contract_path, run_dir)
+        except PinnedContractMismatch as error:
+            typer.echo(f"assay audit: refused -- {error}", err=True)
+            raise typer.Exit(code=1) from None
+
     try:
         report = resume_or_run(
             run_dir,
             default_provider(),
             calibration=load_calibration_artifact(),
+            contract=contract,
             adjudicate=adjudicate,
         )
     except (NonDeterministicRun, CheckpointConflict, ValueError) as error:

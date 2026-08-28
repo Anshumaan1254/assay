@@ -218,6 +218,17 @@ def resume_or_run(
                 "files -- this can only be a 12-hex-character audit_run_id prefix collision"
             )
 
+        if contract is not None:
+            prior_run = session.get(AuditRunRow, audit_run_id)
+            if prior_run is not None and prior_run.contract_version != contract.version_id:
+                raise CheckpointConflict(
+                    f"{audit_run_id}: a previously completed audit of this run_dir used contract "
+                    f"{prior_run.contract_version!r}; a different contract {contract.version_id!r} was "
+                    "pinned for this run -- refusing to reuse this run_dir's checkpoint/journal "
+                    "history under a different contract, since audit_run_id (and so the journal's "
+                    "idempotency keys) is derived only from run_dir's input files, not the contract"
+                )
+
         ledger = load_ledger(run_dir)
         credits = load_bank_credits(run_dir)
         if merchant_id is None:
