@@ -240,7 +240,10 @@ main {
 
 @layer base {
   section {
-    padding: clamp(4rem, 11vh, 8.5rem) var(--gutter);
+    /* Was clamp(4rem, 11vh, 8.5rem). At 8.5rem top AND bottom, adjacent
+     * sections put 17rem of nothing between them -- and the identity
+     * section stacked its own centred 100vh stage on top of that. */
+    padding: clamp(2.5rem, 6vh, 4.5rem) var(--gutter);
     max-width: 1280px;
     margin: 0 auto;
   }
@@ -336,18 +339,24 @@ main {
   font-weight: 600;
 }
 
+/* Separate tiles, not one bordered slab.
+ *
+ * This used to paint `background: var(--line)` on the CONTAINER and rely on
+ * a 1px gap to show through as gridlines. With five cells that wrap, the
+ * empty tracks in the final row painted that container colour too -- a
+ * blank grey box sitting beside "31/31". Leftover grid area is now simply
+ * transparent, so a partial row is invisible at any width. */
 .hero__strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
+  gap: 10px;
+  background: transparent;
 }
 .hero__cell {
   background: var(--bg-raised);
-  padding: 1.15rem 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.05rem 1.2rem;
 }
 .hero__cell dt {
   font-family: var(--mono);
@@ -366,7 +375,7 @@ main {
 }
 
 .scrollcue {
-  margin-top: 3.5rem;
+  margin-top: 2rem;
   font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.18em;
@@ -387,6 +396,11 @@ main {
 
 .identity {
   max-width: none;
+  /* The stage below is already min-height:100vh and vertically centred, so
+   * the section's own vertical padding was pure dead space above and below
+   * a full viewport of it. */
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .identity__stage {
   min-height: 100vh;
