@@ -7,6 +7,8 @@
  * whether an amount is accounted for — and never decoratively.
  */
 
+@import "tailwindcss";
+
 :root {
   --bg: #08090b;
   --bg-raised: #0d0f13;
@@ -33,6 +35,37 @@
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --gutter: clamp(1.25rem, 5vw, 6rem);
+}
+
+/* shadcn's semantic tokens, mapped onto the palette above rather than
+ * shadcn's own defaults. Pasted shadcn components (`bg-card`,
+ * `text-muted-foreground`, `bg-primary`) then inherit this UI's
+ * instrument-grade look automatically instead of introducing a second,
+ * competing theme. Gold is `primary` because on this page the accent
+ * colour means money. */
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --color-card: var(--bg-raised);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--bg-panel);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--gold);
+  --color-primary-foreground: #08090b;
+  --color-secondary: var(--bg-panel);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--bg-panel);
+  --color-muted-foreground: var(--ink-dim);
+  --color-accent: var(--bg-hover);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--red);
+  --color-destructive-foreground: #08090b;
+  --color-border: var(--line);
+  --color-input: var(--line-bright);
+  --color-ring: var(--gold);
+
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
 }
 
 * {

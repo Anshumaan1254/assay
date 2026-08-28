@@ -10,7 +10,12 @@ import {
   type ConservationView,
   type MoneyView,
   type RunSummary,
+  type ScoreCard,
+  type TimelinePoint,
 } from "./api";
+import { FinancialScoreCards } from "@/components/ui/financial-score-cards";
+import { Component as AreaChart } from "@/components/ui/finance-chart";
+import ScrollExpandMedia from "@/components/ui/scroll-expansion-hero";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -315,6 +320,73 @@ function Identity({ rows }: { rows: ConservationView[] }) {
           rounded away, never silently absorbed. It is the term that makes the other seven
           trustworthy.
         </p>
+      </div>
+    </section>
+  );
+}
+
+/* ── score gauges ───────────────────────────────────────────────────── */
+
+function Scores({ cards }: { cards: ScoreCard[] }) {
+  const rootRef = useRef<HTMLElement>(null);
+
+  return (
+    <section ref={rootRef}>
+      <p className="eyebrow">Headline ratios</p>
+      <h2>Three numbers, each checkable.</h2>
+      <p className="lede">
+        Every gauge is a ratio over the signed report, computed as integer basis points in{" "}
+        <code className="mono">reviewer/derive.py</code> and unit-tested there. Each card names the
+        two quantities it divided, so you can check the arithmetic rather than trust the arc.
+      </p>
+      <FinancialScoreCards cards={cards} />
+    </section>
+  );
+}
+
+/* ── settlement volume chart ────────────────────────────────────────── */
+
+function Volume({ points }: { points: TimelinePoint[] }) {
+  const rootRef = useRef<HTMLElement>(null);
+  const holderRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 380 });
+
+  useEffect(() => {
+    const element = holderRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setSize({ width: entry.contentRect.width, height: 380 });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      if (REDUCED()) return;
+      gsap.from(holderRef.current, {
+        opacity: 0,
+        y: 26,
+        duration: 0.85,
+        ease: "power3.out",
+        scrollTrigger: { trigger: rootRef.current, start: "top 78%" },
+      });
+    }, rootRef);
+    return () => ctx.revert();
+  }, [points]);
+
+  if (!points.length) return null;
+
+  return (
+    <section ref={rootRef}>
+      <p className="eyebrow">Settlement month</p>
+      <h2>Every credit the gateway paid.</h2>
+      <p className="lede">
+        {points.length} bank credits by value date. Hover for the exact settled gross, the credit
+        id, and any residual that credit could not account for.
+      </p>
+      <div ref={holderRef} style={{ width: "100%" }}>
+        <AreaChart data={points} width={size.width} height={size.height} margin={{ top: 20, right: 0, bottom: 30, left: 0 }} />
       </div>
     </section>
   );
@@ -726,6 +798,8 @@ export default function App() {
   const [batch, setBatch] = useState<BatchView | null>(null);
   const [clusters, setClusters] = useState<ClusterView[]>([]);
   const [conservation, setConservation] = useState<ConservationView[]>([]);
+  const [scores, setScores] = useState<ScoreCard[]>([]);
+  const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [openCluster, setOpenCluster] = useState<string | null>(null);
   const railRef = useRef<HTMLDivElement>(null);
@@ -749,12 +823,20 @@ export default function App() {
     if (!runId) return;
     let alive = true;
     setBatch(null);
-    Promise.all([api.batch(runId), api.clusters(runId), api.conservation(runId)])
-      .then(([b, c, cons]) => {
+    Promise.all([
+      api.batch(runId),
+      api.clusters(runId),
+      api.conservation(runId),
+      api.scores(runId),
+      api.timeline(runId),
+    ])
+      .then(([b, c, cons, sc, tl]) => {
         if (!alive) return;
         setBatch(b);
         setClusters(c);
         setConservation(cons);
+        setScores(sc);
+        setTimeline(tl);
       })
       .catch((e: Error) => alive && setError(e.message));
     return () => {
@@ -776,7 +858,7 @@ export default function App() {
     // section aligned with the real document.
     ScrollTrigger.refresh();
     return () => ctx.revert();
-  }, [batch, clusters, conservation]);
+  }, [batch, clusters, conservation, scores, timeline]);
 
   if (error && !batch) return <Failure message={error} />;
   if (!batch) return <Loading />;
@@ -810,8 +892,32 @@ export default function App() {
       </header>
 
       <main>
+        {/* The scroll gate. Its media is the engine's own committed
+         * reliability diagram, not stock imagery. onExpanded hands scroll
+         * back to ScrollTrigger and forces a refresh, so the pinned
+         * identity section measures against the full document height
+         * rather than the collapsed one. */}
+        <ScrollExpandMedia
+          mediaType="image"
+          mediaSrc="/api/diagram/reliability.svg"
+          title="Assay Reviewer"
+          date={`₹${money(batch.unaccounted)} unaccounted`}
+          scrollToExpand="Scroll to open the report"
+          onExpanded={() => ScrollTrigger.refresh()}
+        >
+          <div className="max-w-3xl mx-auto text-center">
+            <p style={{ color: "var(--ink-dim)" }}>
+              Calibration is the claim behind every lane decision below, so it is the first thing
+              this page shows: the reliability diagram <code className="mono">eval/diagram.py</code>{" "}
+              builds, byte-deterministically, from the sweep's own confidence bins.
+            </p>
+          </div>
+        </ScrollExpandMedia>
+
         <Hero batch={batch} />
         {conservation.length > 0 && <Identity rows={conservation} />}
+        {scores.length > 0 && <Scores cards={scores} />}
+        <Volume points={timeline} />
         <Lanes batch={batch} />
         <Clusters clusters={clusters} onOpen={setOpenCluster} />
         <Provenance batch={batch} />

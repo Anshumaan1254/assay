@@ -30,6 +30,20 @@ from reviewer.derive import batch_view, cluster_views, conservation_views, lane_
 runner = CliRunner()
 
 
+def strip_comments(text: str) -> str:
+    """Check code, not prose.
+
+    The adapted components deliberately *document* what was removed and why
+    (`next/image`, `@visx/mock-data`, `randomInt`), so a naive text search
+    matches the explanation and fails a file that is actually clean. Same
+    trap the `import datagen` guard hits, same fix: look at what executes.
+    """
+    import re
+
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+    return re.sub(r"^\s*//.*$", "", text, flags=re.MULTILINE)
+
+
 def _offline_provider() -> CachedProvider:
     return CachedProvider(NullProvider())
 
@@ -223,6 +237,129 @@ def test_conservation_endpoint_reports_every_credit(audited):
     body = response.json()
     assert len(body) == len(report.conservation)
     assert all(row["balances"] for row in body)
+
+
+# ---------------------------------------------------------------------------
+# The adapted shadcn components: real data, no mock data, no RNG
+# ---------------------------------------------------------------------------
+
+
+def test_score_cards_are_real_ratios_over_the_report(realistic_run_dir, tmp_path, monkeypatch):
+    from reviewer.derive import score_cards, settled_gross_paise
+
+    monkeypatch.setattr(cli, "default_provider", _offline_provider)
+    monkeypatch.setenv("ASSAY_STORE_PATH", str(tmp_path / "store.db"))
+    result = runner.invoke(cli.app, ["audit", "--run-dir", str(realistic_run_dir), "--no-adjudicate"])
+    assert result.exit_code == 0, result.output
+    run_id = next(
+        line.split(":", 1)[1].strip() for line in result.output.splitlines() if line.startswith("audit run:")
+    )
+    _dir, _path, report = locate_run(run_id)
+
+    cards = {c.key: c for c in score_cards(report)}
+    assert set(cards) == {"verified_value", "credits_decomposed", "clean_credits"}
+
+    # Recomputed here independently of derive.py's own arithmetic.
+    volume = settled_gross_paise(report)
+    verified = volume - abs(report.total_unaccounted_paise)
+    assert cards["verified_value"].value_bps == verified * 10_000 // volume
+
+    clean = sum(1 for c in report.conservation if c.unexplained_paise == 0)
+    assert cards["clean_credits"].value_bps == clean * 10_000 // len(report.conservation)
+
+    # Every gauge is a real ratio, so none can exceed 100%.
+    assert all(0 <= c.value_bps <= 10_000 for c in cards.values())
+
+
+def test_timeline_is_dated_from_real_credits_and_sorted(audited, clean_run_dir):
+    from reviewer.derive import timeline_points
+
+    run_id, client = audited
+    _dir, _path, report = locate_run(run_id)
+
+    from cli.loaders import load_bank_credits
+
+    dates = {c.id: c.value_date.isoformat() for c in load_bank_credits(clean_run_dir)}
+    points = timeline_points(report, dates)
+
+    assert len(points) == len(report.conservation)
+    assert [p.value_date for p in points] == sorted(p.value_date for p in points)
+    # Every date is a real credit's value_date, never invented.
+    assert all(p.value_date == dates[p.credit_id] for p in points)
+
+    response = client.get(f"/api/runs/{run_id}/timeline")
+    assert response.status_code == 200
+    assert len(response.json()) == len(points)
+
+
+def test_a_credit_with_no_known_value_date_is_dropped_not_invented(audited):
+    """An invented date on a settlement chart is a wrong fact, not a
+    cosmetic gap -- so a credit whose date can't be resolved is omitted."""
+    from reviewer.derive import timeline_points
+
+    run_id, _client = audited
+    _dir, _path, report = locate_run(run_id)
+
+    assert timeline_points(report, {}) == []
+
+
+def test_scores_endpoint_serves_real_cards(audited):
+    run_id, client = audited
+    response = client.get(f"/api/runs/{run_id}/scores")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 3
+    assert all(0 <= c["value_bps"] <= 10_000 for c in body)
+
+
+def test_the_hero_media_is_the_engines_own_diagram_not_a_third_party_asset(audited):
+    """The upstream hero pointed at Unsplash/Pexels CDNs. Decorative images
+    fetched from third parties onto a page showing a merchant's money is
+    not a trade worth making, so the hero's media is served from this app:
+    the committed, byte-deterministic reliability diagram."""
+    _run_id, client = audited
+
+    response = client.get("/api/diagram/reliability.svg")
+
+    # 404 is a legitimate state (diagram not generated yet) -- what must
+    # never happen is the page reaching outside for its assets.
+    assert response.status_code in (200, 404)
+    if response.status_code == 200:
+        assert response.headers["content-type"].startswith("image/svg+xml")
+
+    web_src = Path(__file__).resolve().parent.parent / "reviewer" / "web" / "src"
+    hero = strip_comments(
+        (web_src / "components" / "ui" / "scroll-expansion-hero.tsx").read_text(encoding="utf-8")
+    )
+    assert "next/image" not in hero, "next/image does not resolve in a Vite app"
+
+    for source in web_src.rglob("*.tsx"):
+        code = strip_comments(source.read_text(encoding="utf-8"))
+        for cdn in ("unsplash.com", "pexels.com", "ufs.sh"):
+            assert cdn not in code, f"{source.name} fetches decorative media from {cdn}"
+
+
+def test_the_shipped_frontend_contains_no_mock_financial_data():
+    """The guard that matters for this page.
+
+    The upstream components shipped `@visx/mock-data` (Apple stock prices)
+    and `Utils.randomInt()` score generation. Either one rendered beside
+    real hash-verified rupee figures, with nothing marking which is which,
+    is the exact failure this product exists to prevent. Pinned as a test
+    so a future paste of the original snippet fails loudly.
+    """
+    web = Path(__file__).resolve().parent.parent / "reviewer" / "web"
+
+    package_json = (web / "package.json").read_text(encoding="utf-8")
+    assert "@visx/mock-data" not in package_json, "mock financial data must not be a dependency"
+
+    for source in (web / "src").rglob("*.tsx"):
+        code = strip_comments(source.read_text(encoding="utf-8"))
+        assert "mock-data" not in code, f"{source.name} imports mock financial data"
+        assert "appleStock" not in code, f"{source.name} references Apple stock mock data"
+        # randomHash (for unique SVG gradient ids) is fine; randomInt
+        # generated a *displayed score*, which is not.
+        assert "randomInt" not in code, f"{source.name} can generate a fake score"
 
 
 def test_runs_listing_reports_availability(audited):

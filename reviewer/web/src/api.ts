@@ -101,6 +101,24 @@ export interface ConservationView {
   balances: boolean;
 }
 
+export interface ScoreCard {
+  key: string;
+  title: string;
+  description: string;
+  value_bps: number;
+  headline: string;
+  detail: string;
+  strength: "weak" | "moderate" | "strong" | "none";
+}
+
+export interface TimelinePoint {
+  credit_id: string;
+  value_date: string;
+  credit: MoneyView;
+  settled_gross: MoneyView;
+  unexplained: MoneyView;
+}
+
 export interface RunSummary {
   run_id: string;
   started_at: string;
@@ -136,6 +154,9 @@ export const api = {
     ),
   conservation: (runId: string) =>
     get<ConservationView[]>(`/api/runs/${encodeURIComponent(runId)}/conservation`),
+  scores: (runId: string) => get<ScoreCard[]>(`/api/runs/${encodeURIComponent(runId)}/scores`),
+  timeline: (runId: string) =>
+    get<TimelinePoint[]>(`/api/runs/${encodeURIComponent(runId)}/timeline`),
   explain: (runId: string, recordId: string) =>
     get<{ record_id: string; text: string }>(
       `/api/runs/${encodeURIComponent(runId)}/explain/${encodeURIComponent(recordId)}`,

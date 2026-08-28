@@ -22,13 +22,18 @@ from reviewer.derive import (
     ClusterDetail,
     ClusterView,
     ConservationView,
+    ScoreCard,
+    TimelinePoint,
     batch_view,
     cluster_detail,
     cluster_views,
     conservation_views,
+    score_cards,
+    timeline_points,
 )
 
 WEB_DIST = Path(__file__).resolve().parent / "web" / "dist"
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 app = FastAPI(
     title="Assay Reviewer",
@@ -74,6 +79,23 @@ class RunSummary(BaseModel):
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True}
+
+
+@app.get("/api/diagram/reliability.svg")
+def get_reliability_diagram():
+    """The committed reliability diagram, served as the hero's media.
+
+    A real artifact of the engine -- eval/diagram.py builds it as
+    byte-deterministic SVG from the sweep's own calibration bins -- rather
+    than stock imagery. If it hasn't been generated yet the hero falls back
+    to type alone, so this 404 is not an error state for the page.
+    """
+    from fastapi.responses import FileResponse
+
+    path = REPO_ROOT / "docs" / "reliability.svg"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="docs/reliability.svg has not been generated")
+    return FileResponse(path, media_type="image/svg+xml")
 
 
 @app.get("/api/runs", response_model=list[RunSummary])
@@ -129,6 +151,32 @@ def get_cluster(run_id: str, cluster_id: str) -> ClusterDetail:
 @app.get("/api/runs/{run_id}/conservation", response_model=list[ConservationView])
 def get_conservation(run_id: str) -> list[ConservationView]:
     return conservation_views(_load(run_id))
+
+
+@app.get("/api/runs/{run_id}/scores", response_model=list[ScoreCard])
+def get_scores(run_id: str) -> list[ScoreCard]:
+    """The three gauge headlines, each a real ratio over the report."""
+    return score_cards(_load(run_id))
+
+
+@functools.lru_cache(maxsize=8)
+def _credit_value_dates(run_dir: str) -> dict[str, str]:
+    """credit_id -> ISO value_date, read from the run's bank statement.
+
+    Separate from `_explain_context` on purpose: this needs only a JSON
+    parse, where that one also compiles the rate card. The chart should
+    not pay for a contract compile.
+    """
+    from cli.loaders import load_bank_credits
+
+    return {c.id: c.value_date.isoformat() for c in load_bank_credits(Path(run_dir))}
+
+
+@app.get("/api/runs/{run_id}/timeline", response_model=list[TimelinePoint])
+def get_timeline(run_id: str) -> list[TimelinePoint]:
+    """Every bank credit, dated, for the settlement-month chart."""
+    report = _load(run_id)
+    return timeline_points(report, _credit_value_dates(report.run_dir))
 
 
 class ExplainResponse(BaseModel):

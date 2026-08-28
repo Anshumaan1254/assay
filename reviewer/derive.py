@@ -306,6 +306,133 @@ def cluster_detail(report: AuditReport, cluster_id: str) -> ClusterDetail | None
     )
 
 
+class ScoreCard(BaseModel):
+    """One headline ratio for the gauge cards.
+
+    Every field is derived from the persisted report. The upstream card
+    component this feeds generated its scores with `Utils.randomInt()`;
+    nothing here is generated, and `detail` always names the two real
+    quantities the ratio came from so a reader can check the division
+    rather than trust the gauge.
+    """
+
+    key: str
+    title: str
+    description: str
+    value_bps: int
+    headline: str
+    detail: str
+    strength: str
+
+
+def _strength(value_bps: int) -> str:
+    """Same thresholds as the upstream card (80% / 40%), in integer bps."""
+    if value_bps >= 8000:
+        return "strong"
+    if value_bps >= 4000:
+        return "moderate"
+    return "weak"
+
+
+def _ratio_bps(numerator: int, denominator: int) -> int:
+    """Integer basis points. A zero denominator is 'nothing to measure',
+    reported as a full bar rather than a division."""
+    if denominator == 0:
+        return 10_000
+    return max(0, min(10_000, numerator * 10_000 // denominator))
+
+
+def _pct(value_bps: int) -> str:
+    whole, frac = divmod(value_bps, 100)
+    return f"{whole}.{frac:02d}%"
+
+
+def score_cards(report: AuditReport) -> list[ScoreCard]:
+    volume = settled_gross_paise(report)
+    verified = volume - abs(report.total_unaccounted_paise)
+    resolved = sum(1 for p in report.proofs if p.outcome is DecompositionOutcome.RESOLVED)
+    clean = sum(1 for c in report.conservation if c.unexplained_paise == 0)
+
+    verified_bps = _ratio_bps(verified, volume)
+    decomposed_bps = _ratio_bps(resolved, len(report.proofs))
+    clean_bps = _ratio_bps(clean, len(report.conservation))
+
+    return [
+        ScoreCard(
+            key="verified_value",
+            title="Verified value",
+            description=(
+                "Share of settled volume this audit could account for, weighted by money "
+                "rather than by row count. The remainder is the unaccounted bucket."
+            ),
+            value_bps=verified_bps,
+            headline=_pct(verified_bps),
+            detail=f"{rupees(verified)} of {rupees(volume)}",
+            strength=_strength(verified_bps),
+        ),
+        ScoreCard(
+            key="credits_decomposed",
+            title="Credits decomposed",
+            description=(
+                "Bank credits resolved to an exact subset of transactions with a proof, "
+                "rather than left ambiguous or unresolved."
+            ),
+            value_bps=decomposed_bps,
+            headline=_pct(decomposed_bps),
+            detail=f"{resolved} of {len(report.proofs)} credits",
+            strength=_strength(decomposed_bps),
+        ),
+        ScoreCard(
+            key="clean_credits",
+            title="Credits reconciling exactly",
+            description=(
+                "Credits whose conservation identity closes with a zero residual — every "
+                "paisa of the payout explained by a ledger record."
+            ),
+            value_bps=clean_bps,
+            headline=_pct(clean_bps),
+            detail=f"{clean} of {len(report.conservation)} credits",
+            strength=_strength(clean_bps),
+        ),
+    ]
+
+
+class TimelinePoint(BaseModel):
+    """One bank credit, dated, for the settlement-month chart.
+
+    `value_date` comes from the BankCredit record in the run directory,
+    not from the report (ConservationReport carries only a credit_ref), so
+    the chart's x-axis is the real date the money landed rather than an
+    index the UI made up.
+    """
+
+    credit_id: str
+    value_date: str
+    credit: MoneyView
+    settled_gross: MoneyView
+    unexplained: MoneyView
+
+
+def timeline_points(report: AuditReport, value_dates: dict[str, str]) -> list[TimelinePoint]:
+    """Conservation rows joined to their credit's value_date, sorted by
+    date. A credit whose date is missing from `value_dates` is dropped
+    rather than dated to today -- an invented date on a settlement chart
+    is a wrong fact, not a cosmetic gap."""
+    points = [
+        TimelinePoint(
+            credit_id=c.credit_ref.id,
+            value_date=value_dates[c.credit_ref.id],
+            credit=MoneyView.of(c.credit_paise),
+            settled_gross=MoneyView.of(c.settled_gross_paise),
+            unexplained=MoneyView.of(c.unexplained_paise),
+        )
+        for c in report.conservation
+        if c.credit_ref.id in value_dates
+    ]
+    points.sort(key=lambda p: (p.value_date, p.credit_id))
+    return points
+
+
 class ConservationView(BaseModel):
     """One bank credit's conservation identity, term by term, exactly as
     invariant 3 states it."""
