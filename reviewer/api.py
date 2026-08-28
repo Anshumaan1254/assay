@@ -31,6 +31,7 @@ from reviewer.derive import (
     score_cards,
     timeline_points,
 )
+from reviewer.explain import ExplainView, explain_structured
 
 WEB_DIST = Path(__file__).resolve().parent / "web" / "dist"
 
@@ -163,9 +164,6 @@ def get_timeline(run_id: str) -> list[TimelinePoint]:
     return timeline_points(report, _credit_value_dates(report.run_dir))
 
 
-class ExplainResponse(BaseModel):
-    record_id: str
-    text: str
 
 
 @functools.lru_cache(maxsize=4)
@@ -194,27 +192,27 @@ def _explain_context(run_dir: str):
     )
 
 
-@app.get("/api/runs/{run_id}/explain/{record_id}", response_model=ExplainResponse)
-def get_explain(run_id: str, record_id: str) -> ExplainResponse:
-    """The single-transaction drill-down, mirroring `assay explain`.
+@app.get("/api/runs/{run_id}/explain/{record_id}", response_model=ExplainView)
+def get_explain(run_id: str, record_id: str) -> ExplainView:
+    """The single-transaction drill-down, as structured data.
 
-    Deliberately returns `explain_record`'s own preformatted text rather
-    than a parallel structured rendering: the CLI is the product, and two
-    independent renderings of the same causal chain is two things that can
-    disagree about it.
+    `assay explain` renders the same causal chain as text for a terminal;
+    this serves it as objects so the page can lay it out as a readable
+    record rather than a <pre> of JSON and terminal columns. Both call the
+    same engine functions, and a test pins that they agree on the numbers.
     """
-    from cli.explain import explain_record
     from llm.provider import ProviderUnavailable
 
     report = _load(run_id)
     try:
         ledger, credits, contract, merchant_id, calibration = _explain_context(report.run_dir)
-        text = explain_record(record_id, ledger, credits, contract, merchant_id, calibration=calibration)
+        return explain_structured(
+            record_id, ledger, credits, contract, merchant_id, calibration=calibration
+        )
     except ProviderUnavailable as error:
         raise HTTPException(status_code=503, detail=f"contract unavailable: {error}") from None
     except (KeyError, ValueError) as error:
         raise HTTPException(status_code=404, detail=str(error)) from None
-    return ExplainResponse(record_id=record_id, text=text)
 
 
 # Mounted last so it never shadows /api. Absent until `npm run build` has

@@ -119,6 +119,63 @@ export interface TimelinePoint {
   unexplained: MoneyView;
 }
 
+export interface Fact {
+  label: string;
+  value: string;
+  mono: boolean;
+}
+
+export interface Clause {
+  rule_id: string;
+  quote: string;
+}
+
+export interface RecomputeRow {
+  label: string;
+  reported: MoneyView;
+  recomputed: MoneyView;
+  delta: MoneyView;
+  agrees: boolean;
+}
+
+export interface Settlement {
+  credit_id: string;
+  tier: string;
+  outcome: string;
+  reason: string | null;
+  lane: string | null;
+  confidence_bps: number;
+  calibrated: boolean;
+  proof_hash: string;
+}
+
+export interface ExplainFinding {
+  discrepancy_class: string;
+  lane: "auto" | "propose" | "escalate";
+  confidence_bps: number;
+  impact: MoneyView;
+  explanation: string;
+}
+
+export interface ExplainView {
+  record_id: string;
+  found: boolean;
+  record_type: string | null;
+  headline: string | null;
+  note: string | null;
+  facts: Fact[];
+  contract_fee: MoneyView | null;
+  contract_tax: MoneyView | null;
+  reported_fee: MoneyView | null;
+  reported_tax: MoneyView | null;
+  clauses: Clause[];
+  recompute: RecomputeRow[];
+  contract_gap: string | null;
+  settlement: Settlement | null;
+  findings: ExplainFinding[];
+  evidence: EvidenceRef[];
+}
+
 export interface RunSummary {
   run_id: string;
   started_at: string;
@@ -158,7 +215,7 @@ export const api = {
   timeline: (runId: string) =>
     get<TimelinePoint[]>(`/api/runs/${encodeURIComponent(runId)}/timeline`),
   explain: (runId: string, recordId: string) =>
-    get<{ record_id: string; text: string }>(
+    get<ExplainView>(
       `/api/runs/${encodeURIComponent(runId)}/explain/${encodeURIComponent(recordId)}`,
     ),
 };

@@ -1793,3 +1793,31 @@ A fourth gap the review surfaced but wasn't in the original 12: `llm/providers/c
 - `Ledger`'s identical-duplicate dedup (added yesterday) would swallow a gateway that genuinely charged the same fee line twice under the same id. Checked `datagen`'s D11: it allocates a fresh fee id, so no planted discrepancy is hidden and the eval numbers are unaffected. Real-data risk only.
 
 **Where a model's output reaches a number, since it was asked:** `llm/contract_parser.py` is the material exposure, and larger than "a human signs off once" implies — the compiled contract **is** the recomputation baseline, so every `FEE_OVERCHARGE` is `reported − recomputed` where `recomputed` traces to a `rate_bps` a model extracted from prose. A misparsed 1.75% as 1.95% produces confident, precise, wrong findings across every transaction, undetectable downstream because the arithmetic is flawless over a poisoned input. Second path: `core/lanes.py`'s calibration artifact is fitted on `datagen`-labelled runs, so AUTO-lane thresholds — which gate automatic journal posting — are calibrated against synthetic error distributions. `llm/adjudicator.py` is clean: it proposes, cites, is reference-checked, and never posts.
+
+## 2026-08-29 00:20 — `assay report <run_id>` served a report.json belonging to a different run
+
+**Symptom:** pointing the new reviewer UI at the audit store showed `report_hash 9effcbcd…` for run `AUD-dd4ba0399a94`, while `AuditRunRow.report_hash` for that same run_id recorded `5bc692d4…`. Both numbers were real; they described different runs.
+
+**Diagnosis:** the run_id → run_dir mapping lives in the audit store, the artifact lives in the run directory, and nothing tied the two together. `cli/report.py::locate_run` looked up the row, read `<run_dir>/report.json`, and returned it without checking it was that row's report. The two drift whenever the same run_dir is audited again into a *different* `ASSAY_STORE_PATH` — which my own test suite was doing, auditing the committed `runs/realistic-seed42` in place with a throwaway store, rewriting the artifact while the developer's real `.assay/` store kept the original hash. So `assay report` and `assay replay` could both print a report whose own embedded hash contradicted the run they were asked for: the exact substitution the hashing exists to make impossible. Found by reading the UI's output against the store, not by a failing test — every existing test wrote both row and artifact in one invocation, where they cannot disagree.
+
+**First fix:** none attempted. The check is one comparison and there was no plausible alternative worth trying.
+
+**Whether it worked:** n/a.
+
+**Final fix:** `locate_run` now compares the artifact's `report_hash` to the store's and raises a new `ReportArtifactStale`; `assay report`, `assay replay` and the reviewer API all refuse on it. Both values are written from the same report object in the same `assay audit` invocation, so in normal operation they cannot differ — a difference means the artifact is not that run's. Separately, `tests/test_reviewer_api.py` now copies the committed run directory to `tmp_path` before auditing it, so no test can rewrite a working-copy fixture again.
+
+**Guard added:** `tests/test_cli_report.py::test_report_refuses_an_artifact_that_belongs_to_a_different_run` and `tests/test_cli_replay.py::test_replay_refuses_an_artifact_that_belongs_to_a_different_run`. `test_replay_fails_cleanly_when_the_stored_hash_was_tampered_with` was rewritten: it exercised replay's FAIL branch by editing report.json, which the new guard now catches earlier and which was testing artifact substitution rather than the non-determinism that branch is about. It now diverges the recomputation itself.
+
+## 2026-08-29 00:35 — all three score cards disappeared from the reviewer page
+
+**Symptom:** after wiring the gauge sweep to fire on scroll, the "Headline ratios" section rendered its heading and lede and then nothing. No console error. The API returned all three cards correctly (`/api/runs/<id>/scores` → 200, three objects).
+
+**Diagnosis:** I gated the card's *mount* on an `IntersectionObserver`, and observed a wrapper carrying `display: contents`. That property generates no layout box, `IntersectionObserver` observes boxes, so the callback never fired, `inView` stayed `false`, and the card was never rendered. The `contents` wrapper was itself load-bearing for an earlier fix — it makes the card the direct grid child so `h-full` reaches it — so the two changes were individually correct and only broke in combination.
+
+**First fix:** none — the diagnosis was the fix.
+
+**Whether it worked:** n/a.
+
+**Final fix:** the card always renders and starts at `opacity-0`; only the animation is gated on `inView`, and the observer targets the grid, which has a real box. Same visible behaviour, no mount dependency on a callback that may never fire.
+
+**Guard added:** `tests/test_reviewer_api.py::test_score_cards_are_never_mounted_conditionally_on_being_in_view`, which asserts the component contains no `{inView && ` and that the observer targets the grid. Narrow, and honestly so: it pins this specific trap rather than the general class, because the repo has no DOM test runner and adding one to catch it was not worth the dependency.

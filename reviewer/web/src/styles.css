@@ -874,6 +874,106 @@ main {
   background: var(--red-dim);
 }
 
+/* ── single-record drill-down ───────────────────────────────────────── */
+
+.record {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.record__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.record__kind {
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  letter-spacing: -0.02em;
+}
+.record__id {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--gold);
+}
+
+.record__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem 1rem;
+}
+.record__facts dt {
+  font-size: 0.68rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.2rem;
+}
+.record__facts dd {
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+.record__facts dd.mono {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.record__hash {
+  margin-top: 0.7rem;
+  color: var(--ink-faint);
+  font-size: 0.7rem;
+  word-break: break-all;
+}
+
+table.recompute {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+table.recompute th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 500;
+  padding: 0 0.6rem 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+table.recompute th:not(:first-child),
+table.recompute td:not(:first-child) {
+  text-align: right;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+table.recompute td {
+  padding: 0.55rem 0.6rem 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-dim);
+}
+table.recompute tr:last-child td {
+  border-bottom: 0;
+}
+table.recompute tr.is-off td {
+  color: var(--ink);
+}
+table.recompute tr.is-off td:last-child {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.clause__id {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+}
+
 pre.explain {
   font-family: var(--mono);
   font-size: 0.76rem;

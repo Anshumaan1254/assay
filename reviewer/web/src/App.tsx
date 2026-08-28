@@ -10,6 +10,7 @@ import {
   type ConservationView,
   type MoneyView,
   type RunSummary,
+  type ExplainView,
   type ScoreCard,
   type TimelinePoint,
 } from "./api";
@@ -564,6 +565,180 @@ function Clusters({
   );
 }
 
+/* ── single-record drill-down ───────────────────────────────────────── */
+
+function RecordDetail({
+  view,
+  onOpen,
+}: {
+  view: ExplainView;
+  onOpen: (recordId: string) => void;
+}) {
+  if (!view.found) {
+    return (
+      <div>
+        <div className="block__label">Record</div>
+        {/* Never render a bare `{view.note}`: a payload without that field
+         * (an older API, a shape change) produced an empty <p> and the
+         * panel just looked broken. Always say something. */}
+        <p style={{ color: "var(--ink-dim)" }}>
+          {view.note ?? `Could not read ${view.record_id ?? "this record"} from the audit.`}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="record">
+      <div className="record__head">
+        <span className="record__kind">{view.record_type}</span>
+        <span className="record__id">{view.record_id}</span>
+      </div>
+
+      <dl className="record__facts">
+        {view.facts.map((fact) => (
+          <div key={fact.label}>
+            <dt>{fact.label}</dt>
+            <dd className={fact.mono ? "mono" : undefined}>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {view.recompute.length > 0 && (
+        <div>
+          <div className="block__label">What was charged, versus what the contract says</div>
+          <table className="recompute">
+            <thead>
+              <tr>
+                <th>Line</th>
+                <th>Charged</th>
+                <th>Should be</th>
+                <th>Difference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.recompute.map((row) => (
+                <tr key={row.label} className={row.agrees ? undefined : "is-off"}>
+                  <td>{row.label}</td>
+                  <td>₹{money(row.reported)}</td>
+                  <td>₹{money(row.recomputed)}</td>
+                  <td>{row.agrees ? "—" : `₹${money(row.delta)}`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {view.clauses.length > 0 && (
+        <div>
+          <div className="block__label">The clause this rests on</div>
+          {view.clauses.map((clause) => (
+            <blockquote key={clause.rule_id} className="clause">
+              {clause.quote}
+              <span className="clause__id">{clause.rule_id}</span>
+            </blockquote>
+          ))}
+        </div>
+      )}
+
+      {view.contract_gap && (
+        <div>
+          <div className="block__label">Contract gap</div>
+          <p style={{ color: "var(--red)" }}>{view.contract_gap}</p>
+        </div>
+      )}
+
+      {view.settlement && (
+        <div>
+          <div className="block__label">Where it settled</div>
+          <dl className="record__facts">
+            <div>
+              <dt>Bank credit</dt>
+              <dd className="mono">{view.settlement.credit_id}</dd>
+            </div>
+            <div>
+              <dt>Matched by</dt>
+              <dd>{view.settlement.tier}</dd>
+            </div>
+            <div>
+              <dt>Outcome</dt>
+              <dd>{view.settlement.outcome}</dd>
+            </div>
+            {view.settlement.lane && (
+              <div>
+                <dt>Lane</dt>
+                <dd>
+                  <span className={`badge badge--${view.settlement.lane}`}>
+                    {view.settlement.lane}
+                  </span>
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt>{view.settlement.calibrated ? "Calibrated confidence" : "Raw confidence"}</dt>
+              <dd>{(view.settlement.confidence_bps / 100).toFixed(2)}%</dd>
+            </div>
+            {view.settlement.reason && (
+              <div>
+                <dt>Reason</dt>
+                <dd>{view.settlement.reason}</dd>
+              </div>
+            )}
+          </dl>
+          <p className="record__hash mono">proof {view.settlement.proof_hash}</p>
+        </div>
+      )}
+
+      <div>
+        <div className="block__label">
+          {view.findings.length > 0
+            ? `Findings citing this record (${view.findings.length})`
+            : "Findings"}
+        </div>
+        {view.findings.length === 0 ? (
+          <p style={{ color: "var(--green)" }}>
+            Nothing was found wrong with this record — every deduction recomputed to the contracted
+            amount.
+          </p>
+        ) : (
+          view.findings.map((finding, i) => (
+            <div key={i} className="finding">
+              <div className="finding__top">
+                <span style={{ textTransform: "capitalize" }}>{finding.discrepancy_class}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span className={`badge badge--${finding.lane}`}>{finding.lane}</span>
+                  <span className="finding__amt">₹{money(finding.impact)}</span>
+                </span>
+              </div>
+              <p className="finding__exp">{finding.explanation}</p>
+            </div>
+          ))
+        )}
+      </div>
+
+      {view.evidence.length > 0 && (
+        <div>
+          <div className="block__label">Related records</div>
+          <div className="finding__evidence">
+            {view.evidence.map((ref) => (
+              <button
+                key={`${ref.type}:${ref.id}`}
+                className="chip"
+                onClick={() => onOpen(ref.id)}
+              >
+                {ref.type} {ref.id}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view.note && <p style={{ color: "var(--ink-faint)" }}>{view.note}</p>}
+    </div>
+  );
+}
+
 /* ── detail drawer ──────────────────────────────────────────────────── */
 
 function Drawer({
@@ -577,7 +752,9 @@ function Drawer({
 }) {
   const [detail, setDetail] = useState<ClusterDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [explain, setExplain] = useState<{ id: string; text: string } | null>(null);
+  const [explain, setExplain] = useState<ExplainView | null>(null);
+  const [explainError, setExplainError] = useState<string | null>(null);
+  const [explaining, setExplaining] = useState(false);
   const scrimRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
 
@@ -614,12 +791,15 @@ function Drawer({
   }, [dismiss]);
 
   const openExplain = async (recordId: string) => {
-    setExplain({ id: recordId, text: "loading…" });
+    setExplaining(true);
+    setExplain(null);
+    setExplainError(null);
     try {
-      const response = await api.explain(runId, recordId);
-      setExplain({ id: recordId, text: response.text });
+      setExplain(await api.explain(runId, recordId));
     } catch (e) {
-      setExplain({ id: recordId, text: `could not explain ${recordId}: ${(e as Error).message}` });
+      setExplainError(`Could not explain ${recordId}: ${(e as Error).message}`);
+    } finally {
+      setExplaining(false);
     }
   };
 
@@ -727,12 +907,14 @@ function Drawer({
                 ))}
               </div>
 
-              {explain && (
+              {explaining && (
                 <div>
-                  <div className="block__label">assay explain {explain.id}</div>
-                  <pre className="explain">{explain.text}</pre>
+                  <div className="block__label">Loading record</div>
+                  <div className="spinner" />
                 </div>
               )}
+              {explainError && <p className="err">{explainError}</p>}
+              {explain && <RecordDetail view={explain} onOpen={openExplain} />}
             </>
           )}
         </div>
