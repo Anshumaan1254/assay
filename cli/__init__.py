@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from enum import Enum
 from pathlib import Path
 
 import typer
@@ -97,7 +98,7 @@ def audit(
         typer.echo(f"assay audit: refused -- {error}", err=True)
         raise typer.Exit(code=1) from None
 
-    from cli.report import write_report_json
+    from cli.report import render_table, write_report_json
 
     report_path = write_report_json(report)
 
@@ -105,17 +106,9 @@ def audit(
         typer.echo(json.dumps(report.hash_payload(), indent=2, sort_keys=True))
         return
 
-    for line in report.summary_lines():
+    for line in render_table(report).splitlines():
         typer.echo(line)
     typer.echo(f"report:           {report_path}")
-    if report.clusters:
-        typer.echo("")
-        typer.echo("Top exceptions by money:")
-        for cluster in report.clusters[:10]:
-            typer.echo(
-                f"  {cluster.total_impact.to_rupees_str():>14}  {cluster.discrepancy_class.value:<28}"
-                f"  {cluster.count:>3} finding(s)  [{cluster.rule_id or 'no rule resolved'}]"
-            )
 
 
 @app.command()
@@ -188,6 +181,47 @@ def eval(
         ablate=ablate,
         echo=typer.echo,
     )
+
+
+class ReportFormat(str, Enum):
+    """Deliberately defined here, not imported from cli.report: cli.report
+    imports cli.audit, and importing that chain at cli/__init__.py's own
+    module level -- before `def audit`/`def report` are defined further
+    down this same file -- would let those later definitions silently
+    overwrite the cli.audit/cli.report SUBMODULE attributes that `import
+    cli.audit`-style test code relies on. Kept import-free so this
+    annotation never triggers that."""
+
+    json = "json"
+    table = "table"
+    html = "html"
+
+
+@app.command()
+def report(
+    run_id: str,
+    output_format: ReportFormat = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
+        ReportFormat.table, "--format", help="json | table | html."
+    ),
+) -> None:
+    """Print a previously completed audit run, found by run_id alone (see
+    `assay audit`'s own printed `audit run:`/`report:` lines)."""
+    from cli.report import ReportArtifactMissing, RunNotFound, locate_run, render_html, render_table
+
+    try:
+        _run_dir, report_json_path, parsed = locate_run(run_id)
+    except (RunNotFound, ReportArtifactMissing) as error:
+        typer.echo(f"assay report: refused -- {error}", err=True)
+        raise typer.Exit(code=1) from None
+
+    if output_format is ReportFormat.json:
+        # The on-disk bytes verbatim -- byte-for-byte fidelity with what
+        # was persisted, no re-serialization risk.
+        typer.echo(report_json_path.read_text(encoding="utf-8"))
+    elif output_format is ReportFormat.html:
+        typer.echo(render_html(parsed))
+    else:
+        typer.echo(render_table(parsed))
 
 
 @app.command()
