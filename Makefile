@@ -27,8 +27,19 @@ eval:
 evidence:
 	$(PYTHON) -m eval.cli sweep --evidence
 
+# End to end from a clean clone: generate the canonical realistic-profile
+# run, compile and pin its contract, audit it, and score a matching eval
+# run -- all through the committed .llm_cache/, so no GEMINI_API_KEY is
+# needed. Deliberately NOT the full eval sweep (see `make eval`): every
+# profile x every seed x --ablate does not fit a two-minute budget even
+# fully cached, so demo scores one profile/seed matching the run it just
+# audited, --no-ablate, into its own eval/results/demo/ subpath rather
+# than the committed top-level eval/results/.
 demo:
-	@echo "demo: not implemented yet"
+	$(PYTHON) -m cli generate --profile realistic --seed 42
+	$(PYTHON) -m cli contract compile runs/realistic-seed42/rate_card.md
+	$(PYTHON) -m cli audit --run-dir runs/realistic-seed42
+	$(PYTHON) -m cli eval --profiles realistic --seeds 42 --no-ablate --no-diagrams --out eval/results/demo
 
 # Runs every failure-injection scenario and prints a pass/fail table read
 # back from the structured incident log each scenario writes -- see
