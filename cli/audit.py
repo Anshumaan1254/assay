@@ -62,6 +62,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -113,7 +114,9 @@ class AuditReport(AssayModel):
     concluding it. The two are kept in one object but separated by
     `TELEMETRY_FIELDS`, which is what `compute_report_hash` excludes."""
 
-    TELEMETRY_FIELDS: ClassVar[frozenset[str]] = frozenset({"started_at", "wall_clock_ns", "report_hash"})
+    TELEMETRY_FIELDS: ClassVar[frozenset[str]] = frozenset(
+        {"started_at", "wall_clock_ns", "report_hash", "git_sha"}
+    )
 
     audit_run_id: str
     run_dir: str
@@ -123,6 +126,7 @@ class AuditReport(AssayModel):
     contract_version: str
     contract_source_sha256: str
     calibration_sha256: str | None
+    rounding_policy: str
 
     input_hashes: dict[str, str]
     input_hash: str
@@ -158,6 +162,7 @@ class AuditReport(AssayModel):
 
     started_at: str
     wall_clock_ns: int
+    git_sha: str
 
     report_hash: str = ""
 
@@ -217,6 +222,10 @@ class AuditReport(AssayModel):
             )
         else:
             lines.append("adjudication:     skipped (no provider supplied)")
+        lines.append(f"seed:             {self.seed}")
+        lines.append(f"input hash:       {self.input_hash}")
+        lines.append(f"rounding policy:  {self.rounding_policy}")
+        lines.append(f"git sha:          {self.git_sha}")
         lines.append(f"report hash:      {self.report_hash}")
         return lines
 
@@ -233,6 +242,35 @@ def hash_inputs(run_dir: Path) -> dict[str, str]:
 
 def sha256_of_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _git_commit() -> str:
+    """The commit this report was produced by, for provenance only -- not
+    part of `report_hash` (see TELEMETRY_FIELDS). A deliberate inline copy
+    of eval/sweep.py's own `_git_commit`, not an import: eval/sweep.py
+    transitively reaches datagen/, and this module is on invariant 5's
+    protected path.
+
+    Pinned to this file's own repo (`-C _REPO_ROOT`) rather than the
+    caller's current working directory -- an audit run from inside some
+    other git checkout must not silently report that repo's HEAD as the
+    commit that produced this report. Bounded by a timeout: this now runs
+    on every audit, and an external call on that critical path must degrade
+    rather than hang, the same discipline CLAUDE.md requires of the Gemini
+    provider.
+    """
+    try:
+        return subprocess.check_output(
+            ["git", "-C", str(_REPO_ROOT), "rev-parse", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        ).strip()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return "unknown"
 
 
 def _read_seed(run_dir: Path) -> int:
@@ -400,6 +438,7 @@ def run_audit(
         contract_version=contract.version_id,
         contract_source_sha256=contract.source_sha256,
         calibration_sha256=calibration.artifact_sha256 if calibration is not None else None,
+        rounding_policy=contract.rounding.value,
         input_hashes=input_hashes,
         input_hash=input_hash,
         proofs=proofs,
@@ -422,5 +461,6 @@ def run_audit(
         record_count=len(ledger),
         started_at=started_at.isoformat(),
         wall_clock_ns=time.monotonic_ns() - start_ns,
+        git_sha=_git_commit(),
     )
     return report.model_copy(update={"report_hash": report.compute_report_hash()})

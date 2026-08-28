@@ -272,6 +272,25 @@ def test_the_report_hash_ignores_wall_clock_telemetry(committed_report):
 
 
 @pytest.mark.timeout(300)
+def test_the_report_hash_ignores_git_sha_but_reflects_rounding_policy(committed_report):
+    """`git_sha` is provenance about *this machine on this day* -- a replay
+    run days later, on a newer commit, must not manufacture a false hash
+    mismatch purely because the code moved on. `rounding_policy` is the
+    opposite: a genuine arithmetic input (mirrors `contract.rounding`,
+    already baked into `schedule_sha256`) and must change the hash if it
+    changes."""
+    report = committed_report
+    assert len(report.git_sha) > 0
+    assert report.rounding_policy == "half_up"
+
+    perturbed_git_sha = report.model_copy(update={"git_sha": "0" * 40})
+    assert perturbed_git_sha.compute_report_hash() == report.report_hash
+
+    perturbed_rounding = report.model_copy(update={"rounding_policy": "half_even"})
+    assert perturbed_rounding.compute_report_hash() != report.report_hash
+
+
+@pytest.mark.timeout(300)
 def test_changing_an_input_file_changes_both_the_run_id_and_the_report_hash(clean_run_dir, tmp_path):
     baseline = run_audit(clean_run_dir, _offline_provider(), merchant_id=MERCHANT)
 

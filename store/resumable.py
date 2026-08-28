@@ -49,7 +49,7 @@ from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from cli.audit import AuditReport, _adjudicate, _read_seed, decompose_phase, hash_inputs
+from cli.audit import AuditReport, _adjudicate, _git_commit, _read_seed, decompose_phase, hash_inputs
 from cli.loaders import infer_merchant_id, load_bank_credits, load_contract, load_ledger
 from core.conserve import conserve_all, total_unexplained_paise, unclaimed_paise, unclaimed_records
 from core.contract import CompiledContract, canonical_json, sha256_of
@@ -325,6 +325,7 @@ def resume_or_run(
             contract_version=contract.version_id,
             contract_source_sha256=contract.source_sha256,
             calibration_sha256=calibration.artifact_sha256 if calibration is not None else None,
+            rounding_policy=contract.rounding.value,
             input_hashes=input_hashes,
             input_hash=input_hash,
             proofs=proofs,
@@ -347,6 +348,7 @@ def resume_or_run(
             record_count=len(ledger),
             started_at=started_at.isoformat(),
             wall_clock_ns=time.monotonic_ns() - start_ns,
+            git_sha=_git_commit(),
         )
         report = report.model_copy(update={"report_hash": report.compute_report_hash()})
 
