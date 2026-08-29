@@ -1,6 +1,6 @@
 PYTHON ?= D:/CondaEnvs/ai/python.exe
 
-.PHONY: install test lint guard demo evidence eval chaos ui ui-build
+.PHONY: install test lint guard demo evidence eval chaos ui ui-build site site-build site-data site-art
 
 install:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -61,3 +61,28 @@ ui: ui-build
 chaos:
 	$(PYTHON) -m pytest chaos/ -q --timeout=600
 	$(PYTHON) scripts/chaos_report.py
+
+# ── site/ ── the standalone landing page, deployed to
+# Vercel (root directory: site/). Separate from the reviewer UI: that one
+# reads a live API, this one is static and quotes a report baked in at
+# build time. reviewer/ is untouched by it -- the page only links there.
+
+# Re-bakes site/src/data/audit.json from the signed reference report and the
+# eval sweep. Needs runs/realistic-seed42/report.json, which is a derived
+# artifact -- run `make demo` first if it is not there. The baked JSON is
+# committed, so this is only needed when the underlying run changes.
+site-data:
+	$(PYTHON) scripts/bake_site_data.py
+
+# Production build into site/dist/. Vercel runs the same command itself.
+site-build:
+	cd site && npm install && npm run build
+
+# Redraws the four parallax layers into site/public/parallax/. Committed,
+# so this is only needed when the artwork changes.
+site-art:
+	$(PYTHON) scripts/gen_parallax_layers.py
+
+# The page, live, with hot reload.
+site:
+	cd site && npm install && npm run dev

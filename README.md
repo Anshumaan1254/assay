@@ -60,6 +60,19 @@ make evidence
   identity, per-run scorecards, drill-down to a single finding. Read-only by
   architecture, not by omission: no approval route exists anywhere in it
   (`tests/test_reviewer_api.py::test_every_route_is_read_only`).
+- **Two Vercel deployments, one repo**, told apart by Root Directory:
+  `site` builds the landing page as a static SPA; the repo root builds
+  `reviewer/api.py` as a Python function (`[tool.vercel] entrypoint` in
+  pyproject.toml, via the `reviewer/vercel_app.py` shim -- `reviewer/api.py`
+  itself knows nothing about Vercel, and a test asserts that). The reviewer's
+  build recomputes its own audit from the committed inputs and `.llm_cache/`
+  rather than committing derived artifacts.
+- **Landing page** (`make site`, deployed on Vercel): a standalone scroll
+  story for the project — a scroll-locked video hero, then the argument one
+  line at a time, a pinned clip-path reveal, and a parallax ticker wall.
+  Shares `reviewer/`'s palette and links through to it. Every figure it
+  prints is baked from a signed report by `scripts/bake_site_data.py` and
+  guarded by `tests/test_site.py`; the browser does no arithmetic on money.
 - **Chaos suite** (`make chaos`): 12 failure-injection scenarios run
   end-to-end and scored from the incident each one logs — a duplicate
   settlement, a killed-and-resumed audit, an out-of-order chargeback, a
@@ -285,6 +298,9 @@ cli/            the typer app — full command list above
 reviewer/       FastAPI read-only UI over a computed audit, no write routes
   api.py          GET-only routes
   web/            Vite + React + TypeScript + GSAP ScrollTrigger
+site/           standalone landing page -> Vercel; static, no API
+  src/data/       audit.json, baked from a signed report — never hand-edited
+  src/components/ui/  the scroll components; GSAP ScrollTrigger + Lenis
 tests/          ~55 test modules
 docs/           this diagram, the reliability plots, architecture.md
 calibration/    the committed, versioned conformal calibration artifact
