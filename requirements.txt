@@ -1,0 +1,30 @@
+# Runtime dependencies for the Vercel deployment of reviewer/api.py.
+#
+# Deliberately NOT `pip install -e .`. pyproject's dependency list carries
+# scikit-learn and matplotlib, which only `eval/` uses -- together they are
+# most of a serverless bundle, and the reviewer's import closure never
+# touches either. An AST walk of everything reachable from reviewer/api.py
+# reaches exactly these packages (plus typer/pyyaml/httpx, which the build
+# step's `python -m cli` needs to load the CLI app):
+#
+#   dotenv fastapi google numpy pydantic scipy sqlalchemy sqlmodel structlog
+#
+# That walk also confirms the deployed app never reaches `datagen` --
+# invariant 5 holds in production, not just in the test suite.
+#
+# Keep this in step with pyproject.toml when a runtime dependency changes.
+
+fastapi
+pydantic>=2
+sqlmodel
+structlog
+python-dotenv
+numpy
+scipy
+google-genai
+
+# Build-step only: `python -m cli` loads the full Typer app, which imports
+# datagen and the ingest client on the way past. Small enough not to matter.
+typer
+pyyaml
+httpx

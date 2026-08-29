@@ -1,0 +1,29 @@
+# Applies to the REVIEWER project (Root Directory = repo root). The landing
+# page is a separate Vercel project rooted at site/, so site/ is dead weight
+# here -- and vice versa.
+#
+# Careful: this excludes files from the upload, which means the build cannot
+# see them either. Everything scripts/vercel_reviewer_build.py needs at build
+# time must stay: runs/realistic-seed42/ (the committed inputs), .llm_cache/
+# (so the contract compile needs no API key), calibration/ (the audit reads
+# the pinned artifact), and datagen/ (imported when `python -m cli` loads the
+# full Typer app -- never reachable from the served application; see the
+# import-closure note in requirements.txt).
+
+site/
+
+reviewer/web/node_modules/
+reviewer/web/*.tsbuildinfo
+
+tests/
+chaos/
+docs/
+eval/results/
+
+.git/
+.github/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+**/__pycache__/
+*.pyc
