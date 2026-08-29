@@ -1,18 +1,25 @@
-# Applies to the REVIEWER project (Root Directory = repo root). The landing
-# page is a separate Vercel project rooted at site/, so site/ is dead weight
-# here -- and vice versa.
+# Shared by BOTH Vercel projects. There is exactly one .vercelignore and it
+# is read from the repository root, before Root Directory is applied -- so an
+# entry here is excluded from the landing build and the reviewer build alike.
 #
-# Careful: this excludes files from the upload, which means the build cannot
-# see them either. Everything scripts/vercel_reviewer_build.py needs at build
-# time must stay: runs/realistic-seed42/ (the committed inputs), .llm_cache/
-# (so the contract compile needs no API key), calibration/ (the audit reads
-# the pinned artifact), and datagen/ (imported when `python -m cli` loads the
-# full Typer app -- never reachable from the served application; see the
-# import-closure note in requirements.txt).
+# That is why `site/` is NOT listed. Excluding it to slim the reviewer's
+# bundle also deleted the landing project's package.json out from under its
+# own `npm ci`, which failed the build three seconds in. site/ stays; its
+# source is a few hundred kB, and node_modules and dist are already excluded
+# below. tests/test_site.py pins this so it cannot be "optimised" back.
+#
+# The other direction of the same trap: everything
+# scripts/vercel_reviewer_build.py needs at build time must stay --
+# runs/realistic-seed42/ (the committed inputs), .llm_cache/ (so the contract
+# compile needs no API key), calibration/ (the audit reads the pinned
+# artifact), and datagen/ (imported when `python -m cli` loads the full Typer
+# app; never reachable from the served application -- see the import-closure
+# note in requirements.txt).
 
-site/
-
-reviewer/web/node_modules/
+node_modules/
+site/dist/
+site/*.tsbuildinfo
+reviewer/web/dist/
 reviewer/web/*.tsbuildinfo
 
 tests/

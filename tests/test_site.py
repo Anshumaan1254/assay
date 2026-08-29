@@ -339,3 +339,26 @@ def test_deployed_reviewer_cannot_reach_ground_truth() -> None:
 
     reached_datagen = [m for m in seen if m.startswith("datagen/")]
     assert not reached_datagen, f"the deployed reviewer can import datagen: {reached_datagen}"
+
+
+def test_vercelignore_keeps_both_projects_buildable() -> None:
+    """There is one .vercelignore, read from the repository root BEFORE Root
+    Directory is applied, so it applies to both projects at once.
+
+    Excluding `site/` to slim the reviewer's bundle also deleted the landing
+    project's own package.json before its `npm ci` ran. Equally, the reviewer's
+    build needs the committed run inputs, the model cache and the pinned
+    calibration artifact. Neither side may be ignored.
+    """
+    lines = [
+        line.strip()
+        for line in (ROOT / ".vercelignore").read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+    must_ship = ["site/", "runs/", ".llm_cache/", "calibration/", "datagen/", "reviewer/", "cli/"]
+    for needed in must_ship:
+        bare = needed.rstrip("/")
+        assert needed not in lines and bare not in lines, (
+            f".vercelignore excludes {needed!r}, which one of the two builds needs"
+        )
