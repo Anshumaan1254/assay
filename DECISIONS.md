@@ -1905,3 +1905,44 @@ A fourth gap the review surfaced but wasn't in the original 12: `llm/providers/c
 **Final fix:** the build script passes `runs/realistic-seed42` relative. Hash returned to `5bc692d4…`.
 
 **Guard added:** none beyond the existing staleness test, which caught this unprompted. Noted separately: the deployed reviewer still reports a different `input_hash` from a Windows checkout, because git normalises line endings and the run inputs are text — the inputs genuinely differ byte-for-byte across platforms. Unfixed, and a real bound on invariant 4's portability claim.
+
+## 2026-08-30 03:29 — a committed cache entry disarmed the chaos scenario that matters most
+
+**Symptom:** wiring `assay chaos` into CI, the suite reported `18 scenarios,
+17 passed, 1 failed`. C09 -- "LLM API entirely unavailable" -- failed on
+`assert report.adjudication_degraded is True`, `assert False is True`, in
+2.4s. Reproduced on a clean `git worktree` at HEAD, so it predated the CI
+work. `.llm_cache/` had no uncommitted changes.
+
+**Diagnosis:** C09 built its provider as `CachedProvider(NullProvider())`
+and passed it to `resume_or_run`. Instrumenting the provider chain showed
+`cache hits: 2, NullProvider reached: 0` -- the audit's adjudication prompt
+hit a committed cache entry, so the injected provider was never called and
+nothing degraded. The scenario's own stated injection ("every
+generate_structured() call raises ProviderUnavailable") had stopped
+happening. The wrapper was there for a real reason -- the contract compile
+is a separate LLM boundary and the cache must serve it -- but it also
+covered the adjudicator, which is the boundary under test. Whenever the
+adjudication response for `runs/realistic-seed42` was recorded into
+`.llm_cache/`, C09 stopped testing anything and kept passing until an
+unrelated change moved the number it asserted on.
+
+**First fix:** none attempted. The instrumented call counts named the cause
+directly.
+
+**Whether it worked:** n/a.
+
+**Final fix:** split the two boundaries. The contract is compiled first
+through `CachedProvider(NullProvider())`, exactly as before, and the audit
+then runs against a **bare** `NullProvider()` with that contract passed in
+via `resume_or_run(..., contract=contract)`. A cache hit cannot intercept a
+provider it never wraps.
+
+**Guard added:** none beyond the fix itself, which is self-guarding:
+`adjudication_degraded` can only become True by `ProviderUnavailable`
+propagating out of the injected provider, so the existing assertion now
+proves the provider was reached. Noted separately, and not fixed: the same
+shape is possible in any scenario that wraps its injected provider in
+`CachedProvider` -- C01 and C07 both do -- and a future committed cache
+entry could disarm those the same way, silently.
+

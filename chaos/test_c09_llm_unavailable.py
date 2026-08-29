@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from chaos.incident import chaos_scenario
+from llm.contract_parser import compile_rate_card
 from llm.providers.cached import CachedProvider
 from llm.providers.null import NullProvider
 from store.resumable import resume_or_run
@@ -43,14 +44,30 @@ def test_c09_llm_entirely_unavailable_still_produces_a_full_report(tmp_path):
             "unexplained exceptions rather than guesses; the report is honest about the degradation"
         ),
     ) as scenario:
-        # NullProvider still needs a compiled contract, which the committed
-        # cache can serve -- see tests/test_cli_audit.py's own precedent for
-        # exactly this shape of "the model that matters here is the
-        # adjudicator, not the contract compiler."
-        provider = CachedProvider(NullProvider())
+        # Two different LLM boundaries, and only one of them is under test.
+        # The contract compile is served from the committed cache, exactly
+        # as before -- see tests/test_cli_audit.py's own precedent for "the
+        # model that matters here is the adjudicator, not the contract
+        # compiler."
+        contract = compile_rate_card(
+            (REALISTIC_RUN_DIR / "rate_card.md").read_text(encoding="utf-8"),
+            CachedProvider(NullProvider()),
+        )
 
+        # The audit itself gets a BARE NullProvider, not a cached one. This
+        # scenario used to pass CachedProvider(NullProvider()) here, and a
+        # later-committed cache entry for this run's adjudication prompt
+        # then answered the very call the scenario exists to watch fail --
+        # NullProvider was never reached and adjudication_degraded stayed
+        # False. A cache hit cannot disarm an injection it never sees, so
+        # the injected provider is now unwrapped: the assertions below can
+        # only hold if ProviderUnavailable actually propagated from it.
         report = resume_or_run(
-            REALISTIC_RUN_DIR, provider, merchant_id=MERCHANT, store_path=tmp_path / "store.db"
+            REALISTIC_RUN_DIR,
+            NullProvider(),
+            merchant_id=MERCHANT,
+            contract=contract,
+            store_path=tmp_path / "store.db",
         )
 
         assert report.adjudication_degraded is True
