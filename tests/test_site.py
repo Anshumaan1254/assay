@@ -362,3 +362,24 @@ def test_vercelignore_keeps_both_projects_buildable() -> None:
         assert needed not in lines and bare not in lines, (
             f".vercelignore excludes {needed!r}, which one of the two builds needs"
         )
+
+
+def test_vercel_configs_carry_no_comment_keys() -> None:
+    """Vercel validates vercel.json against a schema and rejects any property
+    outside it -- including the `"//"` key conventionally used for JSON
+    comments. It fails at import time with "should NOT have additional
+    property", before a single build log line is written.
+
+    The reasoning those comments carried lives in docs/deploy.md instead.
+    """
+    allowed_extra = {"$schema"}
+    known = {
+        "framework", "buildCommand", "installCommand", "devCommand",
+        "outputDirectory", "functions", "rewrites", "redirects", "headers",
+        "regions", "cleanUrls", "trailingSlash", "crons", "ignoreCommand",
+        "public", "github", "images", "buildEnv", "env",
+    }
+    for config in (ROOT / "vercel.json", SITE / "vercel.json"):
+        keys = set(json.loads(config.read_text(encoding="utf-8")))
+        unknown = keys - known - allowed_extra
+        assert not unknown, f"{config.name} has properties Vercel will reject: {sorted(unknown)}"
