@@ -52,6 +52,18 @@ seconds, entirely from the committed `.llm_cache/`. **No `GEMINI_API_KEY`
 required.** Verified before writing this down: no network calls, and
 `determinism: MATCH` on the run this produces.
 
+Or the same four steps in a container, on a machine that has never seen
+this repository:
+
+```
+docker build -t assay . && docker run --network none assay demo
+```
+
+`--network none` is the point rather than a precaution: the container is
+handed no environment variables and no route to the internet, and still
+produces the complete audit — every model response comes from the
+committed `.llm_cache/`. If it needed a key, this would fail.
+
 Then look at one transaction's full causal chain, or the generated evidence
 report:
 

@@ -1,0 +1,54 @@
+# Build context for the CLI image. Modelled on .vercelignore, but NOT a
+# copy of it: that file excludes chaos/ and reviewer/, and both are
+# hatchling wheel packages (pyproject.toml [tool.hatch.build.targets.wheel])
+# -- dropping either makes `pip install .` fail outright.
+#
+# Two things here are load-bearing and must never be added as exclusions:
+#   .llm_cache/   the committed LLM responses. Without it the demo needs a
+#                 GEMINI_API_KEY and a network, which is the whole claim.
+#   calibration/  core/lanes.py reads lane_calibration.v1.json CWD-relative
+#                 and hash-checks it.
+# README.md is required too: pyproject.toml's `readme = "README.md"` makes
+# the wheel build fail without it.
+
+# npm trees and their build output -- 241 MB of the repo's 273 MB, and the
+# CLI image serves no front end.
+**/node_modules
+reviewer/web
+site
+**/*.tsbuildinfo
+
+# Not wheel packages, and nothing in the image runs them.
+tests
+docs
+
+# Secrets. .vercelignore has no equivalent line because Vercel injects env
+# separately -- here, llm/providers/cached.py and gemini.py both call
+# load_dotenv() on construction, so a .env in the context bakes a live
+# GEMINI_API_KEY into a distributable image.
+.env
+.env.local
+
+# Derived at runtime by the demo itself, or local state from a developer
+# machine. runs/realistic-seed42/ is deliberately NOT excluded: its inputs
+# are committed, so `assay audit` works in the container without generating.
+runs/clean-seed42
+runs/**/report.json
+runs/**/*.contract.json
+.assay
+eval/results/demo
+chaos/incidents
+
+# Caches. .git too: nothing in the image shells git (`make guard` does, but
+# that runs in CI against a real checkout, never here).
+.git
+.github
+**/__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.hypothesis
+.vscode
+.vercel
+site/.vercel
