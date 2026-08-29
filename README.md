@@ -1,5 +1,19 @@
 # Assay
 
+[![tests](https://img.shields.io/github/actions/workflow/status/Anshumaan1254/assay/ci.yml?branch=main&label=tests)](https://github.com/Anshumaan1254/assay/actions/workflows/ci.yml)
+[![chaos](https://img.shields.io/github/actions/workflow/status/Anshumaan1254/assay/ci.yml?branch=main&label=chaos%2018%2F18)](https://github.com/Anshumaan1254/assay/actions/workflows/ci.yml)
+[![determinism](https://img.shields.io/github/actions/workflow/status/Anshumaan1254/assay/ci.yml?branch=main&label=determinism)](https://github.com/Anshumaan1254/assay/actions/workflows/ci.yml)
+[![docker](https://img.shields.io/github/actions/workflow/status/Anshumaan1254/assay/ci.yml?branch=main&label=docker)](https://github.com/Anshumaan1254/assay/actions/workflows/ci.yml)
+
+All four track [one workflow](.github/workflows/ci.yml), which fails if any
+of its six jobs does — so they redden together. That is deliberate and
+conservative: a red `docker` badge on a failing test job is a false alarm,
+never a false all-clear. What each one is claiming: the full suite passes;
+all 18 failure-injection scenarios pass; two independent audits of the same
+inputs produce a byte-identical `report_hash` and `assay replay` reproduces
+it; and the image builds and completes a whole audit under `--network none`
+with no API key. No step uses a secret — [none exists to use](.github/workflows/ci.yml).
+
 Settlement audit engine. Given a merchant's transaction ledger, a settlement
 report, a bank statement and a contracted rate card, it decomposes each bank
 credit into the exact transactions that produced it, independently
@@ -101,7 +115,7 @@ make evidence
   Shares `reviewer/`'s palette and links through to it. Every figure it
   prints is baked from a signed report by `scripts/bake_site_data.py` and
   guarded by `tests/test_site.py`; the browser does no arithmetic on money.
-- **Chaos suite** (`make chaos`): 12 failure-injection scenarios run
+- **Chaos suite** (`make chaos`): 18 failure-injection scenarios run
   end-to-end and scored from the incident each one logs — a duplicate
   settlement, a killed-and-resumed audit, an out-of-order chargeback, a
   cross-cycle refund, a truncated UTR, a fabricated transaction id, a
