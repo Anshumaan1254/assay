@@ -24,7 +24,7 @@ def test_month_bounds_july_2026():
 
 
 def test_month_bounds_handles_february_leap_year():
-    first, last = month_bounds("2024-02")
+    _first, last = month_bounds("2024-02")
     assert last == date(2024, 2, 29)
 
 

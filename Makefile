@@ -11,8 +11,14 @@ test:
 lint:
 	$(PYTHON) -m ruff check .
 
+# tests/fixtures/ is excluded deliberately, and the exclusion belongs here
+# rather than in guard_core.py: those files exist to BE violations, and
+# tests/test_guard.py runs the guard directly against them and asserts it
+# flags every one. Teaching the guard to skip them would disarm its own
+# test suite; teaching this file list to skip them just stops auditing the
+# test data as if it were product code.
 guard:
-	$(PYTHON) scripts/guard_core.py $$(git ls-files '*.py')
+	$(PYTHON) scripts/guard_core.py $$(git ls-files '*.py' ':!tests/fixtures')
 	$(PYTHON) scripts/check_evidence.py
 
 # The sweep, without touching EVIDENCE.md. Writes eval/results/ and a

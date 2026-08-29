@@ -18,7 +18,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
 def run_guard(*paths: Path) -> subprocess.CompletedProcess:
-    return subprocess.run(
+    return subprocess.run(  # noqa: PLW1510 -- the exit code is what these tests assert on
         [sys.executable, str(GUARD_SCRIPT), *[str(p) for p in paths]],
         capture_output=True,
         text=True,

@@ -73,16 +73,21 @@ def render_summary(summary: dict) -> str:
         f"Payments: {p['total']} (international: {p['international']}), gross {_rupees(p['gross_paise'])}",
         f"  by method: {p['by_method']}",
         f"  by card type: {p['by_card_type']}",
-        f"Refunds: {r['total']} (partial: {r['partial']}, full: {r['full']}, cross-cycle: {r['cross_cycle']}),"
-        f" total {_rupees(r['total_paise'])}",
+        (
+            f"Refunds: {r['total']} (partial: {r['partial']}, full: {r['full']}, "
+            f"cross-cycle: {r['cross_cycle']}), total {_rupees(r['total_paise'])}"
+        ),
         f"Chargebacks: {c['total']} {c['by_stage']}, total {_rupees(c['total_paise'])}",
         f"Adjustments: {a['total']} {a['by_kind']}",
         f"Fees: {summary['fees']['count']} lines, total {_rupees(summary['fees']['total_paise'])}",
         f"Tax: {summary['tax']['count']} lines, total {_rupees(summary['tax']['total_paise'])}",
         f"Settlement batches: {summary['batches']}, Bank credits: {summary['bank_credits']}",
         f"Total credited: {_rupees(summary['total_credited_paise'])}",
-        f"Ground truth: {gt['discrepancies']} discrepancies, {gt['data_quality_flags']} data-quality flags,"
-        f" silent_corruption={gt['silent_corruption']}",
+        (
+            f"Ground truth: {gt['discrepancies']} discrepancies, "
+            f"{gt['data_quality_flags']} data-quality flags, "
+            f"silent_corruption={gt['silent_corruption']}"
+        ),
         f"  counts by class: {gt['counts']}",
     ]
     return "\n".join(lines)

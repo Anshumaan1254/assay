@@ -77,9 +77,11 @@ def _annotation_names(annotation: ast.expr | None, target: str) -> bool:
 def _is_float_literal_or_call(node: ast.expr) -> bool:
     if isinstance(node, ast.Constant) and isinstance(node.value, float):
         return True
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "float":
-        return True
-    return False
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "float"
+    )
 
 
 class MoneyGuardVisitor(ast.NodeVisitor):
@@ -182,8 +184,12 @@ class MoneyGuardVisitor(ast.NodeVisitor):
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         self._check_statement(node)
-        if self.enforce_div_round and isinstance(node.op, (ast.Div, ast.FloorDiv)):
-            if isinstance(node.target, ast.Name) and node.target.id in self._money_names():
+        if (
+            self.enforce_div_round
+            and isinstance(node.op, (ast.Div, ast.FloorDiv))
+            and isinstance(node.target, ast.Name)
+            and node.target.id in self._money_names()
+        ):
                 op = "/" if isinstance(node.op, ast.Div) else "//"
                 self.violations.append(
                     (node.lineno, "money-div", f"use of '{op}=' on a Money value outside money.py")

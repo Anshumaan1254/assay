@@ -12,10 +12,10 @@ import ast
 import sys
 from pathlib import Path
 
+import guard_core
 from typer.testing import CliRunner
 
 import cli
-import guard_core
 
 runner = CliRunner()
 

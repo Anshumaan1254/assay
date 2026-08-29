@@ -62,7 +62,7 @@ def test_assay_evidence_prints_non_ascii_content_through_a_real_process_on_a_leg
     non-UTF-8 codec on a real subprocess to reproduce the exact failure
     mode, rather than relying on this machine's actual console codepage.
     """
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: PLW1510 -- the exit code is what this asserts on
         [sys.executable, "-m", "cli", "evidence"],
         cwd=str(Path(__file__).resolve().parent.parent),
         env={**os.environ, "PYTHONIOENCODING": "cp1252"},

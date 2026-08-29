@@ -65,9 +65,11 @@ def load_pinned_contract(path: Path, run_dir: Path) -> CompiledContract:
 
 @contract_app.command("compile")
 def compile_contract(
-    ratecard: Path = typer.Argument(..., help="Path to the rate card, as markdown."),
-    out: Path = typer.Option(
-        None,  # noqa: B008 -- Typer's own documented pattern
+    ratecard: Path = typer.Argument(  # noqa: B008 -- this is Typer's own documented pattern
+        ..., help="Path to the rate card, as markdown."
+    ),
+    out: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
+        None,
         "--out",
         help="Where to write the compiled contract. Defaults to <ratecard>.contract.json.",
     ),

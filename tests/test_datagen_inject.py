@@ -44,8 +44,7 @@ def _batches_by_id(world):
 # Import guard -- written before the module exists.
 # ---------------------------------------------------------------------------
 
-from datagen.inject import InjectionProfileError, apply_discrepancies  # noqa: E402
-
+from datagen.inject import InjectionProfileError, apply_discrepancies
 
 # ---------------------------------------------------------------------------
 # Shared: profile counts are honored exactly, and mutual exclusivity holds
@@ -355,7 +354,7 @@ def test_d09_does_not_break_later_injectors_batch_lookup():
     # batches across all classes in one run.
     true_world = _true_world()
     profile = InjectionProfile(D01=5, D02=5, D03=2, D04=5, D05=1, D06=5, D07=3, D08=5, D09=10, D10=5, D11=5, D12=5)
-    reported, discrepancies, flags = apply_discrepancies(true_world, _RATE_CARD, profile, Random(14))
+    _reported, discrepancies, flags = apply_discrepancies(true_world, _RATE_CARD, profile, Random(14))
     assert len(flags) == 10
     assert len(discrepancies) == 5 + 5 + 2 + 5 + 1 + 5 + 3 + 5 + 5 + 5 + 5
 
@@ -370,7 +369,7 @@ def test_d10_only_targets_payments_captured_after_the_revision():
     _, discrepancies, _ = apply_discrepancies(true_world, _RATE_CARD, _only({"D10": 4}), Random(15))
     assert len(discrepancies) == 4
     payment_by_id = {p.id: p for p in true_world.payments}
-    v1, v2 = sorted(_RATE_CARD.versions, key=lambda v: v.effective_from)
+    _v1, v2 = sorted(_RATE_CARD.versions, key=lambda v: v.effective_from)
     for entry in discrepancies:
         payment_ref = next(r for r in entry.records if r.type == EntityType.PAYMENT)
         payment = payment_by_id[payment_ref.id]
@@ -525,7 +524,7 @@ def test_d03_cap_removed_at_largest_realistic_gross_produces_expected_overcharge
     # 25,200 - 1,260 = 23,940. Total = 156,940 paise, computed independently
     # here rather than by re-deriving it from the injector's own formula.
     true_world = _cap_true_world()
-    reported, discrepancies, _ = apply_discrepancies(true_world, _CAP_RATE_CARD, _only({"D03": 1}), Random(100))
+    _reported, discrepancies, _ = apply_discrepancies(true_world, _CAP_RATE_CARD, _only({"D03": 1}), Random(100))
     assert len(discrepancies) == 1
     entry = discrepancies[0]
     assert entry.detail["cap_paise"] == 7_000
@@ -585,7 +584,7 @@ def test_discrepancies_reconcile_exactly_at_the_largest_realistic_payment_amount
     # candidates at this gross, by design).
     true_world = _cap_true_world()
     profile = InjectionProfile(D01=2, D02=2, D03=2, D04=2, D05=2, D06=2, D08=2, D11=2, D12=2)
-    reported, discrepancies, flags = apply_discrepancies(true_world, _CAP_RATE_CARD, profile, Random(200))
+    reported, discrepancies, _flags = apply_discrepancies(true_world, _CAP_RATE_CARD, profile, Random(200))
     assert len(discrepancies) == 2 * 9
 
     total_true = sum(b.expected_credit.paise for b in true_world.batches)

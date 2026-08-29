@@ -33,8 +33,12 @@ def generate(
     seed: int = typer.Option(..., "--seed", help="RNG seed -- required, determinism depends on it"),
     silent_corruption: bool = typer.Option(False, "--silent-corruption"),
     month: str = typer.Option("2026-07", "--month", help="YYYY-MM"),
-    out: Path = typer.Option(Path("runs"), "--out", help="Parent dir; writes out/<run_id>/"),
-    truth_out: Path = typer.Option(Path("truth/ground_truth.json"), "--truth-out"),
+    out: Path = typer.Option(  # noqa: B008 -- this is Typer's own documented pattern
+        Path("runs"), "--out", help="Parent dir; writes out/<run_id>/"
+    ),
+    truth_out: Path = typer.Option(  # noqa: B008 -- Typer's own documented pattern
+        Path("truth/ground_truth.json"), "--truth-out"
+    ),
     run_id: str = typer.Option(None, "--run-id", help="Override the derived run_id"),
 ) -> None:
     """Generate one settlement month: the true world, a copy with the
