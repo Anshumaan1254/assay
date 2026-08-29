@@ -7,6 +7,20 @@ recomputes every deduction, and reports — in rupees — any amount that cannot
 be explained. The product question is not "did the rows match." It is: was
 I paid the correct amount, and can you prove it line by line.
 
+## Live
+
+| | |
+|---|---|
+| **Reviewer** | <https://assay-7o7a.vercel.app> — read-only lens over a computed audit: the conservation identity assembling term by term, per-run scorecards, drill-down to one transaction |
+| **Landing page** | see [`docs/deploy.md`](docs/deploy.md) |
+| **Source** | <https://github.com/Anshumaan1254/assay> |
+| **Evidence** | [EVIDENCE.md](EVIDENCE.md) — generated, hash-checked, never hand-edited |
+
+Both sites deploy from this repository as two Vercel projects, told apart
+only by Root Directory. The reviewer builds its own audit during deployment
+rather than committing derived artifacts — [`docs/deploy.md`](docs/deploy.md)
+has the whole arrangement.
+
 ## The problem, in money terms
 
 Payment gateways settle net, not gross: they deduct fees, tax, refunds,

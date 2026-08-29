@@ -1835,3 +1835,73 @@ A fourth gap the review surfaced but wasn't in the original 12: `llm/providers/c
 **Final fix:** rewrote the headline bullet and the Limitations line in README.md, and added the same bound to docs/architecture.md's conservation section: conservation is a self-consistency check on the report's own numbers, not a correctness check against the contract; `core/verify.py` is what catches a bank credit computed correctly off a wrong contract clause.
 
 **Guard added:** none — this is prose, not code; no test enforces README/docs accuracy. Accepted risk: a later edit could reintroduce the same overclaim with nothing to catch it.
+
+## 2026-08-30 01:52 — Vercel rejected vercel.json before any build line ran
+
+**Symptom:** `Invalid request: should NOT have additional property `//`. Please remove it.` on the project import screen. No build log.
+
+**Diagnosis:** the root `vercel.json` used `"//"` as a comment key to explain why the two projects differ only by Root Directory. Vercel validates `vercel.json` against a schema and rejects any property outside it. `$schema` is allowed; `//` is not.
+
+**First fix:** none attempted — the error names the property.
+
+**Whether it worked:** n/a.
+
+**Final fix:** removed the key. The reasoning it carried moved to `docs/deploy.md`, which can hold prose.
+
+**Guard added:** `tests/test_site.py::test_vercel_configs_carry_no_comment_keys`, checking both configs against the properties Vercel accepts.
+
+## 2026-08-30 00:02 — .vercelignore deleted the landing page's own package.json
+
+**Symptom:** landing build failed 3s in, at `Running "install" command: 'npm ci'`. Log line 7: `Found .vercelignore (repository root)` / `Removed 156 ignored files`.
+
+**Diagnosis:** `site/` was listed in `.vercelignore` to slim the reviewer's function bundle. There is one `.vercelignore` and Vercel applies it at upload, before Root Directory — so it also removed `site/package.json`, and `npm ci` ran with no input.
+
+**First fix:** removed `site/` from `.vercelignore`.
+
+**Whether it worked:** yes.
+
+**Final fix:** as above. Verified by copying only the committed `site/` files into an empty directory and running `npm ci && npm run build` — 85 packages, build in 813ms — confirming the lockfile was sound and the deleted directory was the whole failure.
+
+**Guard added:** `tests/test_site.py::test_vercelignore_keeps_both_projects_buildable`, asserting neither `site/` nor the reviewer build's inputs (`runs/`, `.llm_cache/`, `calibration/`, `datagen/`) are ignored.
+
+## 2026-08-30 00:46 — build died on the Python version, and would have died again on fastapi
+
+**Symptom:** `error: The requested interpreter resolved to Python 3.12.14, which is incompatible with the project's Python requirement: ==3.11.* (from project.requires-python)`, from `uv lock`.
+
+**Diagnosis:** Vercel's Python runtime offers 3.12/3.13/3.14 and no 3.11; `requires-python = ">=3.11,<3.12"` cannot resolve. The same log showed `Installing required dependencies from pyproject.toml`, whose base dependencies exclude `fastapi` — it sits in the `dev`/`ui` extras because the CLI must stay installable without a web stack. The function would have failed to import after the version error cleared.
+
+**First fix:** widened `requires-python` to `>=3.11,<3.13`.
+
+**Whether it worked:** partially — it cleared the version error but not the missing `fastapi`.
+
+**Final fix:** widened the range and pointed `installCommand` at `requirements.txt`, which carries the AST-computed import closure of the entrypoint. Verified by resolving that file against 3.12 with wheels only: 43 packages, `fastapi` present, `scikit-learn` and `matplotlib` absent.
+
+**Guard added:** none for the version — `requires-python` is now a claim about two interpreters while the suite only runs 3.11. Accepted risk, recorded in `docs/deploy.md`: the deployed reviewer is the only thing running 3.12.
+
+## 2026-08-30 01:16 — misdiagnosed a 236 MB bundle as npm's, on no measurement
+
+**Symptom:** `Error: Total bundle size (236.18 MB) exceeds the maximum function size (225 MB).` after a build that otherwise ran clean end to end.
+
+**Diagnosis:** first guess was `reviewer/web/node_modules` — 145 MB that `npm ci` recreates during the build, after `.vercelignore` has been applied. Excluding it via `excludeFiles` produced a build reporting `236.18 MB` again, byte for byte, which disproved the guess: it was never counted. Measuring the installed dependencies instead gave ~227 MB, matching the bundle almost exactly. scipy 118 MB and numpy 35 MB dominate, and neither is optional — `core/decompose.py` imports both at module scope for the tier-3 solver, reached from the reviewer through `cli.audit`.
+
+**First fix:** `excludeFiles` on `reviewer/web/node_modules/**`.
+
+**Whether it worked:** no. Identical reported size; the theory was wrong and cost a build cycle.
+
+**Final fix:** prune `tests/`, `test/` and `__pycache__/` out of site-packages in `scripts/vercel_reviewer_build.py` after the audit runs — ~120 MB. Deployed at https://assay-7o7a.vercel.app.
+
+**Guard added:** `tests/test_site.py::test_bundle_is_pruned_and_the_prune_cannot_escape_the_project`, pinning that `testing` is never pruned (`numpy.testing` is public API) and that the prune refuses any virtualenv outside the project, so running the build script on a developer machine deletes nothing.
+
+## 2026-08-30 00:20 — the build made report_hash depend on the checkout path
+
+**Symptom:** `tests/test_site.py::test_baked_data_is_not_stale` failed: the regenerated report carried `01cf67bf…` where the committed site data quotes `5bc692d4…`. Same seed, same inputs, same contract, same git sha.
+
+**Diagnosis:** `scripts/vercel_reviewer_build.py` passed `--run-dir` as an absolute path. `run_dir` is inside the report's hash payload — `TELEMETRY_FIELDS` excludes timing and `git_sha`, not the run directory — so the hash became a function of where the repository sits on disk.
+
+**First fix:** none attempted — the staleness test named the field by failing.
+
+**Whether it worked:** n/a.
+
+**Final fix:** the build script passes `runs/realistic-seed42` relative. Hash returned to `5bc692d4…`.
+
+**Guard added:** none beyond the existing staleness test, which caught this unprompted. Noted separately: the deployed reviewer still reports a different `input_hash` from a Windows checkout, because git normalises line endings and the run inputs are text — the inputs genuinely differ byte-for-byte across platforms. Unfixed, and a real bound on invariant 4's portability claim.
