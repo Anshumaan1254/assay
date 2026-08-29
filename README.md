@@ -11,8 +11,8 @@ I paid the correct amount, and can you prove it line by line.
 
 | | |
 |---|---|
+| **Landing page** | <https://site-lake-two-15.vercel.app> — the scroll story: what settlement is, why nobody checks it, and the three payments this month that belonged to no bank credit |
 | **Reviewer** | <https://assay-7o7a.vercel.app> — read-only lens over a computed audit: the conservation identity assembling term by term, per-run scorecards, drill-down to one transaction |
-| **Landing page** | see [`docs/deploy.md`](docs/deploy.md) |
 | **Source** | <https://github.com/Anshumaan1254/assay> |
 | **Evidence** | [EVIDENCE.md](EVIDENCE.md) — generated, hash-checked, never hand-edited |
 

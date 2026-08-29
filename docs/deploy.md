@@ -140,6 +140,7 @@ directions.
 
 ## Live
 
+- landing — <https://site-lake-two-15.vercel.app>
 - reviewer — <https://assay-7o7a.vercel.app>
 
 The landing page links at that URL directly (`site/src/lib/audit.ts`), so a
