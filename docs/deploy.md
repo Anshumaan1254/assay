@@ -93,6 +93,23 @@ The pinned list is the AST-computed import closure of the entrypoint. That
 same walk confirms the deployed app cannot reach `datagen/` — invariant 5
 holds on a public URL, not just in the test suite.
 
+### Bundle size
+
+The function limit is **225 MB uncompressed**, and Python gets no automatic
+tree-shaking. The first build that got this far came in at 236 MB.
+
+Almost all of the excess was `reviewer/web/node_modules` — 145 MB of Vite,
+esbuild and TypeScript that `npm ci` recreates *during* the build, long after
+`.vercelignore` was applied at upload. `.vercelignore` cannot touch it;
+`excludeFiles` under the `functions` key runs late enough and does.
+
+The same glob drops `datagen/`, which makes invariant 5 physical rather than
+merely architectural: the import closure already proves the deployed app
+cannot reach the planted answers, and now they are not on the server at all.
+
+What it must never drop: `reviewer/web/dist` (the SPA the app mounts),
+`runs/`, `.assay/`, `calibration/`, and the engine packages themselves.
+
 ## The shared `.vercelignore`
 
 There is exactly one, read from the repository root **before** Root Directory

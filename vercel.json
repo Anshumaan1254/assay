@@ -4,7 +4,8 @@
   "buildCommand": "python scripts/vercel_reviewer_build.py",
   "functions": {
     "reviewer/vercel_app.py": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "excludeFiles": "{reviewer/web/node_modules/**,reviewer/web/src/**,reviewer/web/public/**,site/**,datagen/**,eval/**,chaos/**,tests/**,docs/**,**/__pycache__/**,**/*.pyc}"
     }
   }
 }

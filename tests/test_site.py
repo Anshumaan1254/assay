@@ -383,3 +383,35 @@ def test_vercel_configs_carry_no_comment_keys() -> None:
         keys = set(json.loads(config.read_text(encoding="utf-8")))
         unknown = keys - known - allowed_extra
         assert not unknown, f"{config.name} has properties Vercel will reject: {sorted(unknown)}"
+
+
+def test_function_bundle_excludes_build_only_files_but_keeps_the_spa() -> None:
+    """`npm ci` recreates reviewer/web/node_modules DURING the build, long
+    after .vercelignore was applied at upload -- 145 MB of build tooling that
+    then counted against the 225 MB function limit. excludeFiles is the only
+    lever that runs late enough to drop it.
+
+    The same glob must not touch reviewer/web/dist, which is the SPA the app
+    mounts, nor anything the reviewer reads at runtime.
+    """
+    function = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))["functions"][
+        "reviewer/vercel_app.py"
+    ]
+    excluded = function["excludeFiles"]
+
+    for build_only in ("reviewer/web/node_modules/**", "site/**", "datagen/**"):
+        assert build_only in excluded, f"{build_only} would ship in the function bundle"
+
+    # Anything the deployed app opens at runtime must survive the glob.
+    for needed in ("reviewer/web/dist", "runs/", ".assay", "calibration", "core/", "cli/"):
+        assert needed not in excluded, f"excludeFiles drops {needed!r}, which the app needs"
+
+
+def test_datagen_is_absent_from_the_deployed_bundle() -> None:
+    """Invariant 5, made physical rather than merely unreachable. The import
+    closure already proves the deployed app cannot reach datagen; excluding it
+    from the bundle means the planted answers are not on the server at all."""
+    excluded = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))["functions"][
+        "reviewer/vercel_app.py"
+    ]["excludeFiles"]
+    assert "datagen/**" in excluded
