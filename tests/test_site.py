@@ -385,26 +385,25 @@ def test_vercel_configs_carry_no_comment_keys() -> None:
         assert not unknown, f"{config.name} has properties Vercel will reject: {sorted(unknown)}"
 
 
-def test_function_bundle_excludes_build_only_files_but_keeps_the_spa() -> None:
-    """`npm ci` recreates reviewer/web/node_modules DURING the build, long
-    after .vercelignore was applied at upload -- 145 MB of build tooling that
-    then counted against the 225 MB function limit. excludeFiles is the only
-    lever that runs late enough to drop it.
+def test_bundle_is_pruned_and_the_prune_cannot_escape_the_project() -> None:
+    """The 225 MB function limit is spent almost entirely on installed
+    dependencies -- scipy and numpy are ~150 MB of it, and Python bundles get
+    no tree-shaking. The build prunes their test suites and bytecode caches.
 
-    The same glob must not touch reviewer/web/dist, which is the SPA the app
-    mounts, nor anything the reviewer reads at runtime.
+    Two things must stay true. `testing` must never be pruned: `numpy.testing`
+    is a real public module. And the prune must be unable to touch anything
+    outside the project, or running the build script on a developer machine
+    would gut their own environment.
     """
-    function = json.loads((ROOT / "vercel.json").read_text(encoding="utf-8"))["functions"][
-        "reviewer/vercel_app.py"
-    ]
-    excluded = function["excludeFiles"]
+    source = (ROOT / "scripts" / "vercel_reviewer_build.py").read_text(encoding="utf-8")
 
-    for build_only in ("reviewer/web/node_modules/**", "site/**", "datagen/**"):
-        assert build_only in excluded, f"{build_only} would ship in the function bundle"
-
-    # Anything the deployed app opens at runtime must survive the glob.
-    for needed in ("reviewer/web/dist", "runs/", ".assay", "calibration", "core/", "cli/"):
-        assert needed not in excluded, f"excludeFiles drops {needed!r}, which the app needs"
+    assert '("tests", "test", "__pycache__")' in source, "prune targets changed"
+    assert '"testing"' not in source.split("def prune_site_packages")[1].split("def main")[0], (
+        "pruning a directory named `testing` would delete numpy.testing"
+    )
+    assert "ROOT.resolve() not in purelib.parents" in source, (
+        "the prune must refuse to run against a virtualenv outside the project"
+    )
 
 
 def test_datagen_is_absent_from_the_deployed_bundle() -> None:

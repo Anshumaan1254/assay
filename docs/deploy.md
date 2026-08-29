@@ -95,20 +95,40 @@ holds on a public URL, not just in the test suite.
 
 ### Bundle size
 
-The function limit is **225 MB uncompressed**, and Python gets no automatic
-tree-shaking. The first build that got this far came in at 236 MB.
+The function limit is **225 MB uncompressed**, and Python bundles get no
+tree-shaking: the bundle is simply whatever pip installed, plus the project.
+The first build that got this far came in at 236.18 MB.
 
-Almost all of the excess was `reviewer/web/node_modules` — 145 MB of Vite,
-esbuild and TypeScript that `npm ci` recreates *during* the build, long after
-`.vercelignore` was applied at upload. `.vercelignore` cannot touch it;
-`excludeFiles` under the `functions` key runs late enough and does.
+It is not the front-end tooling. `npm ci` does recreate a 145 MB
+`reviewer/web/node_modules` during the build, but excluding it changed the
+reported size by exactly zero bytes — it was never counted. The weight is the
+Python dependencies, which measure ~227 MB installed:
 
-The same glob drops `datagen/`, which makes invariant 5 physical rather than
-merely architectural: the import closure already proves the deployed app
-cannot reach the planted answers, and now they are not on the server at all.
+| | installed | `tests/` | `__pycache__` |
+|---|---|---|---|
+| scipy | 118 MB | 31 MB | 29 MB |
+| numpy | 35 MB | 16 MB | 14 MB |
+| everything else | 74 MB | 3 MB | 30 MB |
 
-What it must never drop: `reviewer/web/dist` (the SPA the app mounts),
-`runs/`, `.assay/`, `calibration/`, and the engine packages themselves.
+scipy and numpy are not optional: `core/decompose.py` imports them at module
+scope for the tier-3 assignment solver, and the reviewer reaches it through
+`cli.audit`. So the lever is not *which* packages ship but *what inside them*
+does. `scripts/vercel_reviewer_build.py` prunes `tests/`, `test/` and
+`__pycache__/` from site-packages after the audit runs — worth ~120 MB.
+
+Two constraints on that prune, both pinned by tests:
+
+- it must never remove a directory named `testing`. `numpy.testing` is a real
+  public module and deleting it breaks imports.
+- it must refuse to run against a virtualenv outside the project, so running
+  the build script on a developer machine cannot gut their environment. On
+  Vercel the venv is `.vercel/python/.venv`, inside the project; locally it
+  is not, and the step no-ops.
+
+`excludeFiles` in `vercel.json` covers project files rather than
+site-packages, and appears to be ignored entirely while a custom
+`installCommand` is set. It is kept for the files it does describe, but the
+pruning is what actually brings the bundle down.
 
 ## The shared `.vercelignore`
 

@@ -31,6 +31,7 @@ import os
 import shutil
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -100,9 +101,54 @@ def build_audit() -> None:
     )
 
 
+def directory_size(path: Path) -> int:
+    return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+
+
+def prune_site_packages() -> None:
+    """Drop test suites and bytecode caches from the installed dependencies.
+
+    The function bundle is capped at 225 MB uncompressed and Python gets no
+    tree-shaking, so the bundle is simply whatever pip installed. scipy and
+    numpy alone are about 150 MB of that, and roughly a third of the pair is
+    their own test suites -- which nothing imports in normal use.
+
+    Only directories named exactly `tests` or `test` are removed, never
+    `testing`: `numpy.testing` is a real public module and deleting it breaks
+    imports.
+
+    Guarded so it can only ever touch a virtualenv living inside the project,
+    which is true of Vercel's `.vercel/python/.venv` and false of a
+    developer's own environment. Running this script locally prunes nothing.
+    """
+    purelib = Path(sysconfig.get_paths()["purelib"]).resolve()
+    if ROOT.resolve() not in purelib.parents:
+        print(f"\nprune: skipped, {purelib} is outside the project", flush=True)
+        return
+
+    before = directory_size(purelib)
+    removed = 0
+    # Deepest first, so removing a parent never invalidates a queued child.
+    for target in sorted(purelib.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+        if target.is_dir() and target.name in ("tests", "test", "__pycache__"):
+            removed += 1
+            shutil.rmtree(target, ignore_errors=True)
+
+    after = directory_size(purelib)
+    print(
+        f"\nprune: removed {removed} directories, "
+        f"{before / 1e6:.1f} MB -> {after / 1e6:.1f} MB "
+        f"(saved {(before - after) / 1e6:.1f} MB)",
+        flush=True,
+    )
+
+
 def main() -> None:
     build_front_end()
     build_audit()
+    # Last: the audit above runs `python -m cli`, which would rebuild any
+    # bytecode caches pruned before it.
+    prune_site_packages()
     print("\nreviewer build complete", flush=True)
 
 
