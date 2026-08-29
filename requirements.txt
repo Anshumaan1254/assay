@@ -1,11 +1,17 @@
 # Runtime dependencies for the Vercel deployment of reviewer/api.py.
 #
-# Deliberately NOT `pip install -e .`. pyproject's dependency list carries
-# scikit-learn and matplotlib, which only `eval/` uses -- together they are
-# most of a serverless bundle, and the reviewer's import closure never
-# touches either. An AST walk of everything reachable from reviewer/api.py
-# reaches exactly these packages (plus typer/pyyaml/httpx, which the build
-# step's `python -m cli` needs to load the CLI app):
+# vercel.json points installCommand at this file deliberately. Left to its
+# own devices, Vercel's Python runtime resolves pyproject.toml with uv, and
+# that install is wrong here in both directions:
+#
+#   - it MISSES fastapi and uvicorn, which live in the `dev`/`ui` extras
+#     because the CLI is the product and must stay installable without a web
+#     stack. The function would fail to import.
+#   - it ADDS scikit-learn and matplotlib, which only `eval/` uses. Together
+#     they are most of a serverless bundle.
+#
+# The list below is the AST-computed import closure of the entrypoint, which
+# reaches exactly these packages:
 #
 #   dotenv fastapi google numpy pydantic scipy sqlalchemy sqlmodel structlog
 #

@@ -8,7 +8,12 @@ version = "0.1.0"
 description = "Independently verifies payment-gateway settlements, line by line, in rupees."
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.11,<3.12"
+# 3.12 is permitted for one reason: Vercel's Python runtime does not
+# offer 3.11 and forces 3.12, and `uv lock` refuses to resolve against a
+# `==3.11.*` requirement. Development, CI and the test suite still run
+# 3.11 -- treat 3.12 as "the deployed reviewer runs here", not as a
+# tested target. No stdlib module removed in 3.12 is used anywhere.
+requires-python = ">=3.11,<3.13"
 authors = [{ name = "Anshumaan1254", email = "singhub1267@gmail.com" }]
 dependencies = [
     "pydantic>=2",

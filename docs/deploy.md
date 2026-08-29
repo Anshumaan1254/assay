@@ -65,13 +65,33 @@ That build script passes a **relative** `--run-dir` deliberately: `run_dir` is
 part of the report's hash payload, so an absolute path would make
 `report_hash` depend on where the repository happens to be checked out.
 
+### Python version
+
+Vercel's Python runtime does not offer 3.11 and forces **3.12**. With
+`requires-python = ">=3.11,<3.12"` the build failed before installing
+anything: `uv lock` refuses to resolve against a `==3.11.*` requirement. The
+range is now `>=3.11,<3.13`.
+
+Read that as "the deployed reviewer runs on 3.12", not as a tested target —
+development, CI and the test suite are all still 3.11. Nothing in the engine
+uses a stdlib module removed in 3.12, and `requirements.txt` resolves cleanly
+on 3.12 with wheels for every package.
+
 ### Dependencies
 
-`requirements.txt`, not `pip install -e .`. An AST walk of the entrypoint's
-import closure reaches nine packages; `scikit-learn` and `matplotlib` are
-`eval/`-only and together would be most of a serverless bundle. The same walk
-confirms the deployed app cannot reach `datagen/` — invariant 5 holds on a
-public URL, not just in the test suite.
+`vercel.json` points `installCommand` at `requirements.txt` deliberately.
+Left alone, Vercel resolves `pyproject.toml` with uv, and that install is
+wrong in both directions:
+
+- it **misses** `fastapi` and `uvicorn`, which sit in the `dev`/`ui` extras
+  because the CLI is the product and must stay installable without a web
+  stack — the function would not import;
+- it **adds** `scikit-learn` and `matplotlib`, which only `eval/` uses and
+  which together would be most of a serverless bundle.
+
+The pinned list is the AST-computed import closure of the entrypoint. That
+same walk confirms the deployed app cannot reach `datagen/` — invariant 5
+holds on a public URL, not just in the test suite.
 
 ## The shared `.vercelignore`
 
