@@ -282,6 +282,20 @@ def evidence() -> None:
 
 
 @app.command()
+def demo() -> None:
+    """Run the whole engine end to end from a clean clone: generate the
+    canonical realistic-profile month, compile and pin its contract, audit
+    it, and score the result against known ground truth. About 30 seconds,
+    entirely from the committed .llm_cache/ -- no GEMINI_API_KEY, no
+    network. Stops at the first step that fails."""
+    from cli.demo import run_demo
+
+    code = run_demo()
+    if code:
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def chaos() -> None:
     """Run every failure-injection scenario and print the pass/fail table
     read back from the incidents each one recorded. Real subprocess kills

@@ -41,11 +41,12 @@ evidence:
 # fully cached, so demo scores one profile/seed matching the run it just
 # audited, --no-ablate, into its own eval/results/demo/ subpath rather
 # than the committed top-level eval/results/.
+#
+# The four steps live in cli/demo.py, not here: `docker run assay demo` and
+# the README quickstart reach the same sequence, and three copies of it
+# would drift. This target is a thin alias for `assay demo`.
 demo:
-	$(PYTHON) -m cli generate --profile realistic --seed 42
-	$(PYTHON) -m cli contract compile runs/realistic-seed42/rate_card.md
-	$(PYTHON) -m cli audit --run-dir runs/realistic-seed42
-	$(PYTHON) -m cli eval --profiles realistic --seeds 42 --no-ablate --no-diagrams --out eval/results/demo
+	$(PYTHON) -m cli demo
 
 # Builds the reviewer front end into reviewer/web/dist/, which reviewer/api.py
 # mounts at "/" when present. Requires node; the Python side works without it
