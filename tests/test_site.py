@@ -242,12 +242,14 @@ def test_the_hero_can_always_be_escaped() -> None:
 
 
 def test_reviewer_is_linked_and_unmodified() -> None:
-    """The page has to lead somewhere. It links the reviewer by source URL
-    because the reviewer is a FastAPI app over a computed audit and has no
-    static address -- and crucially it does not import or re-implement any
-    of it."""
+    """The page has to lead somewhere. It links the reviewer's own deployment
+    -- and crucially it does not import or re-implement any of it."""
     audit_ts = (SITE / "src" / "lib" / "audit.ts").read_text(encoding="utf-8")
-    assert "tree/main/reviewer" in audit_ts
+    assert re.search(r'REVIEWER = "https://\S+"', audit_ts), "no reviewer URL"
+    assert "localhost" not in audit_ts, "the published page must not link at localhost"
+
+    closing = (SITE / "src" / "components" / "Closing.tsx").read_text(encoding="utf-8")
+    assert "localhost" not in closing, "the reviewer card still advertises localhost"
 
     offenders = [
         path.relative_to(ROOT)

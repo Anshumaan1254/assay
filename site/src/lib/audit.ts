@@ -109,7 +109,7 @@ export const binTerms = audit.terms.filter((term) => term.key !== "unexplained")
 
 export const REPO = "https://github.com/Anshumaan1254/assay";
 
-/** The reviewer is a FastAPI app over a computed audit, so there is no
- *  static URL to send a reader to -- this points at its source and the one
- *  command that starts it. `reviewer/` itself is untouched by this page. */
-export const REVIEWER = `${REPO}/tree/main/reviewer`;
+/** The deployed reviewer: a FastAPI app over a computed audit, running as a
+ *  Vercel Function with its own build (see docs/deploy.md). `reviewer/` is
+ *  untouched by this page -- the link is the only relationship between them. */
+export const REVIEWER = "https://assay-7o7a.vercel.app";

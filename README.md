@@ -60,7 +60,9 @@ make evidence
   identity, per-run scorecards, drill-down to a single finding. Read-only by
   architecture, not by omission: no approval route exists anywhere in it
   (`tests/test_reviewer_api.py::test_every_route_is_read_only`).
-- **Two Vercel deployments, one repo**, told apart by Root Directory:
+- **Two Vercel deployments, one repo** — the reviewer is live at
+  <https://assay-7o7a.vercel.app>, and the landing page links straight at
+  it. Told apart by Root Directory:
   `site` builds the landing page as a static SPA; the repo root builds
   `reviewer/api.py` as a Python function (`[tool.vercel] entrypoint` in
   pyproject.toml, via the `reviewer/vercel_app.py` shim -- `reviewer/api.py`

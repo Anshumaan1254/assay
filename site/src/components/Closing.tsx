@@ -1,9 +1,8 @@
 /* The end of the page: how to run it, and the way through to the reviewer.
  *
- * The reviewer is a FastAPI app over a computed audit, so it cannot be a
- * static link to a live screen from here -- it points at the source and the
- * one command that starts it. Nothing in `reviewer/` changes for this page
- * to exist.
+ * The reviewer is deployed separately as a Vercel Function, so this links
+ * straight at the running screen. Nothing in `reviewer/` changed for either
+ * this page or that deployment to exist.
  */
 
 import { useLayoutEffect, useRef } from "react";
@@ -74,9 +73,7 @@ export default function Closing() {
             term, per-run scorecards, drill-down to one transaction. No write routes exist, and a
             test asserts it.
           </p>
-          <span className="closing__go">
-            <code>make ui</code> → localhost:8000 →
-          </span>
+          <span className="closing__go">assay-7o7a.vercel.app →</span>
         </a>
 
         <a className="closing__card closing__reveal" href={REPO}>

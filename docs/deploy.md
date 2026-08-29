@@ -138,6 +138,13 @@ once listed to slim the reviewer's bundle and deleted the landing project's
 own `package.json` before its `npm ci` ran. `tests/test_site.py` now pins both
 directions.
 
+## Live
+
+- reviewer — <https://assay-7o7a.vercel.app>
+
+The landing page links at that URL directly (`site/src/lib/audit.ts`), so a
+redeploy under a new domain means updating that constant.
+
 ## Verifying a deploy
 
 - `/api/health` → `200`
