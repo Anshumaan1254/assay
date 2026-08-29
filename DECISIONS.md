@@ -1821,3 +1821,17 @@ A fourth gap the review surfaced but wasn't in the original 12: `llm/providers/c
 **Final fix:** the card always renders and starts at `opacity-0`; only the animation is gated on `inView`, and the observer targets the grid, which has a real box. Same visible behaviour, no mount dependency on a callback that may never fire.
 
 **Guard added:** `tests/test_reviewer_api.py::test_score_cards_are_never_mounted_conditionally_on_being_in_view`, which asserts the component contains no `{inView && ` and that the observer targets the grid. Narrow, and honestly so: it pins this specific trap rather than the general class, because the repo has no DOM test runner and adding one to catch it was not worth the dependency.
+
+## 2026-08-29 16:02 — README overstated what the conservation identity proves
+
+**Symptom:** README.md's headline results claimed "conservation holds to the paisa" as evidence of correct payment, and Limitations said the identity "holds exactly on data engineered to break it."
+
+**Diagnosis:** flagged by a `payments-domain` review of the finished README. `core/conserve.py`'s own module docstring (lines 129-136) states `unexplained_paise` checks only the settlement report's self-consistency, not correctness against the contract — a report reconciles perfectly while every fee on it was computed off the wrong clause. Confirmed against EVIDENCE.md: the fee/tax mispricing classes (D01/D02/D03/D10/D11/D12, ₹30,872.45) plus the misattributed-refund class D06 (₹121,623.29) — ₹152,495.74 of ₹415,863.64 planted, 36.7% — leave `unexplained_paise` at exactly ₹0.00. The Limitations line also silently cited the clean profile's ₹0.00 rather than the engineered profiles' actual ₹47,857.95 unaccounted (EVIDENCE.md §7).
+
+**First fix:** none attempted — the docstring plus the EVIDENCE.md numbers made the correction plain immediately.
+
+**Whether it worked:** n/a.
+
+**Final fix:** rewrote the headline bullet and the Limitations line in README.md, and added the same bound to docs/architecture.md's conservation section: conservation is a self-consistency check on the report's own numbers, not a correctness check against the contract; `core/verify.py` is what catches a bank credit computed correctly off a wrong contract clause.
+
+**Guard added:** none — this is prose, not code; no test enforces README/docs accuracy. Accepted risk: a later edit could reintroduce the same overclaim with nothing to catch it.

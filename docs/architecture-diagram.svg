@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 860" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrowCore" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <marker id="arrowLLM" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="860" fill="#ffffff"/>
+
+  <text x="590" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">Assay — architecture</text>
+  <text x="590" y="56" text-anchor="middle" font-size="13" fill="#475569">Deterministic engine on the left. The only three places a model is consulted on the right. Money only ever flows left.</text>
+
+  <!-- Input files -->
+  <g font-size="12" fill="#334155">
+    <rect x="30" y="78" width="200" height="40" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="4 3"/>
+    <text x="130" y="102" text-anchor="middle" font-family="Consolas, monospace">ledger.json</text>
+
+    <rect x="250" y="78" width="200" height="40" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="4 3"/>
+    <text x="350" y="102" text-anchor="middle" font-family="Consolas, monospace" font-size="11">settlement_report.json</text>
+
+    <rect x="470" y="78" width="200" height="40" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="4 3"/>
+    <text x="570" y="102" text-anchor="middle" font-family="Consolas, monospace" font-size="11">bank_statement.json</text>
+
+    <rect x="850" y="78" width="200" height="40" rx="6" fill="#fff7ed" stroke="#c2820a" stroke-dasharray="4 3"/>
+    <text x="950" y="102" text-anchor="middle" font-family="Consolas, monospace">rate_card.md</text>
+  </g>
+
+  <!-- arrows from 3 inputs down into core panel -->
+  <path d="M130,118 L130,150 L200,150 L200,175" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrowCore)"/>
+  <path d="M350,118 L350,175" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrowCore)"/>
+  <path d="M570,118 L570,150 L500,150 L500,175" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrowCore)"/>
+  <!-- rate_card.md down into llm panel -->
+  <path d="M950,118 L950,175" fill="none" stroke="#b45309" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#arrowLLM)"/>
+
+  <!-- Panels -->
+  <rect x="30" y="175" width="700" height="560" rx="10" fill="#eef2f7" stroke="#334155" stroke-width="1.4"/>
+  <text x="52" y="202" font-size="14" font-weight="700" fill="#0f172a">core/</text>
+  <text x="52" y="220" font-size="11.5" fill="#334155">deterministic Python, unit-tested. Zero imports from llm/, zero float literals —</text>
+  <text x="52" y="235" font-size="11.5" fill="#334155">enforced by <tspan font-family="Consolas, monospace" fill="#0f172a">tests/test_architecture.py</tspan> on every commit, no exceptions.</text>
+
+  <rect x="760" y="175" width="390" height="560" rx="10" fill="#fff7ed" stroke="#b45309" stroke-width="1.4" stroke-dasharray="0"/>
+  <text x="782" y="202" font-size="14" font-weight="700" fill="#7c2d12">llm/</text>
+  <text x="782" y="220" font-size="11.5" fill="#7c2d12">the only three boundaries in the whole engine.</text>
+  <text x="782" y="235" font-size="11.5" fill="#7c2d12">Every output is schema-validated, then</text>
+  <text x="782" y="250" font-size="11.5" fill="#7c2d12">reference-checked, before it re-enters core/.</text>
+
+  <!-- core module chain -->
+  <g font-family="Consolas, monospace" font-size="13" fill="#0f172a">
+    <rect x="70" y="270" width="620" height="44" rx="6" fill="#ffffff" stroke="#334155"/>
+    <text x="90" y="297">contract.py</text>
+    <text x="230" y="297" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">compiled, effective-dated fee schedule (CompiledContract)</text>
+
+    <rect x="70" y="330" width="620" height="44" rx="6" fill="#ffffff" stroke="#334155"/>
+    <text x="90" y="357">decompose.py</text>
+    <text x="250" y="357" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">bank credit → transaction subset, three tiers, with proof</text>
+
+    <rect x="70" y="390" width="620" height="44" rx="6" fill="#ffffff" stroke="#334155"/>
+    <text x="90" y="417">verify.py</text>
+    <text x="210" y="417" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">independently recomputes fee/tax against the contract, diffs</text>
+
+    <rect x="70" y="450" width="620" height="44" rx="6" fill="#ffffff" stroke="#334155"/>
+    <text x="90" y="477">conserve.py</text>
+    <text x="230" y="477" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">asserts the conservation identity, paisa-exact, every credit</text>
+
+    <rect x="70" y="510" width="300" height="44" rx="6" fill="#ffffff" stroke="#334155"/>
+    <text x="90" y="537">lanes.py</text>
+    <text x="180" y="537" font-family="Segoe UI, sans-serif" font-size="10.5" fill="#475569">conformal-calibrated</text>
+
+    <rect x="390" y="510" width="300" height="44" rx="6" fill="#ffffff" stroke="#334155"/>
+    <text x="410" y="537">exceptions.py</text>
+    <text x="530" y="537" font-family="Segoe UI, sans-serif" font-size="10.5" fill="#475569">cluster + packet</text>
+
+    <rect x="70" y="570" width="620" height="44" rx="6" fill="#ffffff" stroke="#334155"/>
+    <text x="90" y="597">ledger.py</text>
+    <text x="220" y="597" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">append-only journal — posts Lane.AUTO findings only, idempotent</text>
+  </g>
+
+  <!-- vertical connectors down the core chain -->
+  <g stroke="#334155" stroke-width="1.6" fill="none" marker-end="url(#arrowCore)">
+    <path d="M380,314 L380,330"/>
+    <path d="M380,374 L380,390"/>
+    <path d="M380,434 L380,450"/>
+    <path d="M220,494 L220,510"/>
+    <path d="M540,494 L540,510"/>
+    <path d="M220,554 L220,570"/>
+    <path d="M540,554 L540,570"/>
+  </g>
+  <path d="M370,532 L390,532" stroke="#334155" stroke-width="1.6" fill="none" marker-end="url(#arrowCore)"/>
+
+  <!-- llm boxes -->
+  <g font-family="Consolas, monospace" font-size="12.5" fill="#7c2d12">
+    <rect x="790" y="270" width="330" height="52" rx="6" fill="#ffffff" stroke="#b45309"/>
+    <text x="806" y="292">contract_parser.py</text>
+    <text x="806" y="310" font-family="Segoe UI, sans-serif" font-size="10.5" fill="#92400e">rate card text → structured RateCardParse</text>
+
+    <rect x="790" y="470" width="330" height="52" rx="6" fill="#ffffff" stroke="#b45309"/>
+    <text x="806" y="492">adjudicator.py</text>
+    <text x="806" y="510" font-family="Segoe UI, sans-serif" font-size="10.5" fill="#92400e">residual → cited hypothesis, PROPOSE only</text>
+
+    <rect x="790" y="600" width="330" height="52" rx="6" fill="#ffffff" stroke="#b45309"/>
+    <text x="806" y="622">narrator.py</text>
+    <text x="806" y="640" font-family="Segoe UI, sans-serif" font-size="10.5" fill="#92400e">computed packet → prose, numbers injected only</text>
+  </g>
+
+  <!-- crossing arrows llm -> core, dashed amber, labelled with what actually crosses -->
+  <g stroke="#b45309" stroke-width="1.6" fill="none" stroke-dasharray="5 3">
+    <path d="M790,296 L690,296" marker-end="url(#arrowLLM)"/>
+    <path d="M790,496 L690,532" marker-end="url(#arrowLLM)"/>
+    <path d="M790,626 L690,592" marker-end="url(#arrowLLM)"/>
+  </g>
+  <g font-size="10" fill="#92400e" font-style="italic">
+    <text x="695" y="288">compiled contract only —</text>
+    <text x="695" y="299">never an amount at call time</text>
+    <text x="695" y="518">Finding, lane=PROPOSE —</text>
+    <text x="695" y="529">every citation checked first</text>
+    <text x="695" y="578">narration string —</text>
+    <text x="695" y="589">every digit already computed</text>
+  </g>
+
+  <!-- residual -> adjudicator input arrow, from conserve/verify area -->
+  <path d="M690,472 C 740,480 760,480 790,492" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="2 3" marker-end="url(#arrowCore)"/>
+  <text x="700" y="463" font-size="9.5" fill="#64748b">unresolved residual</text>
+
+  <!-- dispute packet -> narrator input arrow -->
+  <path d="M690,536 C 740,560 760,590 790,614" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="2 3" marker-end="url(#arrowCore)"/>
+  <text x="700" y="565" font-size="9.5" fill="#64748b">dispute packet</text>
+
+  <!-- output -->
+  <path d="M380,614 L380,780 L590,780" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arrowCore)"/>
+  <rect x="460" y="795" width="260" height="46" rx="6" fill="#ecfdf5" stroke="#047857" stroke-width="1.4"/>
+  <text x="590" y="815" text-anchor="middle" font-family="Consolas, monospace" font-size="13" fill="#065f46">report.json</text>
+  <text x="590" y="830" text-anchor="middle" font-size="10" fill="#047857">report_hash = SHA-256(canonical JSON)</text>
+
+  <text x="30" y="855" font-size="10.5" fill="#64748b">Money is integer paise everywhere under core/. No model ever computes, adjusts, or approves an amount.</text>
+</svg>
