@@ -1,0 +1,731 @@
+/* Assay — landing page.
+ *
+ * One palette, shared with reviewer/web: near-black ground, four greys, and
+ * gold used for exactly one thing — money that could not be explained. Two
+ * typefaces: Inter for display, JetBrains Mono for every number, always
+ * tabular.
+ *
+ * The pasted components style themselves inline or with Tailwind. What lives
+ * here is the page shell, the line story, and the parallax skeleton — the
+ * parallax CSS was not supplied with its component, so it is authored to the
+ * class names that component already uses.
+ */
+
+@import "tailwindcss";
+
+:root {
+  --ground: #08090b;
+  --raised: #0d0f13;
+  --panel: #111419;
+  --line: #1c212a;
+  --line-bright: #2a313d;
+
+  --ink: #e8ebf0;
+  --ink-dim: #8b94a3;
+  --ink-faint: #58606d;
+
+  /* The only colour on the page. */
+  --gold: #e8b44a;
+  --gold-dim: rgba(232, 180, 74, 0.12);
+
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --gutter: clamp(1.25rem, 5.5vw, 7rem);
+}
+
+@theme inline {
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background: var(--ground);
+  scroll-behavior: auto;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--gold);
+  color: #000;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--gold);
+}
+
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: -0.02em;
+}
+
+.is-accent {
+  color: var(--gold);
+}
+
+/* Lenis' required host rules. Without these the smooth-scroll wrapper can
+ * fight the document height and strand the footer. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ── ambient background ─────────────────────────────────────────────────
+ * The erosion field sits behind everything, at low opacity so it never
+ * competes with a number. Sections that need an opaque backdrop paint their
+ * own ground over it. */
+
+.page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+}
+.page-bg iframe {
+  width: 100%;
+  height: 100%;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── nav ────────────────────────────────────────────────────────────── */
+
+.nav {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.9rem var(--gutter);
+  background: rgba(8, 9, 11, 0.6);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+
+.nav__brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+}
+.nav__mark {
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: -0.035em;
+}
+.nav__sub {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.nav__links {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+}
+.nav__links a:hover {
+  color: var(--ink);
+}
+.nav__cta {
+  color: var(--ink);
+  border: 1px solid var(--line-bright);
+  border-radius: 8px;
+  padding: 0.32rem 0.78rem;
+}
+.nav__cta:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+@media (max-width: 720px) {
+  .nav__sub {
+    display: none;
+  }
+}
+
+/* ── line story ─────────────────────────────────────────────────────────
+ * A pinned stage with the erosion field centred behind it. Every line is
+ * absolutely stacked over the same box and placed by flex alignment rather
+ * than by transforms -- GSAP tweens `y` on these elements, and a CSS
+ * translate would be overwritten the moment it did. */
+
+.linestory {
+  position: relative;
+  background: transparent;
+}
+
+.linestory__pin {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* The particle sphere. Positioned by whoever mounts it (see
+ * components/ErosionField.tsx) and masked to a soft ellipse so it reads as
+ * ambient depth rather than as a rectangle with an iframe in it.
+ *
+ * `farthest-side` with a late falloff, not `closest-side` at 55%: on a wide
+ * viewport closest-side sizes the mask to half the HEIGHT, which cropped the
+ * field to a small centre disc and then faded most of that away too. That,
+ * stacked on a low layer opacity, is why it was invisible. */
+.erosion {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(farthest-side at 50% 50%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(farthest-side at 50% 50%, #000 62%, transparent 100%);
+}
+.erosion__inner,
+.erosion iframe {
+  width: 100%;
+  height: 100%;
+}
+.erosion__inner[hidden] {
+  display: none;
+}
+
+/* Behind the line story: full strength, this is the beat it belongs to. */
+.linestory__field {
+  opacity: 1;
+}
+
+/* Behind the closing section: quieter, because there are numbers and links
+ * on top of it here rather than one sentence. */
+.closing__field {
+  opacity: 0.5;
+}
+
+.linestory__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.linestory__line {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(6rem, 15vh, 10rem) var(--gutter) clamp(4rem, 11vh, 7rem);
+  will-change: transform, opacity, filter;
+}
+
+.linestory__line > * {
+  /* NOT `ch`: this box inherits the 1rem body size while the headline inside
+   * renders at up to 4rem, so a ch-based width measured about one word of
+   * the heading per line. */
+  max-width: min(44rem, 52vw);
+}
+
+/* Placement. Each line lands somewhere different, so an arrival reads as a
+ * move across the frame instead of a redraw in a fixed box. */
+.linestory__line.is-l {
+  justify-content: center;
+  align-items: flex-start;
+}
+.linestory__line.is-r {
+  justify-content: center;
+  align-items: flex-end;
+  text-align: right;
+}
+.linestory__line.is-tl {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+.linestory__line.is-tr {
+  justify-content: flex-start;
+  align-items: flex-end;
+  text-align: right;
+}
+.linestory__line.is-bl {
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+.linestory__line.is-br {
+  justify-content: flex-end;
+  align-items: flex-end;
+  text-align: right;
+}
+.linestory__line.is-c {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.linestory__eyebrow {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.1rem;
+}
+
+.linestory__text {
+  font-size: clamp(1.7rem, 4.4vw, 3.4rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.06;
+  color: var(--ink);
+  text-shadow: 0 2px 30px rgba(8, 9, 11, 0.92);
+}
+
+.linestory__figure {
+  margin-top: 1.5rem;
+  font-size: clamp(0.75rem, 1.4vw, 0.95rem);
+  color: var(--ink-dim);
+  padding-left: 1rem;
+  border-left: 2px solid var(--line-bright);
+  text-shadow: 0 2px 20px rgba(8, 9, 11, 0.95);
+}
+.linestory__figure.is-accent {
+  color: var(--gold);
+  border-left-color: var(--gold);
+}
+/* Right-aligned lines get the rule on the side the text runs from. */
+.linestory__line.is-r .linestory__figure,
+.linestory__line.is-tr .linestory__figure,
+.linestory__line.is-br .linestory__figure {
+  padding-left: 0;
+  padding-right: 1rem;
+  border-left: 0;
+  border-right: 2px solid var(--line-bright);
+}
+.linestory__line.is-r .linestory__figure.is-accent,
+.linestory__line.is-tr .linestory__figure.is-accent,
+.linestory__line.is-br .linestory__figure.is-accent {
+  border-right-color: var(--gold);
+}
+
+@media (max-width: 900px) {
+  .linestory__line > * {
+    max-width: 100%;
+  }
+  /* One column on small screens: the four-corner placement collapses to a
+   * single readable position rather than crushing text into a corner. */
+  .linestory__line {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+  .linestory__line .linestory__figure {
+    padding-left: 1rem !important;
+    padding-right: 0 !important;
+    border-left: 2px solid var(--line-bright) !important;
+    border-right: 0 !important;
+  }
+}
+
+/* Reduced motion: no pin, no swapping, no canvas — the same lines, read
+ * straight down. */
+.linestory.is-static .linestory__pin {
+  height: auto;
+  overflow: visible;
+}
+.linestory.is-static .linestory__stage {
+  position: static;
+}
+.linestory.is-static .linestory__line {
+  position: static;
+  inset: auto;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0 var(--gutter);
+  margin-bottom: 5rem;
+}
+
+/* ── captions over the pinned video ─────────────────────────────────────
+ * Placed around the frame rather than centred under it, so the reveal moves
+ * the eye instead of parking it. Driven by the pin timeline in
+ * hero-scroll-video-pin-reveal.tsx; they start hidden here too, because the
+ * timeline is only built after mount and a flash of all four at once is
+ * exactly what makes a page look unfinished. */
+
+.videocap {
+  position: absolute;
+  z-index: 20;
+  max-width: min(22ch, 42vw);
+  font-size: clamp(1rem, 2.2vw, 1.9rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--ink);
+  text-shadow: 0 2px 26px rgba(8, 9, 11, 0.95), 0 0 70px rgba(8, 9, 11, 0.75);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  will-change: transform, opacity, filter;
+}
+.videocap.is-accent {
+  color: var(--gold);
+}
+
+.videocap--tl {
+  top: 14%;
+  left: 7%;
+}
+.videocap--tr {
+  top: 17%;
+  right: 7%;
+  text-align: right;
+}
+.videocap--bl {
+  bottom: 16%;
+  left: 7%;
+}
+.videocap--br {
+  bottom: 13%;
+  right: 7%;
+  text-align: right;
+}
+.videocap--c {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .videocap {
+    max-width: 74vw;
+  }
+  .videocap--tl,
+  .videocap--tr,
+  .videocap--bl,
+  .videocap--br {
+    left: 8%;
+    right: auto;
+    text-align: left;
+  }
+}
+
+/* ── parallax ───────────────────────────────────────────────────────────
+ * The component was supplied without its stylesheet, so this is authored to
+ * the class names it already renders. The layers are transparent SVG chart
+ * art over the ground, which is why they do not need to cover the frame at
+ * every point in their travel — drifting apart is the effect. */
+
+.parallax {
+  position: relative;
+  background: var(--ground);
+}
+
+.parallax__header {
+  position: relative;
+  height: 100vh;
+}
+
+.parallax__visuals {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ground);
+}
+
+.parallax__layers {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.parallax__layer-img {
+  position: absolute;
+  left: 0;
+  top: -25%;
+  width: 100%;
+  height: 150%;
+  object-fit: cover;
+  object-position: center;
+  will-change: transform;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Depth by contrast as well as by speed: the far wall is nearly dissolved,
+ * the near one is sharp. */
+.parallax__layer-img[data-parallax-layer="1"] {
+  opacity: 0.4;
+}
+.parallax__layer-img[data-parallax-layer="2"] {
+  opacity: 0.72;
+}
+.parallax__layer-img--strip {
+  opacity: 0.35;
+}
+.parallax__layer-img[data-parallax-layer="4"] {
+  opacity: 1;
+}
+
+.parallax__layer-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 var(--gutter);
+  z-index: 3;
+  will-change: transform;
+}
+
+.parallax__title {
+  font-size: clamp(3.5rem, 16vw, 13rem);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  color: var(--ink);
+  text-shadow: 0 8px 60px rgba(8, 9, 11, 0.85);
+}
+
+.parallax__caption {
+  margin-top: 1.4rem;
+  max-width: 46ch;
+  font-size: clamp(0.9rem, 1.6vw, 1.1rem);
+  color: var(--ink-dim);
+  text-shadow: 0 2px 24px rgba(8, 9, 11, 0.9);
+}
+
+.parallax__black-line-overflow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--line-bright);
+  z-index: 4;
+}
+
+.parallax__fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38%;
+  background: linear-gradient(180deg, rgba(8, 9, 11, 0), var(--ground));
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* ── closing ────────────────────────────────────────────────────────── */
+
+.closing {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: clamp(5rem, 14vh, 9rem) var(--gutter) 5rem;
+  background: transparent;
+}
+
+/* Everything in the closing section sits above its field. */
+.closing > *:not(.erosion) {
+  position: relative;
+  z-index: 1;
+}
+
+.closing__eyebrow {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 1rem;
+}
+
+.closing__title {
+  font-size: clamp(1.9rem, 4.4vw, 3.2rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  margin-bottom: 2.25rem;
+}
+
+.closing__terminal {
+  background: rgba(17, 20, 25, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.15rem 1.35rem;
+  overflow-x: auto;
+  max-width: 46rem;
+  margin-bottom: 3rem;
+}
+.closing__terminal code {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink);
+  line-height: 1.9;
+  white-space: pre;
+}
+.closing__prompt {
+  color: var(--ink-faint);
+  user-select: none;
+}
+
+.closing__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 3rem;
+}
+.closing__facts > div {
+  background: rgba(13, 15, 19, 0.9);
+  padding: 1.15rem 1.3rem;
+}
+.closing__facts dt {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.5rem;
+}
+.closing__facts dd {
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.closing__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
+  gap: 1.1rem;
+}
+
+.closing__card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(13, 15, 19, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1.6rem;
+  transition: border-color 0.3s var(--ease), transform 0.3s var(--ease);
+}
+.closing__card:hover {
+  border-color: var(--line-bright);
+  transform: translateY(-3px);
+}
+.closing__card h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  margin-bottom: 0.7rem;
+}
+.closing__card-label {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.8rem;
+}
+.closing__card-body {
+  color: var(--ink-dim);
+  font-size: 0.88rem;
+  flex: 1;
+}
+.closing__go {
+  margin-top: 1.3rem;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+.closing__card:hover .closing__go {
+  color: var(--ink);
+}
+
+/* The reviewer is the one link that leads to another screen of this
+ * project rather than to source, so it is the one card carrying the accent. */
+.closing__card--accent {
+  border-color: rgba(232, 180, 74, 0.34);
+}
+.closing__card--accent:hover {
+  border-color: var(--gold);
+}
+.closing__card--accent .closing__go {
+  color: var(--gold);
+}
+
+.closing__foot {
+  margin-top: 3.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+}
+.closing__hash {
+  margin-top: 0.7rem;
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  word-break: break-all;
+}
+
+/* ── reduced motion ─────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .closing__card:hover {
+    transform: none;
+  }
+  .page-bg {
+    opacity: 0.35;
+  }
+}

@@ -39,3 +39,13 @@ reviewer/web/*.tsbuildinfo
 # Both are derived from the committed inputs; regenerate rather than commit.
 runs/**/report.json
 runs/**/*.contract.json
+
+# Landing page: npm's tree and Vite's build output, same position as
+# reviewer/web above. site/src/data/audit.json is NOT ignored -- the page
+# is static and has to ship the numbers it quotes.
+site/node_modules/
+site/dist/
+site/*.tsbuildinfo
+
+# Vercel's local link/build state for site/.
+site/.vercel/

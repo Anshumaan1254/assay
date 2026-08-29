@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Assay — was I paid the correct amount?</title>
+    <meta
+      name="description"
+      content="Assay independently verifies payment-gateway settlements: it decomposes every bank credit into the transactions that produced it, recomputes each deduction from the contracted rate card, and reports in rupees anything that cannot be explained."
+    />
+    <meta name="theme-color" content="#08090b" />
+    <meta name="color-scheme" content="dark" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Assay — a settlement audit engine" />
+    <meta
+      property="og:description"
+      content="Decompose every bank credit. Recompute every deduction. Report every rupee that cannot be explained."
+    />
+
+    <!-- Two typefaces, and no more: Inter for display, JetBrains Mono for
+         every number on the page. Preconnected so the first paint is not
+         waiting on a DNS round trip, and `display=swap` so it never blocks
+         at all. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2308090b'/%3E%3Cpath d='M8 23 16 9l8 14' stroke='%23e8b44a' stroke-width='2.4' fill='none' stroke-linejoin='round'/%3E%3Cpath d='M11.6 18.5h8.8' stroke='%238b94a3' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

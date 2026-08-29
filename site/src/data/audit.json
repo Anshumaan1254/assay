@@ -1,0 +1,190 @@
+{
+  "_generated_by": "scripts/bake_site_data.py -- do not edit by hand",
+  "provenance": {
+    "run_id": "realistic-seed42",
+    "audit_run_id": "AUD-dd4ba0399a94",
+    "report_hash": "5bc692d4eb7588aafd31e6b37f7de750a701b4f673f6c96e897a4796a1bf4296",
+    "input_hash": "dd4ba0399a9472ad8f63b54f3b33f8a80dc01233028401f56a5ffb5bf2abdea5",
+    "contract_version": "rc-bac663f10b17",
+    "calibration_sha256": "bbfefb7533f3e42004dafa41e038fb4cf96f12c49f33c931cacf26535da4703d",
+    "git_sha": "d1b2f9a7d2b2a5e6d6340c0bb652d5c3414995d9",
+    "seed": 42,
+    "rounding_policy": "half_up",
+    "record_count": 17707
+  },
+  "credit": {
+    "paise": 616797102,
+    "rupees": "6167971.02",
+    "display": "₹61,67,971.02"
+  },
+  "credits": 31,
+  "gap": {
+    "paise": 32286575,
+    "rupees": "322865.75",
+    "display": "₹3,22,865.75",
+    "share_pct": 4.97
+  },
+  "terms": [
+    {
+      "key": "settled_gross",
+      "label": "settled gross",
+      "op": "",
+      "note": "Every rupee the gateway says it settled.",
+      "shards": 4772,
+      "paise": 649083677,
+      "rupees": "6490836.77",
+      "display": "₹64,90,836.77"
+    },
+    {
+      "key": "refunds",
+      "label": "refunds",
+      "op": "-",
+      "note": "Money returned to the cardholder.",
+      "shards": 132,
+      "paise": 17946390,
+      "rupees": "179463.90",
+      "display": "₹1,79,463.90"
+    },
+    {
+      "key": "fees",
+      "label": "fees",
+      "op": "-",
+      "note": "MDR, per-method flat fees, caps -- recomputed from the rate card.",
+      "shards": 42,
+      "paise": 5719579,
+      "rupees": "57195.79",
+      "display": "₹57,195.79"
+    },
+    {
+      "key": "tax",
+      "label": "tax",
+      "op": "-",
+      "note": "GST on the fee, recomputed from the recomputed fee.",
+      "shards": 8,
+      "paise": 1098547,
+      "rupees": "10985.47",
+      "display": "₹10,985.47"
+    },
+    {
+      "key": "chargebacks",
+      "label": "chargebacks",
+      "op": "-",
+      "note": "Disputed transactions clawed back.",
+      "shards": 7,
+      "paise": 920902,
+      "rupees": "9209.02",
+      "display": "₹9,209.02"
+    },
+    {
+      "key": "adjustments",
+      "label": "adjustments",
+      "op": "-",
+      "note": "Reserve holds and other gateway-side movements.",
+      "shards": 143,
+      "paise": 19486042,
+      "rupees": "194860.42",
+      "display": "₹1,94,860.42"
+    },
+    {
+      "key": "reversals",
+      "label": "reversals",
+      "op": "+",
+      "note": "Holds released back to the merchant.",
+      "shards": 96,
+      "paise": 12986386,
+      "rupees": "129863.86",
+      "display": "₹1,29,863.86"
+    },
+    {
+      "key": "unexplained",
+      "label": "unexplained",
+      "op": "+",
+      "note": "The residual. First-class, never rounded away.",
+      "shards": 0,
+      "paise": -101501,
+      "rupees": "-1015.01",
+      "display": "-₹1,015.01"
+    }
+  ],
+  "shards": {
+    "total": 5200,
+    "records": 17707,
+    "refunds": 208,
+    "chargebacks": 8,
+    "adjustments": 65
+  },
+  "unaccounted": {
+    "unexplained": {
+      "paise": -101501,
+      "rupees": "-1015.01",
+      "display": "-₹1,015.01"
+    },
+    "unclaimed": {
+      "paise": 451137,
+      "rupees": "4511.37",
+      "display": "₹4,511.37"
+    },
+    "total": {
+      "paise": 349636,
+      "rupees": "3496.36",
+      "display": "₹3,496.36"
+    },
+    "unclaimed_ids": [
+      "PAY-000031",
+      "PAY-002582",
+      "PAY-002633"
+    ]
+  },
+  "decomposition": {
+    "credits": 31,
+    "resolved": 31,
+    "structural": 25,
+    "subset_sum": 6,
+    "assignment": 0
+  },
+  "findings": {
+    "count": 52,
+    "clusters": 25,
+    "lanes": {
+      "auto": 0,
+      "propose": 52,
+      "escalate": 0
+    }
+  },
+  "evidence": {
+    "months": 18,
+    "findings_total": 1400,
+    "false_positives": 0,
+    "falsely_claimed": {
+      "paise": 0,
+      "rupees": "0.00",
+      "display": "₹0.00"
+    },
+    "planted": {
+      "paise": 41586364,
+      "rupees": "415863.64",
+      "display": "₹4,15,863.64"
+    },
+    "detected": {
+      "paise": 22936348,
+      "rupees": "229363.48",
+      "display": "₹2,29,363.48"
+    },
+    "value_recall_pct": 55.2,
+    "count_recall_pct": 67.0,
+    "records_total": 320749,
+    "records_per_second": 1367,
+    "records_touching_a_model": 108,
+    "schema_rejections": 0,
+    "citations_rejected": 0,
+    "determinism_matches": true,
+    "replay_matches": true,
+    "replay_live_calls": 0,
+    "clean_profile_unaccounted": {
+      "paise": 0,
+      "rupees": "0.00",
+      "display": "₹0.00"
+    },
+    "auto_lane_certified": false
+  }
+}
