@@ -84,6 +84,17 @@ MASKED_LABELS = frozenset({
 ROW = re.compile(r"^\|\s*(?P<label>[^|]+?)\s*\|\s*(?P<value>.*?)\s*\|\s*$")
 BANNER_HASH = re.compile(r"^(\s*body-sha256:)\s*[0-9a-f]{64}\s*(-->)?\s*$")
 
+# Environment-dependent numbers that appear in PROSE rather than in a table
+# row, so MASKED_LABELS cannot reach them. Section 11 restates its wall
+# clock inside a sentence (eval/evidence.py:782), and a wall clock is the
+# speed of whichever box ran the sweep: 235s on the machine that generated
+# the committed document, 37s on a CI runner. Each entry masks only the
+# varying number and keeps the sentence, so a rewording still shows up as
+# a difference.
+MASKED_PROSE = (
+    re.compile(r"^(?P<before>)[\d.,]+(?P<after> seconds\. The assumption is stated so it)$"),
+)
+
 
 def mask(document: str) -> list[str]:
     """The document with environment-dependent values replaced, as lines."""
@@ -96,6 +107,10 @@ def mask(document: str) -> list[str]:
         row = ROW.match(line)
         if row and row.group("label") in MASKED_LABELS:
             masked.append(f"| {row.group('label')} | <masked> |")
+            continue
+        prose = next((m for m in (p.match(line) for p in MASKED_PROSE) if m), None)
+        if prose:
+            masked.append(f"{prose.group('before')}<masked>{prose.group('after')}")
             continue
         masked.append(line)
     return masked

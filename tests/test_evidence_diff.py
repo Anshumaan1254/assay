@@ -138,3 +138,48 @@ def test_a_missing_current_document_is_a_refusal_not_a_pass(tmp_path, evidence_t
 
     assert result.returncode != 0
     assert "does not exist" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# prose-embedded environment numbers
+
+
+PROSE = (
+    "**2,340 analyst-hours**, done in\n"
+    "235 seconds. The assumption is stated so it\n"
+    "can be argued with; the honest comparison is not \"faster than a human\".\n"
+)
+
+
+def test_a_wall_clock_restated_in_prose_is_masked():
+    """Section 11 puts its wall clock in a sentence as well as a table row
+    (eval/evidence.py:782). CI caught this the hard way: every measured
+    number reproduced on a Linux runner and the job still failed, on
+    `235 seconds` vs `37 seconds` -- the speed of the box, not the engine."""
+    faster = PROSE.replace("235 seconds", "37 seconds")
+
+    assert evidence_diff.mask(PROSE) == evidence_diff.mask(faster)
+
+
+def test_the_prose_mask_keeps_the_sentence_around_the_number():
+    """It must mask the number only. A mask that swallowed the whole line
+    would stop the claim itself -- the analyst-hours comparison -- from
+    ever being diffed."""
+    masked = "\n".join(evidence_diff.mask(PROSE))
+
+    assert "<masked> seconds. The assumption is stated so it" in masked
+    assert "**2,340 analyst-hours**, done in" in masked
+    assert "235" not in masked
+
+
+def test_rewording_the_sentence_is_still_a_difference():
+    reworded = PROSE.replace("The assumption is stated so it", "This assumption is stated so it")
+
+    assert evidence_diff.mask(PROSE) != evidence_diff.mask(reworded)
+
+
+def test_the_analyst_hours_figure_itself_is_not_masked():
+    """It is derived from the record count, not from the clock."""
+    changed = PROSE.replace("2,340 analyst-hours", "9,999 analyst-hours")
+
+    assert evidence_diff.mask(PROSE) != evidence_diff.mask(changed)

@@ -1946,3 +1946,40 @@ shape is possible in any scenario that wraps its injected provider in
 `CachedProvider` -- C01 and C07 both do -- and a future committed cache
 entry could disarm those the same way, silently.
 
+## 2026-08-30 03:52 — the evidence gate masked a wall clock in a table and missed the same number in a sentence
+
+**Symptom:** the first CI run went 5/6. `evidence is real` failed on a
+one-line diff after a full 18-run sweep on a Linux runner:
+
+    -235 seconds. The assumption is stated so it
+    +37 seconds. The assumption is stated so it
+
+**Diagnosis:** `scripts/evidence_diff.py` masks environment-dependent
+values by table-row label, and §11's `Wall clock (audit time only)` row was
+masked correctly. But §11 also restates that measurement inside a sentence
+— `eval/evidence.py:782`, "2,340 analyst-hours, done in {N} seconds" — and
+prose carries no label to match on. 235s is the author's Windows box; 37s
+is a GitHub runner. It is machine speed, and the gate treated it as a
+finding.
+
+**First fix:** none attempted. The diff named the line.
+
+**Whether it worked:** n/a.
+
+**Final fix:** a `MASKED_PROSE` list of anchored regexes beside
+`MASKED_LABELS`, each masking only the varying number and keeping the
+sentence, so a reworded claim still surfaces as a difference.
+
+**Guard added:** four tests in `tests/test_evidence_diff.py` pinning the
+mask in both directions — that the two wall clocks compare equal, that the
+sentence and the analyst-hours figure survive masking, and that rewording
+the sentence is still a difference. The analyst-hours number is derived
+from the record count, not the clock, so masking it would have hidden a
+real regression.
+
+**Worth recording:** the run this failed on is the strongest evidence the
+gate works. Every measured number reproduced on a machine with a different
+OS, CPU and Python build — value-weighted recall 55.2%, count recall 67.0%,
+zero false positives, determinism MATCH, clean profile 0 paise — and the
+only thing that moved was how fast the box was. That is what EVIDENCE.md
+claims, verified by something other than the machine that wrote it.
