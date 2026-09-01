@@ -238,7 +238,19 @@ def test_the_hero_can_always_be_escaped() -> None:
     )
     assert code.count("releaseLock()") >= 3, "expected wheel, touch and keyboard release paths"
     assert "keydown" in code, "keyboard users need a way past the locked hero"
-    assert "reduceMotion) engageLock()" in code, "reduced motion must never lock the page"
+    assert "canPlay && !reduceMotion" in code, "reduced motion must never lock the page"
+
+    # The lock is taken only once the video can actually paint. Taking it at
+    # mount gave a black screen the reader could not scroll past for as long
+    # as the download took -- 26s on the host this shipped with.
+    assert "if (!reduceMotion) engageLock()" not in code, (
+        "the mount-time lock is the bug: it must be taken from settleLock instead"
+    )
+    assert "function settleLock" in code, "one place decides whether to lock, exactly once"
+    assert 'addEventListener("error"' in code, "a video that fails must not lock the page"
+    assert "setTimeout(() => settleLock(false)" in code, (
+        "a stalled load must fall back to a scrollable page"
+    )
 
 
 def test_reviewer_is_linked_and_unmodified() -> None:
@@ -416,3 +428,32 @@ def test_datagen_is_absent_from_the_deployed_bundle() -> None:
         "reviewer/vercel_app.py"
     ]["excludeFiles"]
     assert "datagen/**" in excluded
+
+def test_site_media_is_self_hosted() -> None:
+    """Every video the page plays ships with the page.
+
+    The two it was built against both failed in production: one started
+    returning 401 and the reveal circle went black, the other took 26s from a
+    host that is not a CDN. Both were somebody else's asset on somebody
+    else's origin, which is the property this pins -- not those two URLs.
+    """
+    offenders = []
+    for path in source_files():
+        code = strip_comments(path.read_text(encoding="utf-8"))
+        for match in re.findall(r"""https?://[^\s'"]+\.(?:mp4|webm|mov)""", code):
+            offenders.append((path.relative_to(ROOT), match))
+    assert not offenders, f"site/ must self-host its video: {offenders}"
+
+    video = SITE / "public" / "video"
+    missing = [name for name in ("hero.mp4", "reveal.mp4") if not (video / name).is_file()]
+    assert not missing, f"missing vendored media: {missing}"
+
+
+def test_vendored_media_is_cached_at_the_edge() -> None:
+    """Vite fingerprints `/assets/`, so those are immutable already. Files
+    copied out of `public/` keep their given names and match no rule unless
+    one is written for them -- and a 12 MB revalidation on every load is the
+    kind of thing nobody notices until the bandwidth bill."""
+    landing = json.loads((SITE / "vercel.json").read_text(encoding="utf-8"))
+    sources = {entry["source"] for entry in landing.get("headers", [])}
+    assert "/video/(.*)" in sources, "vendored video needs its own Cache-Control rule"

@@ -1983,3 +1983,17 @@ OS, CPU and Python build — value-weighted recall 55.2%, count recall 67.0%,
 zero false positives, determinism MATCH, clean profile 0 paise — and the
 only thing that moved was how fast the box was. That is what EVIDENCE.md
 claims, verified by something other than the machine that wrote it.
+
+## 2026-09-01 23:33 — the landing page played two videos, one of them 401 and one of them 26 seconds
+
+**Symptom:** the pin-reveal circle rendered pure black on the deployed landing page, captions visible over nothing. Separately, the hero "sometimes isn't visible as it's taking time to get loaded".
+
+**Diagnosis:** both were external media, and neither was a rendering fault. `curl -I` on the pin-reveal source returned `HTTP/1.1 401 Unauthorized` with `Content-Length: 32` — an error string, not a video; the Cloudinary asset the component shipped with had been revoked, so it was equally broken locally. The hero source returned 200 but measured 9,781,983 bytes over 26.0s from `raw.githubusercontent.com`, with `Cache-Control: max-age=300` and `Content-Type: application/octet-stream`. Reading `scroll-locked-video-hero.tsx` against that number found the worse half: `engageLock()` ran at mount while the video stayed at `opacity: 0` until `loadeddata`, so the visitor got a black screen with the page scroll locked for the whole download.
+
+**First fix:** none attempted on the pin-reveal — a 401 is not a thing to retry.
+
+**Whether it worked:** n/a.
+
+**Final fix:** vendored both files into `site/public/video/` (2.46 MB supplied, 9.33 MB pulled from the old host), pointed both components at relative paths, and dropped `crossOrigin="anonymous"` from the now same-origin element. Rewrote the hero's lock to be decided once by `settleLock()`, called from `loadeddata`, from an `error` listener, or from a 6s watchdog — so a video that is slow or absent degrades to an ordinary scrollable panel instead of a locked black box. Added a ground gradient and a `LOADING` line so the pre-ready frame reads as designed. Verified from the built output: both serve `200 video/mp4` at full byte count, where the old host sent `application/octet-stream`.
+
+**Guard added:** `tests/test_site.py::test_site_media_is_self_hosted`, failing on any `http(s)://…mp4|webm|mov` in `site/src` and requiring both files on disk — it pins the property, not those two URLs. `test_vendored_media_is_cached_at_the_edge` requires the `/video/(.*)` Cache-Control rule, since files copied out of `public/` are not fingerprinted and match no other rule. `test_the_hero_can_always_be_escaped` was extended to reject the mount-time lock and require the error and watchdog paths.

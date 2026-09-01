@@ -26,7 +26,10 @@ export interface MetroHeroProps {
   style?: React.CSSProperties
 }
 
-const DEFAULT_VIDEO = "https://raw.githubusercontent.com/gughigug/metro-hero-assets/main/Subway_doors_open_to_city_202608242331.mp4"
+// Self-hosted. From raw.githubusercontent.com this was 9.3 MB over 26s with
+// a five-minute cache and an octet-stream content-type; from site/public it
+// comes off Vercel's edge. Relative, so Vite's `base` still applies.
+const DEFAULT_VIDEO = "video/hero.mp4"
 const DEFAULT_SIGNATURE = { name: "guglielmogiannattasio.exe", url: "https://www.guglielmogiannattasio.it" }
 const SANS = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 
@@ -56,6 +59,7 @@ export default function MetroHero({
   const taglineRef = useRef<HTMLDivElement>(null)
   const progressBarRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     const video = videoRef.current
@@ -82,9 +86,24 @@ export default function MetroHero({
       setReady(true)
       if (reduceMotion) {
         video.currentTime = duration * 0.92
+        return
       }
+      // The lock is taken HERE, not at mount. Locking before the first frame
+      // exists gave the visitor a black screen they could not scroll past for
+      // as long as the download took -- which on the old host was 26 seconds,
+      // and reads as a broken site rather than as a slow one.
+      settleLock(true)
     }
     video.addEventListener("loadeddata", onLoadedData)
+
+    // If the video cannot load at all, this section must degrade to an
+    // ordinary scrollable panel. A hero that fails is a hero you scroll past,
+    // never a locked black box.
+    const onError = () => {
+      setFailed(true)
+      settleLock(false)
+    }
+    video.addEventListener("error", onError)
 
     const onSeeked = () => {
       isSeeking = false
@@ -136,10 +155,24 @@ export default function MetroHero({
       window.scrollTo(0, y)
     }
 
-    // A reader who cannot see the animation must never be trapped by it:
-    // reduced motion skips the lock entirely and the page scrolls normally
-    // past a hero already parked on its final frame.
-    if (!reduceMotion) engageLock()
+    // Decided once, by whichever of loadeddata / error / the watchdog arrives
+    // first. `settled` makes it idempotent so a late event cannot re-lock a
+    // page the reader has already scrolled on from.
+    let settled = false
+    function settleLock(canPlay: boolean) {
+      if (settled) return
+      settled = true
+      window.clearTimeout(watchdog)
+      // A reader who cannot see the animation must never be trapped by it:
+      // reduced motion skips the lock entirely and the page scrolls normally
+      // past a hero already parked on its final frame.
+      if (canPlay && !reduceMotion) engageLock()
+    }
+
+    // Last resort. If neither event fires -- a stalled connection, a codec the
+    // browser accepts but never decodes -- the page must still be usable, so
+    // give up on locking rather than waiting forever.
+    const watchdog = window.setTimeout(() => settleLock(false), 6000)
 
     function addDelta(deltaY: number) {
       targetProgress = clamp(targetProgress + deltaY / scrubDistance, 0, 1)
@@ -250,7 +283,9 @@ export default function MetroHero({
     }
 
     return () => {
+      window.clearTimeout(watchdog)
       video.removeEventListener("loadeddata", onLoadedData)
+      video.removeEventListener("error", onError)
       video.removeEventListener("seeked", onSeeked)
       window.removeEventListener("wheel", onWheel)
       window.removeEventListener("touchstart", onTouchStart)
@@ -274,6 +309,18 @@ export default function MetroHero({
         ...style,
       }}
     >
+      {/* The ground the video sits on. Before `ready` the <video> is still at
+          opacity 0, and without this the hero is pure black -- which is what
+          made a slow load look like a broken page. */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(120% 90% at 50% 40%, #12151b 0%, #0a0c10 45%, #08090b 100%)",
+        }}
+      />
+
       <video
         ref={videoRef}
         src={videoSrc}
@@ -360,6 +407,25 @@ export default function MetroHero({
           >
             {tagline}
           </span>
+        </div>
+      )}
+
+      {!ready && (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "62%",
+            transform: "translateX(-50%)",
+            fontFamily: SANS,
+            fontSize: "clamp(10px, 1.4vw, 12px)",
+            fontWeight: 600,
+            letterSpacing: "0.3em",
+            color: "rgba(139,148,163,0.7)",
+            pointerEvents: "none",
+          }}
+        >
+          {failed ? "SCROLL ON" : "LOADING"}
         </div>
       )}
 

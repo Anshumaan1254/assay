@@ -56,6 +56,19 @@ fixes that the page does not work without:
 
 `src/main.tsx` also does not use `<StrictMode>`; its comment explains why.
 
+## Media
+
+Both videos are vendored in `public/video/` and served from Vercel's edge with
+a one-year immutable `Cache-Control` (see `vercel.json`). They used to be
+remote, and both failed: the pin-reveal source began returning 401 and the
+circle went black, while the hero took 26s for 9.3 MB from a host that is not
+a CDN and served it as `application/octet-stream`. `tests/test_site.py`
+fails on any external video URL under `src/`.
+
+The hero takes the scroll lock only once the video can paint, and gives up on
+locking entirely on an `error` or after a 6s watchdog — a slow or missing
+video degrades to an ordinary scrollable panel, never a locked black screen.
+
 ## The numbers
 
 Every figure comes from `src/data/audit.json`, baked by
