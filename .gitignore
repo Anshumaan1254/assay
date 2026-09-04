@@ -49,3 +49,8 @@ site/*.tsbuildinfo
 
 # Vercel's local link/build state for site/.
 site/.vercel/
+
+# Local Claude Code configuration -- agent definitions, skills and hook
+# settings for this machine's editor setup. Development tooling, not part
+# of the engine; kept on disk, out of the repository.
+.claude/
